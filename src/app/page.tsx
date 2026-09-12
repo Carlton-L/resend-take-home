@@ -1,5 +1,5 @@
 // src/app/page.tsx
-import React from 'react';
+import type React from 'react';
 
 const HomePage: React.FC = () => {
   return (

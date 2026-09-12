@@ -3,6 +3,8 @@
 Claim a domain, prove you control it, and see exactly what is happening at each step, including when
 verification fails and what to do about it.
 
+Live at [domainclaim-pi.vercel.app](https://domainclaim-pi.vercel.app).
+
 Built as a take-home for Resend. The design notes and decisions live in [docs/RFC.md](docs/RFC.md).
 
 ## Running it
