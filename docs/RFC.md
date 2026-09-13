@@ -83,7 +83,8 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
   the screen derives `checking` from the in-flight request and shows each server as it lands
 - Public suffix and parse failures are validation errors, not states
 - Route Handlers, not Server Actions. Node runtime, never Edge
-- Rate limits on automatic re-checks, on "Check now", and on claims created per account
+- Rate limits on automatic re-checks, on "Check now", on claims created per account, and on sign in
+  email. The sign in check and its record are one SQL statement, which also prunes the window
 
 ### State
 
@@ -109,8 +110,12 @@ type ClaimState =
 
 ### Data
 
-`claims`, unique on the normalized name, which is where single ownership is enforced. `checks`, one
-row per check holding its full trace. `transfers`.
+`claims`, with a unique index on the normalized name covering verified and at risk rows only. One
+owner per name, any number of pending attempts, which is what step 8 needs. `checks`, one row per
+check holding its full trace. `transfers`.
+
+`sign_in_attempts`, one row per sign in email sent. Address and source address are stored as keyed
+hashes, so the table counts without becoming a list of who tried to sign in.
 
 ### Test mode
 
@@ -178,11 +183,26 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   all mail, and the email is ours to write.
 - The magic link points at our own route. `generateLink` returns a hashed token and `verifyOtp`
   accepts one, so the user never sees a supabase.co URL.
+- Sign in links render on GET and are redeemed on POST. Scanners fetch links before the person
+  does and would spend a single use link. A scanner does not submit a form.
+- A dead link in a browser already signed in as that address continues to the destination. The
+  person asked to be signed in as someone and they are, so an error would be about the token.
+- The confirmation page names the account being signed in to, and that address is signed, so a
+  link cannot display one address while carrying a token for another.
+- Sign in sends are limited per address, per IP and globally, counted in Postgres.
+- A tripped limit returns the same screen as a successful send and sends nothing, so the endpoint
+  cannot be used to find out who has an account.
 - Sending identity is carlton.dev, already verified with Resend. No sending subdomain. Reputation
   isolation does not matter at this volume.
 - Claims require an account. A browser session owning a claim before sign in was considered and
   rejected: a second kind of owner in every query from then on, an adoption step with real edge
   cases, and a claim that can disappear after the user has already put a record in their zone.
+- The result card is where a claim is confirmed. It already reads the normalized name back, so the
+  button carries that name and no extra screen is added.
+- A name another account has verified can still be claimed. Uniqueness covers verified and at risk
+  rows, so one owner and any number of pending attempts.
+- The incumbent is notified when a challenger proves control, never when one is created. Creating a
+  claim costs nothing but typing a name.
 - The `.test` flag reaches the claim form. A signed-in reviewer can then reach every failure state
   without owning a domain, which is what the anonymous claim was for.
 - A check returns as soon as a server has the records, and waits for every server otherwise. A
@@ -201,8 +221,7 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 - Ask Resend: `grace_period` and `recent_owner_activity` are named in their docs and never defined.
 - Claim the apex and `www` in one action? Needs multi-claim, which does not exist.
 - IPv6-only nameservers. Addresses come from A records only, so such a zone reports unreachable.
-- Email scanners follow links before the user does, and a single-use magic link burns. `generateLink`
-  also returns a code, which does not have the problem.
+- Bounce and complaint handling for mail sent to addresses that never asked for it.
 
 ## States
 

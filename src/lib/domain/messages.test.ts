@@ -1,5 +1,6 @@
 // src/lib/domain/messages.test.ts
 import { describe, expect, it } from 'vitest';
+import { findBannedPhrases } from '@/lib/copy/rules';
 import { describeChange, describeDomainInputError } from '@/lib/domain/messages';
 import type { DomainInputError, NormalizationChange } from '@/lib/domain/normalize';
 
@@ -61,9 +62,6 @@ const everyChange: Record<NormalizationChange['kind'], NormalizationChange> = {
 
 const errors = Object.values(everyError);
 const changes = Object.values(everyChange);
-
-/** Copy rules from CLAUDE.md, enforced here so a reviewer does not have to enforce them by eye. */
-const BANNED = ['—', '–', 'honestly', 'genuinely', 'load-bearing', 'worth'];
 
 describe('describeDomainInputError', () => {
   it('covers every error code', () => {
@@ -182,8 +180,8 @@ describe('copy rules', () => {
     }),
   ];
 
-  it.each(BANNED)('never uses %s', (banned) => {
-    const offenders = strings.filter((text) => text.toLowerCase().includes(banned));
-    expect(offenders).toEqual([]);
+  // The list itself lives in src/lib/copy/rules.ts, so every screen is held to the same one.
+  it('follows the copy rules', () => {
+    expect(findBannedPhrases(strings)).toEqual([]);
   });
 });

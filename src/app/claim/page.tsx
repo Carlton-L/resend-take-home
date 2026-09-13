@@ -1,15 +1,25 @@
 // src/app/claim/page.tsx
+import { redirect } from 'next/navigation';
 import type React from 'react';
 import DomainInputForm from '@/components/DomainInputForm/DomainInputForm';
+import { DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH } from '@/lib/auth/config';
+import { signedInEmail } from '@/lib/auth/supabase/server';
 
 /**
  * Server component. It ships no JavaScript of its own, and the interactive part is the one child
  * that needs it. When this page loads existing claims from the database it can await that query
  * here and pass the rows down as props.
+ *
+ * The session is checked here as well as in the proxy. A matcher is a pattern; this page is the
+ * thing that knows it needs an account, so it is the thing that says so.
  */
-const ClaimPage: React.FC = () => {
+const ClaimPage: React.FC = async () => {
+  if ((await signedInEmail()) === null) {
+    redirect(`${SIGN_IN_PATH}?next=${encodeURIComponent(DEFAULT_SIGNED_IN_PATH)}`);
+  }
+
   return (
-    <main className='mx-auto flex min-h-dvh max-w-xl flex-col gap-8 px-6 py-16 sm:py-24'>
+    <main className='mx-auto flex w-full max-w-xl flex-1 flex-col gap-8 px-6 py-16 sm:py-24'>
       <div className='flex flex-col gap-2'>
         <h1 className='font-medium text-2xl tracking-tight'>Claim a domain</h1>
         <p className='text-neutral-600 leading-relaxed'>
