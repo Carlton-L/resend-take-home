@@ -8,6 +8,20 @@
       "when": 1789312017383,
       "tag": "0000_orange_bulldozer",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789324175047,
+      "tag": "0001_chunky_blue_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789329256026,
+      "tag": "0002_puzzling_midnight",
+      "breakpoints": true
     }
   ]
 }

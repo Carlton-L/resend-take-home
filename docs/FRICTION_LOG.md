@@ -125,3 +125,55 @@ screen.
 
 Resolved in #4. Tailwind 4 gives buttons the default arrow cursor. One base rule in `globals.css`
 restores the pointer for every enabled button, and leaves disabled ones alone.
+
+## 2026-09-13, claiming and the record screen, deployed preview
+
+First session with claims. Ran the demo names and then carlton.dev end to end. Five entries.
+
+### I was signed out in the middle of a session
+
+Claimed and released a dozen names, then found myself signed out with no warning. Blamed a second
+account I had signed into in another browser, which was a coincidence.
+
+Resolved before merge. The two new route handlers read the session through the client whose cookie
+writes are deliberately swallowed, and returned a plain `Response`. The proxy does not run on
+`/api`, so those requests are the ones that meet an expired access token. Reading the user refreshes
+it, Supabase rotates the refresh token at that moment, and the replacement never reached the
+browser. The token still in the browser was already spent, so the next refresh signed me out. Both
+routes now use the route client, which collects cookie writes and applies them to the response the
+handler builds. That client existed already, with a comment saying exactly this.
+
+### I lost a claim and had to claim it again to find it
+
+Claimed `slow-nameservers.test`, navigated away, and had no route back. There is no list, so the
+only ways to reach a claim are the URL and re-entering the name.
+
+Deferred to the domain list slice. Re-claiming the name does return the same claim rather than
+minting a second one, which is the fix that landed here, but it is a workaround for a missing
+screen.
+
+### The TTL we tell people to enter cannot be entered
+
+Squarespace offers TTL as a dropdown, defaulting to 4 hrs. There is no field to type 300 into. Our
+record screen presents 300 as a value to copy, which is advice that cannot be followed on the one
+panel we have measured.
+
+Resolving in the record screen slice. TTL stops being a field. The instruction becomes leaving the
+default alone, which is true everywhere and was already true: the record TTL does not affect the
+answer that decides.
+
+### The field names do not match the panel
+
+We label them HOST and VALUE. Squarespace labels them NAME and TEXT. Their columns run TYPE, NAME,
+PRIORITY, TTL, TEXT, left to right.
+
+Resolving in the record screen slice. Name and Value are the labels most panels use, and the record
+is presented as a row in that order so it can be read against the form being filled in.
+
+### Verification is below the fold
+
+On a verified claim the screen still leads with "Add this record" and the eyebrow still says
+CLAIMING. The state of the thing is the last item on a page whose subject is state.
+
+Resolving in the record screen slice. The status is on the row already, so the top of the page can
+say it before the check has run.

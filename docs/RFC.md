@@ -77,6 +77,8 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
 - Name: `_domainclaim-challenge.<name>`
 - Value: `domainclaim-token=<token> expiry=<ISO date>`
 - Token: 160 bits from `crypto.randomBytes(20)`, base32
+- Token valid for 7 days. The expiry is in the record value and stated on the record screen
+- TTL shown as 300. Any value works
 - Walk up from the name to find the zone, since a subdomain can be delegated
 - Query authoritative servers in parallel, DoH as a second opinion
 - No stored `checking` state. A check is about 250ms. `nameservers_unreachable` costs about 4s, so
@@ -110,9 +112,10 @@ type ClaimState =
 
 ### Data
 
-`claims`, with a unique index on the normalized name covering verified and at risk rows only. One
-owner per name, any number of pending attempts, which is what step 8 needs. `checks`, one row per
-check holding its full trace. `transfers`.
+`claims`, with a unique index on the normalized name covering verified, at risk and contested rows.
+One owner per name, any number of pending attempts, which is what step 8 needs. A contested row is
+still the incumbent's, so leaving it out would free the name for a third account for the length of
+the contest. `checks`, one row per check holding its full trace. `transfers`.
 
 `sign_in_attempts`, one row per sign in email sent. Address and source address are stored as keyed
 hashes, so the table counts without becoming a list of who tried to sign in.
@@ -120,8 +123,10 @@ hashes, so the table counts without becoming a list of who tried to sign in.
 ### Test mode
 
 `DOMAINCLAIM_TEST_NAMESPACE=on` routes every `.test` name to the fake resolver, outcome keyed by the
-name: `record-not-found.test`, `cname-at-name.test`, `dnssec-broken.test`,
-`nameservers-unreachable.test`, one per reason. Off by default, and `.test` stays refused as a
+name: `verified.test`, `record-not-found.test`, `no-txt-at-name.test`, `value-mismatch.test`,
+`nameservers-unreachable.test`, `zone-not-found.test`, plus `one-dead-nameserver.test` and
+`slow-nameservers.test` for the timing cases. A script that succeeds returns the value the caller is
+looking for, so a demo claim verifies rather than reporting a mismatch against a fixed token. Off by default, and `.test` stays refused as a
 special-use name. On for the preview and the submitted deployment. Documented in the README. Each
 name lands with the slice that can produce its reason; the route lists the ones that exist.
 
@@ -199,8 +204,8 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   cases, and a claim that can disappear after the user has already put a record in their zone.
 - The result card is where a claim is confirmed. It already reads the normalized name back, so the
   button carries that name and no extra screen is added.
-- A name another account has verified can still be claimed. Uniqueness covers verified and at risk
-  rows, so one owner and any number of pending attempts.
+- A name another account has verified can still be claimed. Uniqueness covers verified, at risk and
+  contested rows, so one owner and any number of pending attempts.
 - The incumbent is notified when a challenger proves control, never when one is created. Creating a
   claim costs nothing but typing a name.
 - The `.test` flag reaches the claim form. A signed-in reviewer can then reach every failure state
@@ -210,6 +215,36 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   deadline to every successful check in a zone with one bad delegation.
 - The trace says what DNS holds at a name. Comparing that against a claim happens above it, which
   keeps the trace usable as a diagnostic on its own.
+- The record screen renders before its first check. The record is what the user came for and the
+  check is the slow part, so the record card is sent first and the check streams in behind it. The
+  worst case for a trace is the deadline times the number of steps, so blocking on it is not a
+  rounding error.
+- A check that finds the record verifies the claim. Finding it and leaving the claim pending would
+  be a bug rather than a scope line.
+- Token valid for 7 days. Long enough for a weekend and for someone else holding the registrar
+  login. A pending claim reserves no name, so a long window costs nothing. `token_expired` is
+  reachable through `.test`, so the real number does not have to be short to be shown.
+- TTL shown as 300, and any value works. The record TTL does not affect the answer that decides:
+  the TXT query goes straight to authoritative and authoritative servers do not cache. The negative
+  window comes from SOA `minttl`. TTL only decides how long a corrected value takes to agree in
+  public resolvers, so the explanation belongs in the `value_mismatch` message.
+- Releasing a claim deletes the row. A released state would qualify every later query for nothing.
+  The confirmation names the record to remove, since a released claim otherwise leaves a live TXT
+  record in the zone that nothing will mention again.
+- `checks` lands with the timeline. Nothing on the record screen reads a stored check, and a table
+  shaped before its reader exists gets reshaped when the reader arrives.
+- One pending claim per account per name, enforced by a second partial unique index. Claiming a
+  name this account already has goes to the claim it already has. Without this, claiming twice
+  mints a second token and the record the user already added is silently the wrong one.
+- An expired pending claim is reissued on the same row rather than refused. The id does not change,
+  so a URL the user already has keeps working, and the record screen says the value has changed.
+- A claim on a name another account holds is created, not refused, and the record screen says so
+  before the user edits their zone. Uniqueness covers the held states, so the refusal belongs at
+  the moment control is proved.
+- A challenger who proves control keeps a pending claim and is told the name is held. Writing
+  `contested` would open a state nothing can resolve until transfers exist.
+- Claim ids are checked against the uuid shape before they reach a query, because Postgres refuses
+  a malformed one with an error rather than an empty result.
 
 ## Open
 
@@ -222,17 +257,34 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 - Claim the apex and `www` in one action? Needs multi-claim, which does not exist.
 - IPv6-only nameservers. Addresses come from A records only, so such a zone reports unreachable.
 - Bounce and complaint handling for mail sent to addresses that never asked for it.
+- Two challengers proving control of one name at the same time. `contested` carries one
+  `challengerProvedAt` and one `decisionDueAt`, so the state models one challenger.
+- A proved challenge is not recorded anywhere today. The challenger sees it and the incumbent is
+  told nothing, because notification and the decision both belong to step 8.
+- Whether the incumbent decides, a timer decides, or proving control simply wins after a notice
+  period. Atlassian and Google both keep the incumbent until a person acts.
+- Checks are not rate limited yet. The security floor names the limit and the record screen runs a
+  check on every load, so a signed in account can point the resolver at a stranger's nameservers as
+  fast as it can reload. It lands with the timeline, which moves the check to an endpoint the limit
+  can sit on.
+- Check on render does not survive the domain list. A link into a claim is prefetched on hover, so
+  a list of claims would run a DNS query for every row a cursor passes over.
+- The claim limit counts rows rather than attempts, so releasing a claim frees quota. The sign in
+  limiter counts attempts in a table of their own and does not have this.
 
 ## States
 
 | Reason | Title | Next action | Test |
 | --- | --- | --- | --- |
-| `record_not_found` | | | |
-| `no_txt_at_name` | | | |
+| `record_not_found` | No record there yet | Add the record above, then reload this page. | `record-not-found.test` |
+| `no_txt_at_name` | The name exists with no TXT record on it | Open the record in your DNS panel and set its type to TXT. | `no-txt-at-name.test` |
 | `cname_at_name` | | | |
-| `value_mismatch` | | | |
+| `value_mismatch` | A TXT record is there with a different value | Replace the value with the one above, copied whole. | `value-mismatch.test` |
 | `appended_zone_suspected` | | | |
-| `token_expired` | | | |
+| `token_expired` | This claim has expired | Release this claim and start a new one, which issues a fresh token. | Claim row, no query |
 | `dnssec_broken` | | | |
-| `nameservers_unreachable` | | | |
-| `zone_not_found` | | | |
+| `nameservers_unreachable` | No answer from the nameservers | Reload this page in a few minutes. | `nameservers-unreachable.test` |
+| `zone_not_found` | No nameservers found for this domain | Set nameservers for the domain at your registrar, then reload this page. | `zone-not-found.test` |
+
+The three empty rows all need the DoH leg to be told apart from the rows above them, so they arrive
+with it.

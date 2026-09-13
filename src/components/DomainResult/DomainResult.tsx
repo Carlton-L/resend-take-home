@@ -1,5 +1,6 @@
 // src/components/DomainResult/DomainResult.tsx
 import type React from 'react';
+import { claimCopy } from '@/lib/claims/messages';
 import { describeChange } from '@/lib/domain/messages';
 import type { NormalizedDomain } from '@/lib/domain/normalize';
 
@@ -10,7 +11,13 @@ type DomainResultProps = {
 };
 
 /**
- * The name we would claim, and every change made to get there.
+ * The name we would claim, and every change made to get there, with the control that claims it.
+ *
+ * This card is the confirmation step. The user typed something, pressed Check, and is reading back
+ * the name that would be taken, so the button carries that name and creating on submit is not
+ * needed. A typo that passes validation would otherwise take a name with no one having seen it.
+ *
+ * A plain form post rather than a fetch, so claiming works with no client JavaScript.
  *
  * The name is always the ASCII form, including for an internationalized domain, because that is the
  * string the user types into their DNS panel on the next screen. The readable form appears only as
@@ -63,6 +70,16 @@ const DomainResult: React.FC<DomainResultProps> = ({ value, onUseSuggestion }) =
           </button>
         </div>
       )}
+
+      <form method='post' action='/api/claims' className='flex flex-col'>
+        <input type='hidden' name='name' value={value.name} />
+        <button
+          type='submit'
+          className='self-start break-all rounded-md bg-neutral-900 px-4 py-2 text-left font-medium font-mono text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2'
+        >
+          {claimCopy.create.submit(value.name)}
+        </button>
+      </form>
 
       {changed && (
         <div className='flex flex-col gap-3 border-neutral-200 border-t pt-4'>

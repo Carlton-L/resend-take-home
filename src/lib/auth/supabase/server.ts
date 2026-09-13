@@ -57,3 +57,19 @@ export const signedInEmail = cache(async (): Promise<string | null> => {
   const { data } = await supabase.auth.getUser();
   return data.user?.email ?? null;
 });
+
+/**
+ * The signed in user's id and address, or null. Claims are keyed on the id, so anything that reads
+ * or writes a claim needs this rather than the address.
+ *
+ * Cached the same way and for the same reason as `signedInEmail`.
+ */
+export const signedInUser = cache(async (): Promise<{ id: string; email: string } | null> => {
+  const supabase = await supabaseServerClient();
+  const { data } = await supabase.auth.getUser();
+  const user = data.user;
+  if (!user?.email) {
+    return null;
+  }
+  return { id: user.id, email: user.email };
+});

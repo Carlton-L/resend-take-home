@@ -48,3 +48,41 @@ propagates, and what the check actually does would be the product making its own
 Cost: real writing, and it reads as padding if the core flow is not finished first. The README
 covers the reviewer's need in the meantime. Buys: the one piece of the product that is about
 understanding rather than doing.
+
+## The record screen needs JavaScript for copying and for release
+
+Raised 2026-09-13. Claiming is a plain form post and works without a script. The copy controls and
+the release dialog do not: the clipboard call and `showModal` are both client side. The value is
+selectable by hand either way, and the release confirmation inside the dialog is a real form post,
+so only opening it needs a script.
+
+Cost: a release confirmation that also exists as its own page, reached by a link. Buys: a
+destructive action that does not depend on a bundle loading.
+
+## The short host assumes the zone is the registrable domain
+
+Raised 2026-09-13. The host offered first is built by taking the registrable domain off the claimed
+name, which is right unless the name sits in a delegated subdomain zone. The check walks up and
+learns the real zone a moment later, so the page holds the answer and does not use it.
+
+Cost: passing the zone from the check back into the record card, which means the card can no longer
+render before the check. Buys: a correct short host on a delegated subdomain, which is rare.
+
+## No error boundary on the claim route
+
+Raised 2026-09-13. The check streams into the page after the shell has been sent. Nothing in it
+throws today, because every DNS failure is a return value and the two writes catch, but a throw
+would leave a page that stops rather than a page that says something.
+
+Cost: an `error.tsx` for the segment, which has to be a client component. Buys: a failure that
+reads as a failure.
+
+## One end to end test, and the Playwright dependency
+
+Raised 2026-09-13. `@playwright/test` is in `devDependencies` with no config and no specs. It stays
+rather than being removed, because the polish phase commits to one end to end run: sign in, claim a
+demo name, read the record screen, release it. Until that exists it is a dependency the repo
+declares and does not use.
+
+Cost: a config, one spec, and a CI step that installs a browser. Buys: the one check that covers
+the whole flow rather than a layer of it.
