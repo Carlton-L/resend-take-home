@@ -3,9 +3,7 @@
 Claim a domain, prove you control it, see every step, recover when it fails. Ownership is persistent
 state: re-checked on a schedule, revocable, transferable between accounts.
 
-User: one person who controls their own DNS. 
-
-NOTE: Maybe later consider orgs where the user is not the same person who controls the DNS.
+User: one person who controls their own DNS.
 
 ## Background
 
@@ -15,8 +13,9 @@ NOTE: Maybe later consider orgs where the user is not the same person who contro
   and is correct.
 - Token goes in a scoped underscore TXT label. Underscores cannot collide with hostnames.
 - Nothing propagates. Authoritative servers are current, caches lag.
-- Negative caching is the main failure. An eager check before the record exists causes it. Query
-  authoritative servers.
+- Negative caching happens in recursive resolvers. Authoritative servers do not cache. Our checks
+  query authoritative, so they cache nothing. The DoH second opinion does, for the zone's SOA
+  `minttl`.
 - DNS panels append the zone to the Host field. Typing a full name gives `_x.example.com.example.com`.
 - Verified status decays silently. A DNS migration drops the record and nothing visibly breaks.
 - Stale record keeps a stranger verified. A new domain owner can re-add an old token.
@@ -39,21 +38,27 @@ NOTE: Maybe later consider orgs where the user is not the same person who contro
 ## Proposal
 
 1. Magic link sign in.
-2. Enter a domain. Input is normalized. Warn for name already claimed by another account.
+2. Enter a domain. Input is normalized. Warn for name already claimed by another account. Step 8 is
+   the same feature from the challenger's side.
 3. Record screen. Host, type, value, TTL, each copyable. Warn about zone auto-append. Show expiry.
    Name the provider from NS.
-4. Check runs immediately, no Verify button. Timeline shows nameservers found, each server queried,
-   answer compared.
-5. Verified. Show `verified_at`, `last_checked_at`, `next_check_at`.
-6. Domain list with live status. Scheduled re-checks. Email on status change.
-7. Second user proves control, incumbent notified, gate decides.
+4. Check runs on arrival, no Verify button. Timeline shows nameservers found, each server queried,
+   answer compared. First check always misses, the record is not added yet.
+5. Re-checks while the claim is open. Backoff 5s, 15s, 30s, 60s, then every 60s. Stops at 15
+   minutes or token expiry. "Check now" for a user who has just added the record. Both rate limited.
+6. Verified. Show `verified_at`, `last_checked_at`, `next_check_at`.
+7. Domain list with live status. Scheduled re-checks. Email on status change.
+8. Second user proves control, incumbent notified, gate decides. Step 2 is the incumbent's side.
 
-No Verify button because the eager manual check is what poisons the negative cache.
+No Verify button. The product runs the check. "Check now" means the user has added the record and
+does not want to wait for the next one.
+
+The authoritative answer decides. DoH is a second opinion. While a negative cache entry is alive the
+two disagree. The timeline shows both answers and the remaining window as a real number.
 
 ### Subdomains
 
-Subdomains are verified separately. `example.com` does not cover `app.example.com`. NOTE:
-`example.com` and `app.example.com` could be held by different accounts.
+Subdomains are verified separately. `example.com` does not cover `app.example.com`.
 
 ### Out of scope
 
@@ -71,9 +76,11 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
 - Token: 160 bits from `crypto.randomBytes(20)`, base32
 - Walk up from the name to find the zone, since a subdomain can be delegated
 - Query authoritative servers in parallel, DoH as a second opinion
-- No `checking` state, a check takes about 250ms
+- No stored `checking` state. A check is about 250ms. `nameservers_unreachable` costs about 4s, so
+  the screen derives `checking` from the in-flight request and shows each server as it lands
 - Public suffix and parse failures are validation errors, not states
 - Route Handlers, not Server Actions. Node runtime, never Edge
+- Rate limits on automatic re-checks, on "Check now", and on claims created per account
 
 ### State
 
@@ -104,7 +111,13 @@ row per check holding its full trace. `transfers`.
 
 ### Test mode
 
-Swap the resolver for a fake one to reach every failure reason. Documented in the README.
+`DOMAINCLAIM_TEST_NAMESPACE=on` routes every `.test` name to the fake resolver, outcome keyed by the
+name: `record-not-found.test`, `cname-at-name.test`, `dnssec-broken.test`,
+`nameservers-unreachable.test`, one per reason. Off by default, and `.test` stays refused as a
+special-use name. On for the preview and the submitted deployment. Documented in the README.
+
+A global switch would be a hole. Anyone who found it could verify any domain. `.test` is never a
+real claim, so the fake resolver cannot be reached by a name that could be.
 
 ## Decisions
 
@@ -147,6 +160,9 @@ Swap the resolver for a fake one to reach every failure reason. Documented in th
 
 - Notify the parent holder when a child name is claimed?
 - Grace window length. Atlassian uses 14 days. Needs to be demoable in minutes too.
+- Orgs where the user is not the person who controls the DNS. Out of scope now, revisit later.
+- `example.com` and `app.example.com` held by different accounts. The model allows it, and the zone
+  access analysis says it is not an escalation. Refuse, warn, or leave it?
 - Ask Resend: `grace_period` and `recent_owner_activity` are named in their docs and never defined.
 - Claim the apex and `www` in one action? Needs multi-claim, which does not exist.
 
