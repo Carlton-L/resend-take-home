@@ -38,7 +38,7 @@ User: one person who controls their own DNS.
 
 ## Proposal
 
-1. Magic link sign in.
+1. Magic link sign in. Supabase generates the link, we send the email through Resend.
 2. Enter a domain. Input is normalized. Warn for name already claimed by another account. Step 8 is
    the same feature from the challenger's side.
 3. Record screen. Host, type, value, TTL, each copyable. Warn about zone auto-append. Show expiry.
@@ -72,6 +72,8 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
 
 ## Technical details
 
+- Magic link from `auth.admin.generateLink`, exchanged by our own callback with `verifyOtp`
+- Auth and notification email from carlton.dev through the Resend SDK
 - Name: `_domainclaim-challenge.<name>`
 - Value: `domainclaim-token=<token> expiry=<ISO date>`
 - Token: 160 bits from `crypto.randomBytes(20)`, base32
@@ -171,6 +173,18 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   private and link-local addresses on the network we run on. IANA special-purpose list, IPv4 only.
 - The outcome names the nameserver that answered fastest. Others may hold the record too; the
   per-server rows are where that shows.
+- Auth email sent by us through the Resend SDK, not by Supabase SMTP. The product needs
+  transactional mail for status changes anyway, so the SDK is in the repo either way. One path for
+  all mail, and the email is ours to write.
+- The magic link points at our own route. `generateLink` returns a hashed token and `verifyOtp`
+  accepts one, so the user never sees a supabase.co URL.
+- Sending identity is carlton.dev, already verified with Resend. No sending subdomain. Reputation
+  isolation does not matter at this volume.
+- Claims require an account. A browser session owning a claim before sign in was considered and
+  rejected: a second kind of owner in every query from then on, an adoption step with real edge
+  cases, and a claim that can disappear after the user has already put a record in their zone.
+- The `.test` flag reaches the claim form. A signed-in reviewer can then reach every failure state
+  without owning a domain, which is what the anonymous claim was for.
 - A check returns as soon as a server has the records, and waits for every server otherwise. A
   server still running is reported as `unfinished`. Waiting for a complete trace would add the
   deadline to every successful check in a zone with one bad delegation.
@@ -187,6 +201,8 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 - Ask Resend: `grace_period` and `recent_owner_activity` are named in their docs and never defined.
 - Claim the apex and `www` in one action? Needs multi-claim, which does not exist.
 - IPv6-only nameservers. Addresses come from A records only, so such a zone reports unreachable.
+- Email scanners follow links before the user does, and a single-use magic link burns. `generateLink`
+  also returns a code, which does not have the problem.
 
 ## States
 
