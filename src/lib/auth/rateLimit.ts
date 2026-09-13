@@ -2,7 +2,7 @@
 import { sql } from 'drizzle-orm';
 import { ATTEMPT_RETENTION_SECONDS, SEND_LIMITS } from '@/lib/auth/config';
 import { identifierHash } from '@/lib/auth/secrets';
-import { db } from '@/lib/db/client';
+import { getDb } from '@/lib/db/client';
 
 /**
  * Returned rather than thrown, the same as the input errors and the DNS failures. `unavailable`
@@ -32,7 +32,7 @@ export const recordSendAttempt = async (email: string, ipBucket: string): Promis
   const ipHash = identifierHash('ip', ipBucket);
 
   try {
-    const rows = await db.execute(sql`
+    const rows = await getDb().execute(sql`
       with pruned as (
         delete from sign_in_attempts
         where created_at < now() - make_interval(secs => ${ATTEMPT_RETENTION_SECONDS})
