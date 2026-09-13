@@ -2,21 +2,42 @@
 import { redirect } from 'next/navigation';
 import type React from 'react';
 import DomainInputForm from '@/components/DomainInputForm/DomainInputForm';
+import FailureNotice from '@/components/FailureNotice/FailureNotice';
 import { DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH } from '@/lib/auth/config';
 import { signedInEmail } from '@/lib/auth/supabase/server';
+import { claimCopy } from '@/lib/claims/messages';
+import { testNames, testNamespaceEnabled } from '@/lib/dns/testNames';
 
 /**
  * Server component. It ships no JavaScript of its own, and the interactive part is the one child
- * that needs it. When this page loads existing claims from the database it can await that query
- * here and pass the rows down as props.
+ * that needs it.
  *
  * The session is checked here as well as in the proxy. A matcher is a pattern; this page is the
  * thing that knows it needs an account, so it is the thing that says so.
  */
-const ClaimPage: React.FC = async () => {
+type ClaimPageProps = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+/** What the claim endpoint can send back. Anything else is ignored rather than rendered. */
+const CREATE_ERRORS = {
+  limited: claimCopy.create.tooMany,
+  unavailable: claimCopy.create.unavailable,
+  invalid: claimCopy.create.invalid,
+} as const;
+
+const ClaimPage: React.FC<ClaimPageProps> = async ({ searchParams }) => {
   if ((await signedInEmail()) === null) {
     redirect(`${SIGN_IN_PATH}?next=${encodeURIComponent(DEFAULT_SIGNED_IN_PATH)}`);
   }
+
+  const { error } = await searchParams;
+  const failure =
+    error !== undefined && error in CREATE_ERRORS
+      ? CREATE_ERRORS[error as keyof typeof CREATE_ERRORS]
+      : null;
+
+  const demo = testNamespaceEnabled();
 
   return (
     <main className='mx-auto flex w-full max-w-xl flex-1 flex-col gap-8 px-6 py-16 sm:py-24'>
@@ -28,11 +49,29 @@ const ClaimPage: React.FC = async () => {
         </p>
       </div>
 
-      <DomainInputForm />
+      {failure !== null && (
+        <FailureNotice tone='attention' message={{ ...failure, record: null }} />
+      )}
 
-      <p className='mt-auto border-neutral-200 border-t pt-4 text-neutral-500 text-sm'>
-        This screen stops at the name. Claims are not saved yet.
-      </p>
+      <DomainInputForm allowTestNamespace={demo} />
+
+      {demo && (
+        <details className='rounded-md border border-neutral-200 bg-neutral-50 p-4'>
+          <summary className='cursor-pointer font-medium text-neutral-900 text-sm'>
+            {claimCopy.demo.heading}
+          </summary>
+          <p className='pt-2 text-neutral-600 text-sm leading-relaxed'>
+            {claimCopy.demo.description}
+          </p>
+          <ul className='flex flex-col gap-1 pt-3'>
+            {testNames().map((name) => (
+              <li key={name} className='font-mono text-neutral-700 text-sm'>
+                {name}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </main>
   );
 };

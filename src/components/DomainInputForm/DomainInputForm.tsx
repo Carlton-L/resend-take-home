@@ -8,22 +8,31 @@ import DomainResult from '@/components/DomainResult/DomainResult';
 import type { DomainInputResult } from '@/lib/domain/normalize';
 import { normalizeDomainInput } from '@/lib/domain/normalize';
 
+type DomainInputFormProps = {
+  /**
+   * Whether `.test` names are let through. Decided by the deployment and read on the server, so
+   * this component stays free of anything platform specific and the same value reaches the claim
+   * endpoint, which is the one that decides.
+   */
+  allowTestNamespace: boolean;
+};
+
 /**
  * Client component because it holds the field value and the result. Its children are pulled into
  * the client bundle with it, so none of them needs the directive of its own.
  *
  * `normalizeDomainInput` is pure and imports nothing platform specific, so it runs here for an
- * answer with no round trip. When the claim endpoint lands, the server runs the same function as
- * the authority. One function, so the two cannot drift.
+ * answer with no round trip. The claim endpoint runs the same function as the authority. One
+ * function, so the two cannot drift.
  */
-const DomainInputForm: React.FC = () => {
+const DomainInputForm: React.FC<DomainInputFormProps> = ({ allowTestNamespace }) => {
   const inputId = useId();
   const resultId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState('');
   const [result, setResult] = useState<DomainInputResult | null>(null);
 
-  const check = (raw: string) => setResult(normalizeDomainInput(raw));
+  const check = (raw: string) => setResult(normalizeDomainInput(raw, { allowTestNamespace }));
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

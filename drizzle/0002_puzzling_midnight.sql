@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "claims_owner_pending_name_idx" ON "claims" USING btree ("owner_id","name") WHERE status = 'pending';
