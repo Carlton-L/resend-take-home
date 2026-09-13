@@ -14,7 +14,7 @@ pnpm install
 pnpm dev
 ```
 
-Node 22.x. Copy `.env.example` to `.env.local` and fill it in before the app will do anything useful.
+Node 24.x. Copy `.env.example` to `.env.local` and fill it in before the app will do anything useful.
 
 ## Scripts
 
@@ -26,3 +26,5 @@ Node 22.x. Copy `.env.example` to `.env.local` and fill it in before the app wil
 | `pnpm typecheck` | TypeScript with no emit |
 | `pnpm check` | Biome lint and format check |
 | `pnpm format` | Biome check with fixes applied |
+| `pnpm db:generate` | Write a migration from the schema |
+| `pnpm db:migrate` | Apply pending migrations |

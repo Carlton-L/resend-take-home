@@ -38,3 +38,13 @@ problem, and the underlying gap is real.
 Cost: a real `action` and `method` on the form, a second response shape on the route, and the sent
 state moving into the URL where the address would be visible. Buys: a sign in that works when a
 script fails to load. The confirmation page is already a plain form and needs nothing.
+
+## A page in the app explaining how verification works
+
+Raised 2026-09-13. The product's argument is that nobody explains DNS, and right now the
+explanations only appear inside failures. A page that lays out what a TXT record proves, why nothing
+propagates, and what the check actually does would be the product making its own case.
+
+Cost: real writing, and it reads as padding if the core flow is not finished first. The README
+covers the reviewer's need in the meantime. Buys: the one piece of the product that is about
+understanding rather than doing.
