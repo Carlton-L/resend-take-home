@@ -47,7 +47,7 @@ const DomainInputForm: React.FC = () => {
         <label htmlFor={inputId} className='font-medium text-neutral-900 text-sm'>
           Domain
         </label>
-        <div className='flex flex-col gap-2 sm:flex-row'>
+        <div className='flex w-full min-w-0 flex-col gap-2 sm:flex-row'>
           <input
             id={inputId}
             ref={inputRef}
@@ -67,7 +67,7 @@ const DomainInputForm: React.FC = () => {
             spellCheck={false}
             aria-invalid={hasError}
             aria-describedby={result === null ? undefined : resultId}
-            className='w-full rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-neutral-900 text-sm transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus-visible:border-neutral-900 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-1 aria-[invalid=true]:border-red-400'
+            className='w-full min-w-0 rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-neutral-900 text-base sm:text-sm transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus-visible:border-neutral-900 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-1 aria-[invalid=true]:border-red-400'
           />
           <button
             type='submit'

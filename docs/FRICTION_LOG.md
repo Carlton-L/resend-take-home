@@ -91,3 +91,37 @@ access to the `example.com` zone unless the subdomain is separately delegated, s
 gains nothing they did not already have. The risk is that the two names read alike to a person,
 which is handled by always showing the full name. `www` is now offered as a suggestion pointing at
 the name above it, never applied. Claiming both in one action is open.
+
+## 2026-09-13, magic link sign in, local dev
+
+First session with sign in. Three entries.
+
+### A dead link showed an error while I was already signed in
+
+Opened the same link twice. The second time, the page said the link no longer works, with the
+header above it showing the account signed in. Both things were true and the screen was still
+wrong: the thing I asked for had happened.
+
+Resolved in #4. A spent token in a browser already holding a session for that address now lands on
+the destination instead of the dead link page, and the confirmation page skips its button entirely
+when the session already matches. A dead link only reports a dead link when the person is not
+already where the link was taking them.
+
+### The dead link page explained a cause that was not mine
+
+The copy said links expire after fifteen minutes and that email providers open links to check them.
+Neither had happened. I had asked for a second link, which killed the first, and then opened the
+first. The scanner sentence also gave me nothing to do about it, and it describes a problem this
+product already solved by redeeming on POST.
+
+Resolved in #4. Supabase returns the same error for expired, used and replaced, so naming one cause
+means guessing. The page now states the three rules that make links stop working, including that a
+new link replaces the last, and ends with the one action.
+
+### Buttons did not look clickable
+
+No pointer cursor on any button, including "Use a different address" on the check your email
+screen.
+
+Resolved in #4. Tailwind 4 gives buttons the default arrow cursor. One base rule in `globals.css`
+restores the pointer for every enabled button, and leaves disabled ones alone.

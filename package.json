@@ -11,7 +11,9 @@
     "format": "biome check --write .",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "verify": "biome check . && tsc --noEmit && vitest run --passWithNoTests && next build"
+    "verify": "biome check . && tsc --noEmit && vitest run --passWithNoTests && next build",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
