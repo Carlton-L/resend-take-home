@@ -116,12 +116,39 @@ Swap the resolver for a fake one to reach every failure reason. Documented in th
 - No component library. Tailwind and the native `dialog`.
 - The record persists rather than being removed after validation, because re-checks need it.
   draft-13 allows either if the cadence is documented.
+- Internationalized names display as the ASCII form. The readable form appears only as an echo
+  of the input. Showing the readable form as the name needs a confusability rule, and an
+  approximate one asserts a guarantee this code cannot keep. Residual risk: the input echo
+  still renders the readable form.
+- Input errors show title, subject, description, one action. Same shape as the DNS failures.
+- Submit stays enabled on an empty field. A disabled button gives the user nothing to act on.
+- Unrecognised suffixes refused at input. The Public Suffix List has an implicit `*` rule, so
+  `192.0.2.carlton` otherwise parses as a subdomain of `2.carlton`. Test is `isIcann ||
+  isPrivate`. Cost: the list ships inside `tldts`, so a brand new gTLD is refused until the
+  package is updated. Accepted, refresh path in `spec.md`.
+- Special-use names refused by name: `localhost`, `test`, `invalid`, `example` (RFC 6761),
+  `onion` (RFC 7686), `local` (RFC 6762). None resolve in public DNS, so there is no zone.
+- A bare `user@host` is an email address, not URL credentials. Credentials in the wild carry a
+  scheme, and a colon the local part cannot contain unquoted. Without this, pasting an email
+  silently claimed the provider's domain.
+- One input failure at a time. The checks are a pipeline, each stage depending on the last, so
+  only the per-label group could be collected. Several at once breaks the one-action rule, and
+  DNS failures are singular by nature. Mitigated by showing the whole name with the section at
+  fault marked, so a second problem is visible even though only one is named.
+- A leading dot and an interior double dot are separate codes. Removing the dot from `.com`
+  only produces the next error, so the actions differ.
+- `www` is offered as a suggestion, never applied. It is the one subdomain conventionally read
+  as an alias for the name above it.
+- Claiming a subdomain needs write access to the parent zone, so a second account holding
+  `www.example.com` gains nothing it did not already have. The risk is that the two names read
+  alike to a person, handled by always showing the full name.
 
 ## Open
 
 - Notify the parent holder when a child name is claimed?
 - Grace window length. Atlassian uses 14 days. Needs to be demoable in minutes too.
 - Ask Resend: `grace_period` and `recent_owner_activity` are named in their docs and never defined.
+- Claim the apex and `www` in one action? Needs multi-claim, which does not exist.
 
 ## States
 
