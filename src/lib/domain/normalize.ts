@@ -57,6 +57,16 @@ export type DomainInputResult =
   | { ok: true; value: NormalizedDomain }
   | { ok: false; error: DomainInputError };
 
+export type NormalizeOptions = {
+  /**
+   * Let names under `.test` through instead of refusing them as special-use.
+   *
+   * Passed in rather than read from the environment, so this function stays pure and keeps working
+   * unchanged in the browser. The deployment decides; see `src/lib/dns/testNames.ts`.
+   */
+  allowTestNamespace?: boolean;
+};
+
 /** RFC 1035 section 2.3.4. Both limits apply to the wire format, which is the punycode form. */
 const MAX_NAME_LENGTH = 253;
 const MAX_LABEL_LENGTH = 63;
@@ -96,7 +106,10 @@ const hasPunycodeLabel = (name: string) =>
  * one before it, so collecting several is only possible within the per-label group and would mean
  * handing the user more than one next action. See docs/RFC.md.
  */
-export const normalizeDomainInput = (raw: string): DomainInputResult => {
+export const normalizeDomainInput = (
+  raw: string,
+  options: NormalizeOptions = {},
+): DomainInputResult => {
   const changes: NormalizationChange[] = [];
   const input = raw;
 
@@ -276,7 +289,10 @@ export const normalizeDomainInput = (raw: string): DomainInputResult => {
   // Before the single-label check, so a bare `localhost` is told what it actually is rather than
   // being told to add an ending.
   const finalLabel = asciiLabels[asciiLabels.length - 1];
-  if (SPECIAL_USE_SUFFIXES.has(finalLabel)) {
+  // The demo namespace is carved out of the special-use refusal, and only when the deployment asks
+  // for it. Everything under it reaches the fake resolver and nothing real.
+  const isDemoName = finalLabel === 'test' && options.allowTestNamespace === true;
+  if (!isDemoName && SPECIAL_USE_SUFFIXES.has(finalLabel)) {
     return { ok: false, error: { code: 'special_use_name', name: work, suffix: finalLabel } };
   }
 
@@ -300,7 +316,7 @@ export const normalizeDomainInput = (raw: string): DomainInputResult => {
   // The Public Suffix List carries an implicit `*` rule, so an unrecognised last label parses as a
   // valid suffix with one name under it. Both flags false is what separates a made-up ending from
   // a real one. isPrivate is what keeps names like foo.vercel.app valid.
-  if (!parsed.isIcann && !parsed.isPrivate) {
+  if (!isDemoName && !parsed.isIcann && !parsed.isPrivate) {
     return {
       ok: false,
       error: { code: 'unknown_suffix', name: work, suffix: parsed.publicSuffix },

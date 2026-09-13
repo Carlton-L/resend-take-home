@@ -262,3 +262,31 @@ describe('normalizeDomainInput, failure positions', () => {
     }
   });
 });
+
+describe('normalizeDomainInput, the demo namespace', () => {
+  it('refuses .test by default, the same as any other special-use name', () => {
+    expect(err('record-not-found.test').code).toBe('special_use_name');
+  });
+
+  it('lets .test through only when the deployment asks for it', () => {
+    const result = normalizeDomainInput('record-not-found.test', { allowTestNamespace: true });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.name).toBe('record-not-found.test');
+    }
+  });
+
+  it('does not let the flag open up anything else', () => {
+    // The carve-out is for `.test` alone. A made-up ending stays refused, and so does localhost.
+    const madeUp = normalizeDomainInput('192.0.2.carlton', { allowTestNamespace: true });
+    expect(madeUp.ok).toBe(false);
+    if (!madeUp.ok) {
+      expect(madeUp.error.code).toBe('unknown_suffix');
+    }
+    const local = normalizeDomainInput('localhost', { allowTestNamespace: true });
+    expect(local.ok).toBe(false);
+    if (!local.ok) {
+      expect(local.error.code).toBe('special_use_name');
+    }
+  });
+});

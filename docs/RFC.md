@@ -13,9 +13,10 @@ User: one person who controls their own DNS.
   and is correct.
 - Token goes in a scoped underscore TXT label. Underscores cannot collide with hostnames.
 - Nothing propagates. Authoritative servers are current, caches lag.
-- Negative caching happens in recursive resolvers. Authoritative servers do not cache. Our checks
-  query authoritative, so they cache nothing. The DoH second opinion does, for the zone's SOA
-  `minttl`.
+- Negative caching happens in recursive resolvers. Authoritative servers do not cache. The TXT
+  query goes straight to authoritative, so the answer that decides caches nothing. The zone walk
+  and the address lookups are recursive, and ask about NS and A rather than the token. The DoH
+  second opinion is the one that caches a miss, for the zone's SOA `minttl`.
 - DNS panels append the zone to the Host field. Typing a full name gives `_x.example.com.example.com`.
 - Verified status decays silently. A DNS migration drops the record and nothing visibly breaks.
 - Stale record keeps a stranger verified. A new domain owner can re-add an old token.
@@ -114,7 +115,8 @@ row per check holding its full trace. `transfers`.
 `DOMAINCLAIM_TEST_NAMESPACE=on` routes every `.test` name to the fake resolver, outcome keyed by the
 name: `record-not-found.test`, `cname-at-name.test`, `dnssec-broken.test`,
 `nameservers-unreachable.test`, one per reason. Off by default, and `.test` stays refused as a
-special-use name. On for the preview and the submitted deployment. Documented in the README.
+special-use name. On for the preview and the submitted deployment. Documented in the README. Each
+name lands with the slice that can produce its reason; the route lists the ones that exist.
 
 A global switch would be a hole. Anyone who found it could verify any domain. `.test` is never a
 real claim, so the fake resolver cannot be reached by a name that could be.
@@ -155,6 +157,25 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 - Claiming a subdomain needs write access to the parent zone, so a second account holding
   `www.example.com` gains nothing it did not already have. The risk is that the two names read
   alike to a person, handled by always showing the full name.
+- DNS failures are return values. Every one of them is something the timeline renders with a
+  message and a next action, so they are results rather than exceptions. Collecting per-server
+  outcomes into an array needs values too. Same convention as the input errors.
+- Deadline 2s, one try, on every question rather than only the TXT one. A healthy authoritative
+  answer measured at 92ms. Every server is asked at once so the others are the retry, and the
+  number mostly caps how long one dead nameserver can tax a zone that works. Worst case for a
+  trace is the deadline times the number of steps. Reported in the trace.
+- The SOA read is skipped when every nameserver is unreachable. It would go to the same servers,
+  so a window in the trace would be a number we never read.
+- Nameserver addresses that are not globally reachable are refused before the query is sent. The
+  zone picks its own nameservers, so without this a stranger's zone can have us probe loopback,
+  private and link-local addresses on the network we run on. IANA special-purpose list, IPv4 only.
+- The outcome names the nameserver that answered fastest. Others may hold the record too; the
+  per-server rows are where that shows.
+- A check returns as soon as a server has the records, and waits for every server otherwise. A
+  server still running is reported as `unfinished`. Waiting for a complete trace would add the
+  deadline to every successful check in a zone with one bad delegation.
+- The trace says what DNS holds at a name. Comparing that against a claim happens above it, which
+  keeps the trace usable as a diagnostic on its own.
 
 ## Open
 
@@ -165,6 +186,7 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   access analysis says it is not an escalation. Refuse, warn, or leave it?
 - Ask Resend: `grace_period` and `recent_owner_activity` are named in their docs and never defined.
 - Claim the apex and `www` in one action? Needs multi-claim, which does not exist.
+- IPv6-only nameservers. Addresses come from A records only, so such a zone reports unreachable.
 
 ## States
 
