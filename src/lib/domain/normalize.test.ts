@@ -1,6 +1,6 @@
 // src/lib/domain/normalize.test.ts
 import { describe, expect, it } from 'vitest';
-import { normalizeDomainInput } from './normalize';
+import { normalizeDomainInput } from '@/lib/domain/normalize';
 
 const ok = (raw: string) => {
   const result = normalizeDomainInput(raw);
@@ -108,7 +108,7 @@ describe('normalizeDomainInput', () => {
   });
 
   it('rejects a single label', () => {
-    expect(err('localhost').code).toBe('single_label');
+    expect(err('mycompany').code).toBe('single_label');
   });
 
   it('rejects a label over 63 characters', () => {
@@ -142,9 +142,12 @@ describe('normalizeDomainInput', () => {
     expect(value.changes.map((change) => change.kind)).toContain('removed_path');
   });
 
-  it('rejects an empty label', () => {
-    expect(err('a..b.com').code).toBe('empty_label');
-    expect(err('.example.com').code).toBe('empty_label');
+  it('separates a leading dot from an interior double dot', () => {
+    // Different mistakes with different repairs. Removing the dot from '.com' would only
+    // produce the next error.
+    expect(err('a..b.com').code).toBe('double_dot');
+    expect(err('.example.com').code).toBe('leading_dot');
+    expect(err('.com').code).toBe('leading_dot');
   });
 
   it('rejects a label starting with a hyphen', () => {
@@ -178,5 +181,84 @@ describe('normalizeDomainInput', () => {
     const value = ok('straße.de');
     expect(value.name.split('.')[0]).toMatch(/^xn--/);
     expect(value.changes.map((change) => change.kind)).toContain('converted_to_punycode');
+  });
+});
+
+describe('normalizeDomainInput, suffix recognition', () => {
+  it('rejects a suffix that no registry issues', () => {
+    // The Public Suffix List has an implicit '*' rule, so an unknown last label parses as a valid
+    // suffix. Without this check 192.0.2.carlton was accepted as a subdomain of 2.carlton.
+    const error = err('192.0.2.carlton');
+    expect(error.code).toBe('unknown_suffix');
+    if (error.code === 'unknown_suffix') {
+      expect(error.suffix).toBe('carlton');
+      expect(error.name).toBe('192.0.2.carlton');
+    }
+  });
+
+  it('keeps names under a private suffix, which is why isPrivate is checked too', () => {
+    const value = ok('foo.vercel.app');
+    expect(value.registrableDomain).toBe('foo.vercel.app');
+    expect(value.publicSuffix).toBe('vercel.app');
+  });
+
+  it('names the special-use suffixes rather than telling them to add an ending', () => {
+    for (const raw of ['localhost', 'app.localhost', 'printer.local', 'x.test', 'y.invalid']) {
+      expect(err(raw).code).toBe('special_use_name');
+    }
+  });
+
+  it('reports localhost by what it is, even when it arrives as a dev server URL', () => {
+    const error = err('http://localhost:3000/claim');
+    expect(error.code).toBe('special_use_name');
+    if (error.code === 'special_use_name') {
+      expect(error.name).toBe('localhost');
+      expect(error.suffix).toBe('localhost');
+    }
+  });
+});
+
+describe('normalizeDomainInput, email addresses', () => {
+  it('refuses an email address rather than silently claiming the provider', () => {
+    const error = err('carlton@protonmail.com');
+    expect(error.code).toBe('email_address');
+    if (error.code === 'email_address') {
+      expect(error.domainPart).toBe('protonmail.com');
+      expect(error.input).toBe('carlton@protonmail.com');
+    }
+  });
+
+  it('still strips credentials when a scheme is present', () => {
+    const value = ok('https://user:pw@example.com');
+    expect(value.name).toBe('example.com');
+    expect(value.changes.map((change) => change.kind)).toContain('removed_credentials');
+  });
+
+  it('treats a colon before the @ as credentials even without a scheme', () => {
+    // An unquoted colon is not legal in an email local part, which is what separates the two.
+    const value = ok('user:pw@example.com');
+    expect(value.name).toBe('example.com');
+    expect(value.changes.map((change) => change.kind)).toContain('removed_credentials');
+  });
+});
+
+describe('normalizeDomainInput, failure positions', () => {
+  it('reports which section is at fault so the whole name can be shown with it marked', () => {
+    const error = err('example.-bad.com');
+    expect(error.code).toBe('label_leading_hyphen');
+    if (error.code === 'label_leading_hyphen') {
+      expect(error.labelIndex).toBe(1);
+      expect(error.label).toBe('-bad');
+      expect(error.name).toBe('example.-bad.com');
+    }
+  });
+
+  it('carries the reduced name, not the raw paste, once the input has been cut down', () => {
+    const error = err('https://mycompany:8080/dashboard');
+    expect(error.code).toBe('single_label');
+    if (error.code === 'single_label') {
+      expect(error.name).toBe('mycompany');
+      expect(error.input).toBe('https://mycompany:8080/dashboard');
+    }
   });
 });

@@ -1,4 +1,5 @@
 // src/app/page.tsx
+import Link from 'next/link';
 import type React from 'react';
 
 const HomePage: React.FC = () => {
@@ -9,6 +10,12 @@ const HomePage: React.FC = () => {
         Claim a domain, prove you control it, and see exactly what is happening at each step,
         including when verification fails and what to do about it.
       </p>
+      <Link
+        href='/claim'
+        className='w-fit rounded-md bg-neutral-900 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2'
+      >
+        Claim a domain
+      </Link>
     </main>
   );
 };
