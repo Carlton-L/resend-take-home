@@ -12,6 +12,10 @@ Decisions are in [docs/RFC.md](docs/RFC.md).
 
 ## Try it
 
+Fastest tour: sign in, claim `record-not-found.test` to see the record and the check that has nothing
+to find yet, then claim `verified.test` to watch a claim prove itself. `appended-zone.test` is the
+one to look at for how failures are explained.
+
 Sign in with a link sent to your address. No password.
 
 Claim a real domain, or use a demo name below. Each routes to a scripted resolver, so every outcome
@@ -22,9 +26,10 @@ claim.
 | --- | --- |
 | `verified.test` | Record found, claim verifies |
 | `crowded-name.test` | Found among other services' TXT records |
-| `one-dead-nameserver.test` | One server down, check answers at the speed of the rest |
+| `one-dead-nameserver.test` | One server down, and the check does not wait for it, so the screen is the same as a healthy zone |
 | `record-not-found.test` | Nothing at the name, with the negative cache window |
-| `no-txt-at-name.test` | Name exists, no TXT on it |
+| `no-txt-at-name.test` | Name exists, no TXT on it, and the zone is not answering for everything |
+| `appended-zone.test` | The panel appended the domain, so the record landed one level down |
 | `value-mismatch.test` | A TXT record carrying a token this claim did not issue |
 | `nameservers-unreachable.test` | No answer inside the deadline |
 | `zone-not-found.test` | No level answers with nameservers |
@@ -45,6 +50,15 @@ claim.
 - The token is public. It sits in a TXT record anyone can query, so its only job is being
   unguessable. 160 bits from `crypto.randomBytes`.
 - No Verify button. A check takes about 250ms, so the product runs it.
+- The check reports itself as five steps, each carrying the answer it got: find the zone, reach the
+  nameservers, find the TXT record, match the token, record the claim. A step that has not passed is
+  not the same as one that has gone wrong, and they are drawn differently: if the next move belongs
+  to the person it is a failure, if it belongs to time it is still waiting.
+- A failed check asks two follow-up questions. Nothing at the name means asking for the name with the
+  zone on the end of it twice, which catches a panel that appended its zone. No TXT at the name means
+  asking for a name nobody could have created, which catches a wildcard zone answering for
+  everything, where a record that was never added otherwise looks like one saved under the wrong
+  type.
 - Failures are typed values, rendered as a title, the DNS value at fault, why, and one next action.
 
 ## Scope
@@ -54,8 +68,8 @@ Built:
 - Magic link sign in
 - Domain input, normalized, with a typed error for every way a name can be wrong
 - Claim issue with a scoped token, and the record to add
-- The check, run on arrival, against real DNS
-- Six of nine failure reasons, each with one action
+- The check, run on arrival, against real DNS, reported as its five steps
+- Seven of nine failure reasons, each with one action and the remediation in the step that produced it
 - Releasing a claim
 
 Not built yet:
@@ -64,8 +78,8 @@ Not built yet:
 - The check as a live timeline, with Check now
 - Scheduled re-verification, grace window, notification email
 - Transfers for a contested name
-- The DNS-over-HTTPS second opinion, which separates a CNAME at the name and broken DNSSEC from the
-  failures above
+- The DNS-over-HTTPS second opinion, which would separate a CNAME at the name and broken DNSSEC from
+  the failures above, and show how far behind public resolvers are while they catch up
 
 Out of scope, reasoning in the RFC: verification methods other than TXT, sending mail and its
 records, teams and roles, a public API, internationalized copy.
@@ -98,9 +112,13 @@ Node 24.x. Needs a Supabase project and a Resend API key. Every variable is docu
 CI runs `pnpm verify` on every pull request, with no secrets, because nothing reads an environment
 variable at module scope.
 
-284 unit tests. The DNS layer sits behind an interface with a scripted fake, so no test touches the
-network. The database layer needs a real Postgres and has no automated tests. It is covered by a
-manual pass, and in-process Postgres is queued.
+Over 330 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the
+comparison against a claim, the step list and every user-facing string. The DNS layer sits behind an
+interface with a scripted fake, so no test touches the network.
+
+The coverage is deliberately lopsided and the gap is worth naming. The database layer needs a real
+Postgres and has no automated tests, and three of the bugs found in review lived there. It is covered
+by a manual pass, and in-process Postgres is queued.
 
 ## Documents
 
