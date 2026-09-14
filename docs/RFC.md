@@ -333,13 +333,18 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   a list of claims would run a DNS query for every row a cursor passes over.
 - The claim limit counts rows rather than attempts, so releasing a claim frees quota. The sign in
   limiter counts attempts in a table of their own and does not have this.
+- Nothing re-checks a verified claim, so `at_risk` is a state the product can model and never enter.
+  Vercel Hobby allows a cron no more often than once a day, and fires it within an hour of the time
+  given, so a daily job is a defensible cadence for a held name and useless for showing drift in a
+  demo. It needs a paid plan or a protected manual trigger.
+- The grace window and the status change email both sit behind that cron, so neither is built.
 
 ## States
 
 | Reason | Title | Next action | Test |
 | --- | --- | --- | --- |
 | `record_not_found` | No record there yet | Add the record above, then reload this page. | `record-not-found.test` |
-| `no_txt_at_name` | The name exists with no TXT record on it | Open the record in your DNS panel and set its type to TXT. | `no-txt-at-name.test` |
+| `no_txt_at_name` | The name exists with no TXT record on it | Check what your panel already has on that one name, since only this TXT record should be on it. | `no-txt-at-name.test` |
 | `cname_at_name` | | | |
 | `value_mismatch` | A TXT record is there with a different value | Replace the value with the one above, copied whole. | `value-mismatch.test` |
 | `appended_zone_suspected` | | | |
