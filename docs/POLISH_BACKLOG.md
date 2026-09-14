@@ -98,3 +98,32 @@ declares and does not use.
 
 Cost: a config, one spec, and a CI step that installs a browser. Buys: the one check that covers
 the whole flow rather than a layer of it.
+
+## A second Enter claims the name
+
+Raised 2026-09-14, using it. Enter in the domain field validates. Enter again does nothing, because
+the claim button lives in a second form inside the result card. Someone who has typed a name and
+wants it claimed has to reach for the mouse or tab to the button.
+
+Cost: the input has to remember that the value on screen is the one it already validated, which is
+state, and the result card has to expose its form so the field can submit it. The button keeps
+carrying the name, because the name being read back before anything is taken is the argument this
+screen exists to make. A hint saying Enter claims it has to appear beside the button, or nobody
+will find it.
+
+Buys: a name typed and claimed without leaving the keyboard, which is how anyone doing this twice
+will do it.
+
+## Something better than two buttons for two destinations
+
+Raised 2026-09-14, using it. The header carries Domains and Claim a domain as identical filled
+buttons on every screen, including the screen each one goes to. The current page now loses its fill
+and carries `aria-current`, which answers "where am I" and nothing else.
+
+The question left open is whether a pair of destinations belongs in the header at all. Tabs read as
+two views of one thing, which these are not. A sidebar gives them a column of their own and costs
+the app a layout it does not otherwise need. A segmented control says one of these is selected,
+which is true. None of that is decidable without drawing it.
+
+Cost: prototypes outside the repo, then one of them built. Buys: navigation that reads as
+navigation rather than as two calls to action.
