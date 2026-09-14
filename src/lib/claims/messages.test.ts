@@ -1,8 +1,14 @@
 // src/lib/claims/messages.test.ts
 import { describe, expect, it } from 'vitest';
-import { SUGGESTED_TTL_SECONDS, TOKEN_TTL_DAYS } from '@/lib/claims/config';
-import { claimCopy, describeFailure, formatWhen } from '@/lib/claims/messages';
-import type { FailureReason } from '@/lib/claims/state';
+import { TOKEN_TTL_DAYS } from '@/lib/claims/config';
+import {
+  claimCopy,
+  describeFailure,
+  describeStatus,
+  formatDeadline,
+  formatWhen,
+} from '@/lib/claims/messages';
+import { CLAIM_STATUSES, type FailureReason } from '@/lib/claims/state';
 import { appCopy } from '@/lib/copy/app';
 import { findBannedPhrases } from '@/lib/copy/rules';
 
@@ -20,6 +26,7 @@ const EVERY_REASON: FailureReason[] = [
   },
   { code: 'record_not_found', queriedName: HOST, nameservers: [], negativeTtlSeconds: null },
   { code: 'no_txt_at_name', queriedName: HOST },
+  { code: 'appended_zone_suspected', queriedName: HOST, foundAt: `${HOST}.example.com` },
   { code: 'value_mismatch', expected: 'domainclaim-token=A expiry=Z', found: ['v=spf1 ~all'] },
   { code: 'token_expired', expiredAt: new Date('2026-09-01T00:00:00Z') },
   { code: 'nameservers_unreachable', attempted: ['ns1.example.com'], timeoutMs: 2000 },
@@ -33,15 +40,17 @@ const everyString: string[] = [
   ...Object.values(claimCopy.create.invalid),
   ...Object.values(claimCopy.demo),
   claimCopy.record.heading,
+  claimCopy.record.headingHeld,
   claimCopy.record.intro(NAME),
-  claimCopy.record.hostLabel,
-  claimCopy.record.hostHint,
-  claimCopy.record.fullNameLabel,
-  claimCopy.record.fullNameHint,
   claimCopy.record.typeLabel,
+  claimCopy.record.nameLabel,
+  claimCopy.record.nameHint,
+  claimCopy.record.fullNameSummary,
+  claimCopy.record.fullNameHint,
   claimCopy.record.valueLabel,
   claimCopy.record.valueHint,
   claimCopy.record.ttlLabel,
+  claimCopy.record.ttlValue,
   claimCopy.record.ttlHint,
   claimCopy.record.copy,
   claimCopy.record.copied,
@@ -52,13 +61,38 @@ const everyString: string[] = [
   claimCopy.record.provider.recognized('Google'),
   claimCopy.record.provider.unrecognized('some-small-host.com'),
   claimCopy.check.running,
-  claimCopy.check.verifiedTitle,
-  claimCopy.check.verifiedDescription('ns1.example.com', WHEN),
   claimCopy.check.keepRecord,
-  claimCopy.check.stillHeld.title,
-  claimCopy.check.stillHeld.description(NAME),
-  claimCopy.check.stillHeld.action,
+  claimCopy.steps.heading,
+  claimCopy.steps.answered(3),
+  claimCopy.steps.notReached,
+  ...Object.values(claimCopy.steps.label),
+  claimCopy.steps.zone.found('example.com', 4, 'Google'),
+  claimCopy.steps.zone.foundUnnamed('example.com'),
+  claimCopy.steps.zone.none,
+  claimCopy.steps.zone.expired,
+  claimCopy.steps.nameservers.answered('ns1.example.com'),
+  claimCopy.steps.nameservers.answeredUnnamed,
+  claimCopy.steps.nameservers.silent,
+  claimCopy.steps.record.found(2),
+  claimCopy.steps.record.none,
+  claimCopy.steps.record.wrongType,
+  claimCopy.steps.record.appended,
+  claimCopy.steps.token.matched('ns1.example.com'),
+  claimCopy.steps.token.mismatch,
+  claimCopy.steps.token.expired,
+  claimCopy.steps.claim.alreadyHeld,
+  claimCopy.steps.claim.notRecorded,
+  claimCopy.steps.claim.heldByAnother,
+  claimCopy.steps.summary(claimCopy.steps.summaryThrough),
+  claimCopy.status.provedButHeld.label,
+  claimCopy.status.provedButHeld.line,
+  claimCopy.status.proved('ns1.example.com', WHEN),
+  claimCopy.status.stillHeld,
   ...Object.values(claimCopy.check.provedButHeld),
+  ...CLAIM_STATUSES.flatMap((status) => {
+    const message = describeStatus(status, new Date('2026-09-14T18:42:07Z'));
+    return [message.label, message.line];
+  }),
   ...Object.values(appCopy.notFound),
   ...Object.values(appCopy.unexpected),
   claimCopy.release.trigger,
@@ -78,15 +112,28 @@ describe('claim copy', () => {
     expect(findBannedPhrases(everyString)).toEqual([]);
   });
 
-  it('says the panel appends the domain at the host field, where it can be acted on', () => {
-    expect(claimCopy.record.hostHint.toLowerCase()).toContain('panel');
+  it('says the panel appends the domain at the Name cell, where it can be acted on', () => {
+    expect(claimCopy.record.nameHint.toLowerCase()).toContain('panel');
     expect(claimCopy.record.intro(NAME).toLowerCase()).not.toContain('panel');
   });
 
-  it('states the TTL consequence at the TTL field and nowhere earlier', () => {
-    expect(claimCopy.record.ttlHint).toContain(String(SUGGESTED_TTL_SECONDS));
-    expect(claimCopy.record.intro(NAME)).not.toContain(String(SUGGESTED_TTL_SECONDS));
-    expect(claimCopy.record.hostHint).not.toContain(String(SUGGESTED_TTL_SECONDS));
+  // Squarespace offers TTL as a dropdown defaulting to 4 hrs, measured 2026-09-13, so a number
+  // here is advice that cannot be followed on the one panel we have measured.
+  it('gives TTL as an instruction rather than a number to copy', () => {
+    expect(claimCopy.record.ttlValue).not.toMatch(/\d/);
+    expect(claimCopy.record.ttlHint).not.toMatch(/\d/);
+    expect(claimCopy.record.ttlValue.toLowerCase()).toContain('default');
+  });
+
+  it('offers the short name first and the full name as the alternative', () => {
+    expect(claimCopy.record.nameHint.toLowerCase()).toContain('short form');
+    expect(claimCopy.record.fullNameHint.toLowerCase()).toContain('exactly as typed');
+  });
+
+  // The full name is reached through a disclosure, so its summary has to describe the panel the
+  // person is looking at rather than name the record form it reveals.
+  it('opens the full name with the condition that calls for it', () => {
+    expect(claimCopy.record.fullNameSummary.toLowerCase()).toContain('panel');
   });
 
   it('states the expiry beside the value that carries it', () => {
@@ -121,9 +168,16 @@ describe('claim copy', () => {
   // Without this the product tells someone to add a record they added weeks ago, while the
   // database still has the name as theirs.
   it('says a held name is still held when its record stops answering', () => {
-    const text = claimCopy.check.stillHeld.description(NAME).toLowerCase();
-    expect(text).toContain('still held');
-    expect(text).toContain(NAME);
+    expect(claimCopy.status.stillHeld.toLowerCase()).toContain('still holds the name');
+  });
+
+  // A label that is a statement can only be true, so it fights its own glyph on a step that is
+  // waiting or wrong.
+  it('labels steps rather than asserting their outcome', () => {
+    for (const label of Object.values(claimCopy.steps.label)) {
+      expect(label.toLowerCase()).not.toContain('found');
+      expect(label).not.toContain('?');
+    }
   });
 });
 
@@ -182,6 +236,22 @@ describe('describeFailure', () => {
     expect(message.description).toContain(String(TOKEN_TTL_DAYS));
   });
 
+  // An action that says to replace a value and then makes the person select it by hand is half an
+  // action. The value it names is the one thing on that panel that has to be copied exactly.
+  it('offers the expected value to copy where the action says to use it', () => {
+    const message = describeFailure({
+      code: 'value_mismatch',
+      expected: 'domainclaim-token=A expiry=Z',
+      found: ['v=spf1 ~all'],
+    });
+    expect(message.copyable?.value).toBe('domainclaim-token=A expiry=Z');
+  });
+
+  it('offers nothing to copy where the action does not name a value', () => {
+    const message = describeFailure({ code: 'no_txt_at_name', queriedName: HOST });
+    expect(message.copyable).toBeNull();
+  });
+
   it('shows the values found rather than only saying they differ', () => {
     const message = describeFailure({
       code: 'value_mismatch',
@@ -197,6 +267,45 @@ describe('describeFailure', () => {
       attempted: ['ns1.example.com'],
       timeoutMs: 2000,
     });
-    expect(message.description).toContain('2000');
+    expect(message.description).toContain('two seconds');
+    expect(message.description).not.toContain('2000');
+  });
+});
+
+describe('formatDeadline', () => {
+  it('spells a small whole number of seconds', () => {
+    expect(formatDeadline(1000)).toBe('one second');
+    expect(formatDeadline(2000)).toBe('two seconds');
+    expect(formatDeadline(10000)).toBe('ten seconds');
+  });
+
+  it('falls back to digits outside that range', () => {
+    expect(formatDeadline(11000)).toBe('11 seconds');
+    expect(formatDeadline(1500)).toBe('1.5 seconds');
+    expect(formatDeadline(500)).toBe('0.5 seconds');
+  });
+});
+
+describe('describeStatus', () => {
+  it.each(CLAIM_STATUSES)('%s says what state the claim is in', (status) => {
+    const message = describeStatus(status, new Date('2026-09-14T18:42:07Z'));
+    expect(message.label.length).toBeGreaterThan(0);
+    expect(message.line.length).toBeGreaterThan(0);
+  });
+
+  // The row carries verified_at, so a claim proved last week should not read as proved just now.
+  it('dates a verified claim from the row', () => {
+    const when = new Date('2026-09-14T18:42:07Z');
+    expect(describeStatus('verified', when).line).toContain(formatWhen(when));
+  });
+
+  it('still says a verified claim is held when the row carries no date', () => {
+    expect(describeStatus('verified', null).line.toLowerCase()).toContain('held by this account');
+  });
+
+  // This is the line the friction log caught: the eyebrow said CLAIMING on a name already proved.
+  it('does not describe a held claim as unproved', () => {
+    expect(describeStatus('verified', null).line.toLowerCase()).not.toContain('not been proved');
+    expect(describeStatus('pending', null).line.toLowerCase()).toContain('not been proved');
   });
 });

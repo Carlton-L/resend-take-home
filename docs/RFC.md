@@ -41,8 +41,9 @@ User: one person who controls their own DNS.
 1. Magic link sign in. Supabase generates the link, we send the email through Resend.
 2. Enter a domain. Input is normalized. Warn for name already claimed by another account. Step 8 is
    the same feature from the challenger's side.
-3. Record screen. Host, type, value, TTL, each copyable. Warn about zone auto-append. Show expiry.
-   Name the provider from NS.
+3. Record screen. Claim status at the top. The record as a row in the panel's column order: Type,
+   Name, Value, TTL. Name and Value copyable. Warn about zone auto-append. Show expiry. Name the
+   provider from NS.
 4. Check runs on arrival, no Verify button. Timeline shows nameservers found, each server queried,
    answer compared. First check always misses, the record is not added yet.
 5. Re-checks while the claim is open. Backoff 5s, 15s, 30s, 60s, then every 60s. Stops at 15
@@ -221,13 +222,71 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   rounding error.
 - A check that finds the record verifies the claim. Finding it and leaving the claim pending would
   be a bug rather than a scope line.
+- The check renders as its five steps rather than a result box: find the zone, reach the
+  nameservers, find the TXT record, match the token, record the claim. Each carries the answer it
+  got, so a person sees how far it went and what stopped it.
+- Three states per step, sorted by whose move is next. The person's is wrong, time's is waiting, a
+  step never reached is neither. `record_not_found` on a claim nobody has acted on is waiting; a
+  cross there reports the product working correctly as a fault.
+- Step labels are steps rather than statements. "Record found" can only be true, so it contradicts
+  its own glyph.
+- The chain is always present, above the record card, at two densities. One line when there is
+  nothing to act on, open when there is. It never appears or disappears, because an absence cannot
+  tell a person "you fixed it" from "we stopped looking". Saying that out loud needs `last_failure`,
+  which is deferred.
+- The four part message moves into the step that produced it and the separate failure box is
+  deleted. A tooltip has no touch equivalent; a modal hides the record while telling you to use it.
+- Control proved against a name another account holds is a status rather than a failure. The person
+  did everything right.
+- The provider line sits at the foot, beneath both cards, where it is acted on.
+- No per-server timings. One count of answered steps in the chain header.
+- One check promise feeds the status, the chain and the provider line. The page starts it without
+  awaiting and hands it to three Suspense boundaries, so the trace and the write happen once.
+  Without this a claim that verified mid-render showed PENDING above its own verified result.
+- The row moving decides the status, not the check. A write that hits the unique index or fails
+  leaves the claim where it was.
+- A failed check gets a second look. Only on a failure, only for the two reasons a probe can answer,
+  one second each, against a server that already answered.
+- Nothing at the name: ask for the name with the zone on the end of it twice. Our own token there
+  means the panel appended its zone. No DoH leg needed, which is what this document used to say.
+- No TXT at the name: ask for a name nobody could have created. If that answers too, the zone
+  answers for everything and the record is simply not there.
+- `no_txt_at_name` no longer names its cause. Another record type, a CNAME, or a name that exists
+  because something sits below it. Separating them needs a CNAME query and a new method on the
+  resolver interface, for one message.
 - Token valid for 7 days. Long enough for a weekend and for someone else holding the registrar
   login. A pending claim reserves no name, so a long window costs nothing. `token_expired` is
   reachable through `.test`, so the real number does not have to be short to be shown.
-- TTL shown as 300, and any value works. The record TTL does not affect the answer that decides:
-  the TXT query goes straight to authoritative and authoritative servers do not cache. The negative
-  window comes from SOA `minttl`. TTL only decides how long a corrected value takes to agree in
-  public resolvers, so the explanation belongs in the `value_mismatch` message.
+- TTL is an instruction rather than a value to copy. Squarespace offers TTL as a dropdown
+  defaulting to 4 hrs, measured 2026-09-13, so 300 cannot be typed there. Leaving the default alone
+  is true on every panel. The record TTL does not affect the answer that decides either: the TXT
+  query goes straight to authoritative and authoritative servers do not cache. The negative window
+  comes from SOA `minttl`. TTL only decides how long a corrected value takes to agree in public
+  resolvers, so that explanation belongs in the `value_mismatch` message.
+- The record is a row in the panel's own column order. Squarespace's Add Record form runs TYPE,
+  NAME, PRIORITY, TTL, TEXT. Reading our record against that form should not need translating.
+  Priority is dropped, since it reads as a dash for TXT.
+- Name and Value are the labels. Squarespace says Name and Text, Cloudflare says Name and Content,
+  Namecheap and GoDaddy say Host and Value. Name and Value appear most often and neither is
+  anyone's odd one out.
+- The full name is a disclosure under the Name cell rather than a second field. It is the
+  remediation for a panel that does not append the zone. Closed by default means the value copied
+  without reading is the short one, and it keeps its own copy control, because that panel is where
+  an underscore label has to be entered by hand.
+- Cells are one line and scroll sideways rather than wrapping. A 78 byte value that wraps makes
+  every cell in the row a different height and the row stops reading as a row. Cost: the value is
+  not visible all at once. Accepted, since it is copied rather than read, and a bad paste is what
+  `value_mismatch` reports.
+- Copy controls sit inside the field border. Four cells with separate buttons beside them do not
+  say which value each button belongs to.
+- The claim's state is the top of the record screen, read from the row rather than from the check.
+  The row carries the status before any check runs, so the shell says it while the check is still
+  streaming. The eyebrow previously read CLAIMING on a name this account already held.
+- The record card collapses on a claim that already holds its name. "Add this record" is
+  instruction for work already done. It stays one click away, because comparing this value against
+  the one in the panel is why someone opens a verified claim.
+- The record screen is wider than the rest of the app. Four columns need the width. Prose does not,
+  so the check and the notices keep the measure the other screens read at.
 - Releasing a claim deletes the row. A released state would qualify every later query for nothing.
   The confirmation names the record to remove, since a released claim otherwise leaves a live TXT
   record in the zone that nothing will mention again.

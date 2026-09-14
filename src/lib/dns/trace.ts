@@ -68,6 +68,17 @@ const UNREACHABLE: ReadonlySet<ResolverFailure['code']> = new Set([
 ]);
 
 /**
+ * Whether the server on the other end said anything at all.
+ *
+ * NXDOMAIN and an empty answer are answers: the server was reached and had nothing to give. Only a
+ * deadline passing, or an address we declined to probe, means we never got to ask. Exported because
+ * the step list needs exactly this distinction and must not keep a second copy of it.
+ */
+export const serverResponded = (result: ServerResult): boolean =>
+  result.status === 'answered' ||
+  (result.status === 'failed' && !UNREACHABLE.has(result.reason.code));
+
+/**
  * Every question goes through here, so nothing can outlast the deadline. A resolver's own timeout
  * is a backstop for the socket; this is the one that decides.
  *

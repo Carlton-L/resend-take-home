@@ -1,7 +1,8 @@
 // src/lib/claims/evaluate.ts
 
 import { formatRecordValue, parseRecordValue } from '@/lib/claims/record';
-import type { CheckResult } from '@/lib/claims/state';
+import type { CheckResult, ClaimStatus } from '@/lib/claims/state';
+import type { VerifyOutcome } from '@/lib/claims/store';
 import type { Trace } from '@/lib/dns/types';
 
 export type ClaimForCheck = {
@@ -88,4 +89,50 @@ export const evaluateClaim = (
       return exhaustive;
     }
   }
+};
+
+/**
+ * Whether this check should move the row to verified.
+ *
+ * Only a pending claim is written. A claim that already holds its name is already verified, and a
+ * claim that was revoked is not brought back by a record still sitting in a zone.
+ */
+export const shouldMarkVerified = (claim: { status: ClaimStatus }, result: CheckResult): boolean =>
+  result.status === 'verified' && claim.status === 'pending';
+
+/** What the screen should say about a claim once this check has been through the database. */
+export type ClaimAfterCheck = {
+  status: ClaimStatus;
+  verifiedAt: Date | null;
+  /** Control was proved and another account holds the name. */
+  provedButHeld: boolean;
+};
+
+/**
+ * The claim as it stands after a check, decided from the write rather than from the check.
+ *
+ * The check saying verified is an observation. The row moving is the fact, and the two can differ:
+ * the update can hit the partial unique index because another account verified the same name in
+ * between, and it can fail outright. Both leave the claim where it was, so the screen says where it
+ * was.
+ *
+ * Pure, so the page and the check render from one answer instead of each deciding for themselves.
+ * That is the whole point: the status at the top of the record screen and the result below it are
+ * two views of this one value.
+ */
+export const claimAfterCheck = (
+  claim: { status: ClaimStatus; verifiedAt: Date | null },
+  /** Null when no write was attempted. */
+  write: VerifyOutcome | null,
+  at: Date,
+): ClaimAfterCheck => {
+  if (write === 'verified') {
+    return { status: 'verified', verifiedAt: at, provedButHeld: false };
+  }
+
+  return {
+    status: claim.status,
+    verifiedAt: claim.verifiedAt,
+    provedButHeld: write === 'held_by_another',
+  };
 };
