@@ -148,7 +148,7 @@ handler builds. That client existed already, with a comment saying exactly this.
 Claimed `slow-nameservers.test`, navigated away, and had no route back. There is no list, so the
 only ways to reach a claim are the URL and re-entering the name.
 
-Resolved in #9. The list is at `/domains`, reached from the header and from sign in, and it holds
+Resolved in #8. The list is at `/domains`, reached from the header and from sign in, and it holds
 pending claims as well as proved ones. Re-claiming the name still returns the same claim rather
 than minting a second one, which was the workaround for the missing screen.
 
@@ -241,3 +241,136 @@ failure simply gone. An absence cannot tell them "you fixed it" apart from "we s
 Resolved before shipping. The element is always present in the same place and its sentence changes,
 from a problem into a statement of progress that names the thing they just configured. Saying "that
 is now fixed" out loud needs `last_failure`, which is deferred, and this needs no stored state.
+
+## 2026-09-14, using the deployed app
+
+First pass as a person rather than as the developer. Signed in as myself, laptop, against the
+production deployment and a real domain on Namecheap. Ten entries.
+
+### Every click looked like nothing had happened
+
+Clicking a header button, or claiming a name, left the previous page on screen for most of a
+second with no sign the click had landed. The first instinct was to press again.
+
+Resolved in #9. Every navigation here is a server round trip and both list and record screens are
+`force-dynamic`, so the browser sits on the old page until the new one starts streaming. There was
+no `loading.tsx` in any segment, so there was nothing for the framework to show in the gap. Each of
+the three routes now has one, and the claim button disables itself on submit, which is the one case
+a route fallback cannot cover because a form post is a fresh document load.
+
+### The deployed app and my dev server disagreed about DNS for two hours
+
+Claimed `loresprite.com`, which is on Namecheap, added the TXT record, and watched the check report
+nothing at the name for two hours. The deployed app had verified the same claim from the same
+record, and I did not know that, because I was looking at localhost.
+
+Accepted, as something the product cannot currently tell me. The resolution path is identical in
+both places and the answers were not: at 18:59:50 UTC, from my machine, `dig` against
+`156.154.132.200` returned the record and our own code got NXDOMAIN from that same address in the
+same second. Production verified at 19:16 UTC. The address we query is the right one, and a
+trailing dot changes nothing, so this is not our zone walk and not the search list. Something
+between my machine and that nameserver answers our queries differently from `dig`, and the
+mechanism is recorded as open in `spec.md`.
+
+The product finding is the part that survives, and it is the strongest argument in this log for the
+one thing the RFC dropped. A check from one vantage point cannot tell "your record is not there"
+apart from "our view of DNS is broken", and it states the first with total confidence. I spent two
+hours believing a screen that was wrong, holding the evidence that it was wrong, because the screen
+has no way to express doubt. The DoH second opinion was the answer to exactly this and it is cut
+for time. Recorded in the RFC against the one vantage point decision.
+
+Practical rule from it: the demo and the video are recorded against the deployment. A dev server is
+not the product.
+
+### A claim that held its name reported the loss of its record as quietly as possible
+
+While the deployment held `loresprite.com` as verified, the dev server's check could not see the
+record, so one screen showed both halves at once: a VERIFIED pill gone amber, the line "The record
+stopped answering", and underneath it a single collapsed grey line that had to be clicked to find
+out what had happened. This is the `at_risk` shape, which the RFC says the product can model and
+never enter. It can be entered, by a check that disagrees with the row.
+
+Deferred, as one piece of work with the state that owns it. Three things are wrong and only the
+first two are cheap:
+
+1. The chain was closed. `needsAttention` sorts on which step stopped the check and never asks
+   whether the claim holds the name. A verified claim whose record has gone is the loudest thing
+   this product can ever have to say, and it was a grey line with a chevron.
+2. The failing step is drawn as waiting. Whose move is next: on a claim that already proved itself,
+   a missing record is the person's move, so it is a cross.
+3. The message is written for a first-time claimant. "No record there yet" and "Add the record
+   below" are the wrong words for a record that was there and is gone.
+
+One and two are a branch in `steps.ts`, which already receives the claim's status. Three needs a
+second variant of `record_not_found` that knows about the claim, which is the `at_risk` slice.
+Shipping one and two alone puts a cross beside copy that says "yet", so they go together.
+
+### The check chain opened and I could not tell that I had opened it
+
+Refreshed a pending claim and saw the five rows with the failure open. Refreshed again and saw one
+line. Nothing had changed except that the first one had been clicked.
+
+Resolved in #9. That block is a `details` whose `summary` is a flex row, and Chrome and Safari drop
+the disclosure marker on any summary that is not `display: list-item`, so the class that styled it
+had nothing to style. There is now a chevron that turns when it opens.
+
+### A claim checked twenty minutes ago still said it had been checked just now
+
+The closed chain line reads "Checked just now" and never stops reading that, however long the page
+is left open. Waiting is exactly what someone does on this screen.
+
+Resolved in #9. It says the time instead. A relative time that stays true has to tick, which is a
+client component, and it arrives with the timeline.
+
+### I could not tell which of the two pages I was on
+
+Domains and Claim a domain are identical filled buttons on every screen, including the screen each
+one leads to.
+
+Resolved in #9, at the smallest size that answers it: the current page keeps the shape and loses
+the fill, and carries `aria-current`. Whether the pair should be tabs, or a sidebar, or something
+else entirely is a navigation question and belongs to the polish phase. It is in
+`docs/POLISH_BACKLOG.md`.
+
+### The record screen told me about a feature that does not exist
+
+Claiming a name another account holds said the decision "is not built yet, so this claim does not
+take the name today", which is a note to myself in a product string.
+
+Resolved in #9. It states the rule that is true now: one account holds a name at a time, so this
+claim does not take it. What is not built is not the user's problem.
+
+### The panel called it Host and we call it Name
+
+Namecheap labels the field Host. Our record row labels it Name.
+
+Resolved in #9, in the hint rather than the label. Name is the label most panels use and the RFC
+records the measurement behind choosing it. The hint under the cell now says some panels call it
+Host, which is the place that is read while the form is being filled in.
+
+### Enter checks the name and a second Enter cannot claim it
+
+Pressing Enter in the domain field validates, which was invisible until the previous entry was
+fixed. Pressing it again does nothing, because the claim button is in a second form inside the
+result card.
+
+Deferred, to `docs/POLISH_BACKLOG.md`. Making the second Enter submit means the input holding what
+it has already validated, which is state, and the deliberate act has to keep carrying the name.
+
+### Nothing updates while I wait, and there is no way to ask
+
+A pending claim is a screen someone sits on while they go and edit their zone. It does not poll,
+and the only way to ask again is the browser's reload button. The list has the same gap with no
+way to refresh a row.
+
+Deferred to the timeline slice, which moves the check to an endpoint and gives both screens
+something to call.
+
+### Focus seemed to leave the field after Enter on an incomplete name
+
+Typed `carlt`, pressed Enter, and found focus on the demo names disclosure with the error above it
+and no way to correct the name without reaching for the mouse. Could not reproduce it afterwards,
+and a stray Tab would explain it.
+
+Accepted for now, unreproduced. Nothing in the form moves focus and the disclosure is a sibling.
+A keyboard-only pass is queued, and if it is real it is a bug rather than a friction.

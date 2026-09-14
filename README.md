@@ -10,6 +10,8 @@ verifies.
 Live at [domainclaim-pi.vercel.app](https://domainclaim-pi.vercel.app). Take-home for Resend.
 Decisions are in [docs/RFC.md](docs/RFC.md).
 
+![The record screen on a pending claim: the check shown as five steps, stopped at the TXT record, with what it looked for, why the answer differs and the one next action](docs/images/check-failing.png)
+
 ## Try it
 
 Fastest tour: sign in, which lands on an empty list of your claims. Claim `record-not-found.test` to
@@ -26,7 +28,7 @@ claim.
 | --- | --- |
 | `verified.test` | Record found, claim verifies |
 | `crowded-name.test` | Found among other services' TXT records |
-| `one-dead-nameserver.test` | One server down, and the check does not wait for it, so the screen is the same as a healthy zone |
+| `one-dead-nameserver.test` | A zone with a dead secondary, which verifies at the speed of the live ones |
 | `record-not-found.test` | Nothing at the name, with the negative cache window |
 | `no-txt-at-name.test` | Name exists, no TXT on it, and the zone is not answering for everything |
 | `appended-zone.test` | The panel appended the domain, so the record landed one level down |
@@ -60,6 +62,11 @@ claim.
   everything, where a record that was never added otherwise looks like one saved under the wrong
   type.
 - Failures are typed values, rendered as a title, the DNS value at fault, why, and one next action.
+- One vantage point, which is the weakest part of this. The check runs from one region, so a failure
+  means either the record is missing or our own view of DNS is wrong, and the screen states the
+  first of those as fact. Measured on 2026-09-14: a dev server and the deployment disagreed about a
+  real record for two hours, and the wrong one sounded certain. Two paths disagreeing is the only
+  thing that can express doubt, which is what the second opinion below is for.
 - The list of an account's claims runs no check. A row's state is the claim's own, read from the
   database, so opening the list costs one query however many names are in it. A check belongs on the
   screen someone opened to act on the answer.
@@ -81,8 +88,9 @@ Not built yet:
 - The check as a live timeline, with Check now
 - Scheduled re-verification, grace window, notification email
 - Transfers for a contested name
-- The DNS-over-HTTPS second opinion, which would separate a CNAME at the name and broken DNSSEC from
-  the failures above, and show how far behind public resolvers are while they catch up
+- A second opinion over DNS-over-HTTPS. It separates a CNAME at the name and broken DNSSEC from the
+  failures above, and shows how far behind public resolvers are while they catch up. Its larger job
+  is doubt, for the reason in the section above
 
 Out of scope, reasoning in the RFC: verification methods other than TXT, sending mail and its
 records, teams and roles, a public API, internationalized copy.
@@ -115,11 +123,11 @@ Node 24.x. Needs a Supabase project and a Resend API key. Every variable is docu
 CI runs `pnpm verify` on every pull request, with no secrets, because nothing reads an environment
 variable at module scope.
 
-Over 330 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the
+350 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the
 comparison against a claim, the step list and every user-facing string. The DNS layer sits behind an
 interface with a scripted fake, so no test touches the network.
 
-The coverage is deliberately lopsided and the gap is worth naming. The database layer needs a real
+The coverage is deliberately lopsided and the gap should be named. The database layer needs a real
 Postgres and has no automated tests, and three of the bugs found in review lived there. It is covered
 by a manual pass, and in-process Postgres is queued.
 
