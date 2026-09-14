@@ -217,6 +217,19 @@ describe('describeFailure', () => {
     expect(without.description).not.toContain('300');
   });
 
+  // The worst reading of an action scoped to "that name" is "delete everything except this", which
+  // on a zone apex would take out their mail. An action that could be read as destructive is not an
+  // action this product prints.
+  it('never tells anyone to remove records it did not name', () => {
+    for (const reason of EVERY_REASON) {
+      const action = describeFailure(reason).action.toLowerCase();
+      if (action.includes('delete') || action.includes('remove')) {
+        expect(action).toMatch(/that record|the cname/);
+      }
+      expect(action).not.toContain('only thing');
+    }
+  });
+
   it('does not read as a fault for the check that always misses', () => {
     const message = describeFailure({
       code: 'record_not_found',

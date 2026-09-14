@@ -368,13 +368,13 @@ export const describeFailure = (reason: FailureReason): FailureMessage => {
 
     case 'no_txt_at_name':
       return {
-        title: 'Something else is at that name',
+        title: 'The name exists with no TXT record on it',
         record: { label: 'Looked for', values: [reason.queriedName] },
         description:
           'A record saved under the wrong type does this, so does a CNAME, and so does a name that exists only because something sits below it.',
         copyable: null,
         action:
-          'Open that name in your DNS panel and make the TXT record below the only thing there.',
+          'Check what your panel already has on that one name, since only this TXT record should be on it.',
       };
 
     case 'appended_zone_suspected':
