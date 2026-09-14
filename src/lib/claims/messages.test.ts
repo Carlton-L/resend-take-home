@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { TOKEN_TTL_DAYS } from '@/lib/claims/config';
 import {
   claimCopy,
+  describeClaimRow,
   describeFailure,
   describeStatus,
   formatDeadline,
@@ -42,6 +43,13 @@ const everyString: string[] = [
   ...Object.values(claimCopy.create.unavailable),
   ...Object.values(claimCopy.create.invalid),
   ...Object.values(claimCopy.demo),
+  claimCopy.list.nav,
+  claimCopy.list.heading,
+  claimCopy.list.intro,
+  claimCopy.list.claim,
+  ...Object.values(claimCopy.list.empty),
+  claimCopy.status.expired.label,
+  claimCopy.status.expired.line,
   claimCopy.record.heading,
   claimCopy.record.headingHeld,
   claimCopy.record.intro(NAME),
@@ -181,6 +189,57 @@ describe('claim copy', () => {
       expect(label.toLowerCase()).not.toContain('found');
       expect(label).not.toContain('?');
     }
+  });
+});
+
+describe('describeClaimRow', () => {
+  const NOW = new Date('2026-09-14T12:00:00Z');
+  const LIVE = new Date('2026-09-20T12:00:00Z');
+  const RUN_OUT = new Date('2026-09-10T12:00:00Z');
+
+  it.each(CLAIM_STATUSES)('%s has a label and a line', (status) => {
+    const message = describeClaimRow({ status, verifiedAt: null, expiresAt: LIVE }, NOW);
+    expect(message.label.length).toBeGreaterThan(0);
+    expect(message.line.length).toBeGreaterThan(0);
+  });
+
+  // The row is still `pending` in the database, and the enum has nowhere to put this. The list is
+  // the only screen that will ever say it, since the record screen gets it from the check.
+  it('reads a pending claim whose token has run out as expired', () => {
+    const message = describeClaimRow(
+      { status: 'pending', verifiedAt: null, expiresAt: RUN_OUT },
+      NOW,
+    );
+    expect(message.label).toBe(claimCopy.status.expired.label);
+    expect(message.tone).toBe('attention');
+  });
+
+  // A token expiry sitting in the past is normal on a claim that was proved, because verifying
+  // does not clear it. Reading that as expired would put a marker on every name the account holds.
+  it('leaves a claim that already holds its name alone, however old its token is', () => {
+    for (const status of ['verified', 'at_risk', 'contested'] as const) {
+      const message = describeClaimRow(
+        { status, verifiedAt: new Date('2026-09-11T09:00:00Z'), expiresAt: RUN_OUT },
+        NOW,
+      );
+      expect(message.label).not.toBe(claimCopy.status.expired.label);
+    }
+  });
+
+  /**
+   * The tone is the row's only marker, and attention means the next move is the person's. The same
+   * rule that sorts the check steps, applied to what a row on its own can know: a pending claim
+   * inside its window is waiting on a record being added, so it stays quiet.
+   */
+  it.each([
+    ['pending', LIVE, 'neutral'],
+    ['pending', RUN_OUT, 'attention'],
+    ['verified', RUN_OUT, 'good'],
+    ['at_risk', RUN_OUT, 'attention'],
+    ['contested', RUN_OUT, 'attention'],
+    ['revoked', RUN_OUT, 'neutral'],
+  ] as const)('%s expiring %s asks for %s', (status, expiresAt, tone) => {
+    expect(describeClaimRow({ status, verifiedAt: null, expiresAt }, NOW).tone).toBe(tone);
   });
 });
 

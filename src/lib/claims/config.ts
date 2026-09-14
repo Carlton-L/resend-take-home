@@ -25,8 +25,18 @@ export const RECORD_TYPE = 'TXT';
  */
 export const CLAIM_LIMIT = { max: 25, windowSeconds: 60 * 60 } as const;
 
-/** Where the claim list will live. One place to change when the list exists. */
-export const claimPath = (id: string): string => `/claim/${id}`;
+/** The claim entry screen. */
+export const CLAIM_PATH = '/claim';
+
+/**
+ * The list of this account's claims.
+ *
+ * Named for what it holds rather than for the table behind it. `/claims` and `/claim/<id>` differ
+ * by one character, which is a bad pair of URLs to have to tell apart while reading an address bar.
+ */
+export const DOMAINS_PATH = '/domains';
+
+export const claimPath = (id: string): string => `${CLAIM_PATH}/${id}`;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

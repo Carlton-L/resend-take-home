@@ -1,17 +1,12 @@
 // src/components/ClaimStatus/ClaimStatus.tsx
 import type React from 'react';
+import StatusPill from '@/components/StatusPill/StatusPill';
 import type { ClaimMessage, StatusMessage } from '@/lib/claims/messages';
 
 type ClaimStatusProps = {
   name: string;
   message: StatusMessage | ClaimMessage;
 };
-
-const TONES = {
-  neutral: 'border-neutral-300 bg-white text-neutral-600',
-  good: 'border-green-300 bg-green-50 text-green-700',
-  attention: 'border-amber-300 bg-amber-50 text-neutral-800',
-} as const;
 
 /**
  * The top of the record screen: what state this claim is in, then the name it is about.
@@ -25,11 +20,8 @@ const ClaimStatus: React.FC<ClaimStatusProps> = ({ name, message }) => {
 
   return (
     <div className='flex flex-col gap-2'>
-      <span
-        className={`inline-flex items-center gap-1.5 self-start rounded-full border px-2.5 py-0.5 font-semibold text-[11px] uppercase tracking-wider ${TONES[message.tone]}`}
-      >
-        <span aria-hidden='true' className='size-1.5 rounded-full bg-current' />
-        {message.label}
+      <span className='self-start'>
+        <StatusPill label={message.label} tone={message.tone} />
       </span>
       <h1 className='break-all font-medium font-mono text-2xl tracking-tight'>{name}</h1>
       <p className='max-w-2xl text-neutral-600 text-sm leading-relaxed'>{message.line}</p>

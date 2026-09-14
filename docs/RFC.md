@@ -49,7 +49,8 @@ User: one person who controls their own DNS.
 5. Re-checks while the claim is open. Backoff 5s, 15s, 30s, 60s, then every 60s. Stops at 15
    minutes or token expiry. "Check now" for a user who has just added the record. Both rate limited.
 6. Verified. Show `verified_at`, `last_checked_at`, `next_check_at`.
-7. Domain list with live status. Scheduled re-checks. Email on status change.
+7. Domain list. Each row carries the claim's own status, read from the row. Scheduled re-checks.
+   Email on status change.
 8. Second user proves control, incumbent notified, gate decides. Step 2 is the incumbent's side.
 
 No Verify button. The product runs the check. "Check now" means the user has added the record and
@@ -307,6 +308,15 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   `contested` would open a state nothing can resolve until transfers exist.
 - Claim ids are checked against the uuid shape before they reach a query, because Postgres refuses
   a malformed one with an error rather than an empty result.
+- Sign in lands on the list, always. A rule that routes by how many claims an account has puts a
+  person somewhere different on their second visit, and the empty list is the first run screen.
+- The home page is the signed out landing and nothing else. A signed in account asking for it is
+  redirected to the list, and the claim form is in the header, so a second claim does not start by
+  going somewhere else first.
+- The list runs no check. A row's state is the claim's own, read from the database, so opening the
+  list costs one query whatever is in it. A check belongs where someone has gone to act on it.
+- A pending claim whose token has run out reads as expired on the list. The row is still pending in
+  the database, and the list is the one screen that no check will correct.
 
 ## Open
 
@@ -329,8 +339,9 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   check on every load, so a signed in account can point the resolver at a stranger's nameservers as
   fast as it can reload. It lands with the timeline, which moves the check to an endpoint the limit
   can sit on.
-- Check on render does not survive the domain list. A link into a claim is prefetched on hover, so
-  a list of claims would run a DNS query for every row a cursor passes over.
+- The list's rows do not prefetch, because the record screen runs its check in the page body and a
+  prefetched row would spend a DNS trace and a database write on a cursor passing over it. The
+  prefetch comes back when the timeline moves the check to an endpoint.
 - The claim limit counts rows rather than attempts, so releasing a claim frees quota. The sign in
   limiter counts attempts in a table of their own and does not have this.
 - Nothing re-checks a verified claim, so `at_risk` is a state the product can model and never enter.

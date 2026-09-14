@@ -125,7 +125,7 @@ describe('evaluateClaim', () => {
   });
 
   it('treats the moment of expiry as expired', () => {
-    expect(isExpired({ token: CLAIM.token, expiresAt: NOW }, NOW)).toBe(true);
+    expect(isExpired({ expiresAt: NOW }, NOW)).toBe(true);
   });
 });
 

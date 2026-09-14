@@ -1,5 +1,5 @@
 // src/lib/claims/store.ts
-import { and, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { CLAIM_LIMIT, TOKEN_TTL_MS } from '@/lib/claims/config';
 import { isExpired } from '@/lib/claims/evaluate';
 import type { ClaimStatus } from '@/lib/claims/state';
@@ -148,6 +148,43 @@ export const claimForOwner = async (id: string, ownerId: string): Promise<Claim 
     .limit(1);
   return rows[0] ?? null;
 };
+
+/** One row of the domain list. The columns a row renders, and nothing else. */
+export type ClaimSummary = {
+  id: string;
+  name: string;
+  status: ClaimStatus;
+  verifiedAt: Date | null;
+  expiresAt: Date;
+};
+
+/**
+ * Every claim this account holds, newest first.
+ *
+ * Owner scoping is in the where clause rather than a filter afterwards, same as `claimForOwner`,
+ * so a row belonging to someone else cannot reach the page at all.
+ *
+ * Newest first because the case this screen was built for is a claim made a minute ago and then
+ * navigated away from. The index on `(owner_id, issued_at)` already serves that order.
+ *
+ * Pending rows are included. A claim nobody has finished is the one most likely to be looked for.
+ *
+ * No limit. The list is every row the account has, which the claim limit caps at 25 an hour and
+ * releasing removes. A limit without a page control would silently hide claims, which is the
+ * failure this screen exists to fix.
+ */
+export const claimsForOwner = async (ownerId: string): Promise<ClaimSummary[]> =>
+  getDb()
+    .select({
+      id: claims.id,
+      name: claims.name,
+      status: claims.status,
+      verifiedAt: claims.verifiedAt,
+      expiresAt: claims.expiresAt,
+    })
+    .from(claims)
+    .where(eq(claims.ownerId, ownerId))
+    .orderBy(desc(claims.issuedAt));
 
 /**
  * Whether some other account currently holds this name.

@@ -1,8 +1,8 @@
 // src/app/api/claims/route.ts
 import { type NextRequest, NextResponse } from 'next/server';
-import { DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH } from '@/lib/auth/config';
+import { SIGN_IN_PATH } from '@/lib/auth/config';
 import { supabaseRouteClient } from '@/lib/auth/supabase/route';
-import { claimPath } from '@/lib/claims/config';
+import { CLAIM_PATH, claimPath } from '@/lib/claims/config';
 import { createClaim } from '@/lib/claims/store';
 import { testNamespaceEnabled } from '@/lib/dns/testNames';
 import { normalizeDomainInput } from '@/lib/domain/normalize';
@@ -44,12 +44,13 @@ export const POST = async (request: NextRequest) => {
   const { supabase, applyCookies } = supabaseRouteClient(request);
   // Every exit after this point goes through here, so a refreshed session cannot be dropped.
   const respond = (path: string) => applyCookies(seeOther(path));
-  const backToForm = (error: string) => respond(`${DEFAULT_SIGNED_IN_PATH}?error=${error}`);
+  // The form, not wherever sign in lands. The claim screen is the only page that renders these.
+  const backToForm = (error: string) => respond(`${CLAIM_PATH}?error=${error}`);
 
   const { data } = await supabase.auth.getUser();
   const user = data.user;
   if (!user) {
-    return respond(`${SIGN_IN_PATH}?next=${encodeURIComponent(DEFAULT_SIGNED_IN_PATH)}`);
+    return respond(`${SIGN_IN_PATH}?next=${encodeURIComponent(CLAIM_PATH)}`);
   }
 
   const form = await request.formData().catch(() => null);
