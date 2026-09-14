@@ -125,9 +125,9 @@ hashes, so the table counts without becoming a list of who tried to sign in.
 ### Test mode
 
 `DOMAINCLAIM_TEST_NAMESPACE=on` routes every `.test` name to the fake resolver, outcome keyed by the
-name: `verified.test`, `record-not-found.test`, `no-txt-at-name.test`, `value-mismatch.test`,
-`nameservers-unreachable.test`, `zone-not-found.test`, plus `one-dead-nameserver.test` and
-`slow-nameservers.test` for the timing cases. A script that succeeds returns the value the caller is
+name: `verified.test`, `crowded-name.test`, `record-not-found.test`, `no-txt-at-name.test`,
+`appended-zone.test`, `value-mismatch.test`, `zone-not-found.test`, plus `one-dead-nameserver.test`,
+`slow-nameservers.test` and `nameservers-unreachable.test` for the timing cases. A script that succeeds returns the value the caller is
 looking for, so a demo claim verifies rather than reporting a mismatch against a fixed token. Off by default, and `.test` stays refused as a
 special-use name. On for the preview and the submitted deployment. Documented in the README. Each
 name lands with the slice that can produce its reason; the route lists the ones that exist.
@@ -139,7 +139,10 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 
 - TXT only. A second method is scope creep and proves less.
 - One vantage point. Let's Encrypt validates from several to resist localized hijack. Vercel is one
-  region. Weakness, documented.
+  region. Weakness, documented, and measured 2026-09-14: a dev server and the deployment disagreed
+  about a real record for two hours, and the screen stated the wrong one as fact. A single vantage
+  point cannot tell a missing record from a broken view, and every failure message here is written
+  as though it can.
 - Supabase for database and auth. Their handbook documents Supabase for auth. Database host is not
   public, so this is defensible rather than a verified match.
 - No component library. Tailwind and the native `dialog`.
@@ -218,6 +221,10 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 - A check returns as soon as a server has the records, and waits for every server otherwise. A
   server still running is reported as `unfinished`. Waiting for a complete trace would add the
   deadline to every successful check in a zone with one bad delegation.
+- A partially broken zone is not reported on a check that succeeded. One live nameserver is a
+  working zone, a dead secondary belongs to the DNS host, and the person claiming the name cannot
+  act on either. `one-dead-nameserver.test` therefore shows a zone that verifies rather than a
+  warning, which is the early return above, demonstrated.
 - The trace says what DNS holds at a name. Comparing that against a claim happens above it, which
   keeps the trace usable as a diagnostic on its own.
 - The record screen renders before its first check. The record is what the user came for and the
@@ -315,6 +322,13 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   going somewhere else first.
 - The list runs no check. A row's state is the claim's own, read from the database, so opening the
   list costs one query whatever is in it. A check belongs where someone has gone to act on it.
+- Every dynamic route has a fallback, so a click always does something. These pages read a session
+  and a row before they can send anything, and a navigation with nothing on screen reads as a
+  product that has hung. The claim button disables itself separately, because a form post is a
+  fresh document load and no route fallback covers it.
+- The closed check line says the time it checked rather than "just now". The string is rendered
+  once and then sits on a screen somebody is waiting at. A relative time that stays true has to
+  tick, which needs the client, so it arrives with the timeline.
 - A pending claim whose token has run out reads as expired on the list. The row is still pending in
   the database, and the list is the one screen that no check will correct.
 
@@ -358,11 +372,11 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 | `no_txt_at_name` | The name exists with no TXT record on it | Check what your panel already has on that one name, since only this TXT record should be on it. | `no-txt-at-name.test` |
 | `cname_at_name` | | | |
 | `value_mismatch` | A TXT record is there with a different value | Replace the value with the one above, copied whole. | `value-mismatch.test` |
-| `appended_zone_suspected` | | | |
+| `appended_zone_suspected` | Your DNS panel added the domain to the name | Delete that record and add it again using the short name below. | `appended-zone.test` |
 | `token_expired` | This claim has expired | Release this claim and start a new one, which issues a fresh token. | Claim row, no query |
 | `dnssec_broken` | | | |
 | `nameservers_unreachable` | No answer from the nameservers | Reload this page in a few minutes. | `nameservers-unreachable.test` |
 | `zone_not_found` | No nameservers found for this domain | Set nameservers for the domain at your registrar, then reload this page. | `zone-not-found.test` |
 
-The three empty rows all need the DoH leg to be told apart from the rows above them, so they arrive
-with it.
+`cname_at_name` needs a CNAME query, which is a new method on the resolver interface, for one
+message. `dnssec_broken` needs the DoH leg, which is dropped. Both stay empty.
