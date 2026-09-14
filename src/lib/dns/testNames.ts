@@ -16,7 +16,7 @@ export const isTestName = (name: string): boolean => name.split('.').pop() === '
 
 const DEMO_NAMESERVERS = ['ns1.example-dns.test', 'ns2.example-dns.test', 'ns3.example-dns.test'];
 
-/** Stands in when no claim is being checked, for example a bare `/api/trace` call. */
+/** Stands in when a script is read without a claim to check, which is what the unit tests do. */
 const PLACEHOLDER_RECORD =
   'domainclaim-token=DEMOTOKENDEMOTOKENDEMOTOKENDE expiry=2099-01-01T00:00:00Z';
 

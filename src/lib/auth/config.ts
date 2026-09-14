@@ -34,10 +34,15 @@ export const MAIL_FROM = 'DomainClaim <domainclaim@carlton.dev>';
 /**
  * Sending limits. Three counters, because per address and per IP still leave a spread attempt free
  * to burn the day's sending quota.
+ *
+ * Per IP is the loosest of the three on purpose. Several people behind one office address are a
+ * normal thing and a tripped limit returns the same screen as a success, so the cost of a ceiling
+ * set too low is a sign in that silently does nothing. Per address is the counter that protects an
+ * individual account, and it is the tight one.
  */
 export const SEND_LIMITS = {
   perEmail: { max: 5, windowSeconds: 15 * 60 },
-  perIp: { max: 10, windowSeconds: 60 * 60 },
+  perIp: { max: 30, windowSeconds: 60 * 60 },
   global: { max: 80, windowSeconds: 24 * 60 * 60 },
 } as const;
 
