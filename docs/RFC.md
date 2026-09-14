@@ -87,8 +87,13 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
   the screen derives `checking` from the in-flight request and shows each server as it lands
 - Public suffix and parse failures are validation errors, not states
 - Route Handlers, not Server Actions. Node runtime, never Edge
-- Rate limits on automatic re-checks, on "Check now", on claims created per account, and on sign in
-  email. The sign in check and its record are one SQL statement, which also prunes the window
+- Rate limits on claims created per account and on sign in email, counted in Postgres. The sign in
+  check and its record are one SQL statement, which also prunes the window. Limits on automatic
+  re-checks and on "Check now" arrive with those features. The record screen's own check is
+  unlimited until it moves to an endpoint, which the Open list carries
+- One way in to the resolver: a claim this account owns. The public trace route that the DNS slice
+  shipped with is deleted, since it let anyone aim our nameserver queries at any zone, as often as
+  they liked, with no account and no ceiling
 
 ### State
 
@@ -130,7 +135,8 @@ name: `verified.test`, `crowded-name.test`, `record-not-found.test`, `no-txt-at-
 `slow-nameservers.test` and `nameservers-unreachable.test` for the timing cases. A script that succeeds returns the value the caller is
 looking for, so a demo claim verifies rather than reporting a mismatch against a fixed token. Off by default, and `.test` stays refused as a
 special-use name. On for the preview and the submitted deployment. Documented in the README. Each
-name lands with the slice that can produce its reason; the route lists the ones that exist.
+name lands with the slice that can produce its reason, and the claim screen lists the ones that
+exist.
 
 A global switch would be a hole. Anyone who found it could verify any domain. `.test` is never a
 real claim, so the fake resolver cannot be reached by a name that could be.
