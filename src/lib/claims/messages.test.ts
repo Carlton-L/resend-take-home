@@ -7,6 +7,7 @@ import {
   describeFailure,
   describeStatus,
   formatDeadline,
+  formatTime,
   formatWhen,
 } from '@/lib/claims/messages';
 import { CLAIM_STATUSES, type FailureReason } from '@/lib/claims/state';
@@ -16,6 +17,7 @@ import { findBannedPhrases } from '@/lib/copy/rules';
 const NAME = 'example.com';
 const HOST = '_domainclaim-challenge.example.com';
 const WHEN = formatWhen(new Date('2026-09-20T18:42:07Z'));
+const TIME = formatTime(new Date('2026-09-20T18:42:07Z'));
 
 /** One of every reason, so the copy for each is exercised rather than only its type. */
 const EVERY_REASON: FailureReason[] = [
@@ -71,6 +73,7 @@ const everyString: string[] = [
   claimCopy.record.challenger(NAME),
   claimCopy.record.provider.recognized('Google'),
   claimCopy.record.provider.unrecognized('some-small-host.com'),
+  ...Object.values(claimCopy.loading),
   claimCopy.check.running,
   claimCopy.check.keepRecord,
   claimCopy.steps.heading,
@@ -94,7 +97,7 @@ const everyString: string[] = [
   claimCopy.steps.claim.alreadyHeld,
   claimCopy.steps.claim.notRecorded,
   claimCopy.steps.claim.heldByAnother,
-  claimCopy.steps.summary(claimCopy.steps.summaryThrough),
+  claimCopy.steps.summary(TIME, claimCopy.steps.summaryThrough),
   claimCopy.status.provedButHeld.label,
   claimCopy.status.provedButHeld.line,
   claimCopy.status.proved('ns1.example.com', WHEN),
@@ -119,8 +122,24 @@ const everyString: string[] = [
 ];
 
 describe('claim copy', () => {
+  it('names what it is doing while the browser posts the claim', () => {
+    expect(claimCopy.create.submitting.length).toBeGreaterThan(0);
+    expect(claimCopy.create.submitting).not.toBe(claimCopy.create.submitEmpty);
+  });
+
   it('follows the copy rules', () => {
     expect(findBannedPhrases(everyString)).toEqual([]);
+  });
+
+  /**
+   * It is rendered once on the server and then sits there. "Just now" was true for a second and
+   * wrong for as long as the page stayed open, which is the whole of the time someone spends
+   * waiting on a record.
+   */
+  it('gives the closed chain a time rather than a claim about how long ago it was', () => {
+    const line = claimCopy.steps.summary(TIME, claimCopy.steps.summaryThrough);
+    expect(line).toContain(TIME);
+    expect(line.toLowerCase()).not.toContain('just now');
   });
 
   it('says the panel appends the domain at the Name cell, where it can be acted on', () => {
@@ -189,6 +208,16 @@ describe('claim copy', () => {
       expect(label.toLowerCase()).not.toContain('found');
       expect(label).not.toContain('?');
     }
+  });
+});
+
+describe('formatTime', () => {
+  // One locale and UTC for the same reason formatWhen has them: this string is produced on the
+  // server and must not be re-derived differently in the browser.
+  it('gives a time in UTC and no date', () => {
+    const formatted = formatTime(new Date('2026-09-20T18:42:07Z'));
+    expect(formatted).toBe('18:42 UTC');
+    expect(formatted).not.toContain('September');
   });
 });
 

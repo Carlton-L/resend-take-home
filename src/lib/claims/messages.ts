@@ -18,6 +18,8 @@ import {
 export const claimCopy = {
   create: {
     submit: (name: string) => `Claim ${name}`,
+    /** While the browser is posting the form and has not navigated yet. */
+    submitting: 'Claiming',
     /** The card before there is a name in it. */
     nameToClaim: 'Name to claim',
     awaitingName: '\u2014',
@@ -115,7 +117,7 @@ export const claimCopy = {
     typeLabel: 'Type',
     nameLabel: 'Name',
     nameHint:
-      'Most DNS panels put your domain on the end of this field for you, so paste the short form.',
+      'Most DNS panels put your domain on the end of this field for you, so paste the short form. Some panels call this field Host.',
     fullNameSummary: 'My panel does not add the domain for me',
     fullNameHint: 'Use this if your panel leaves the field exactly as typed.',
     valueLabel: 'Value',
@@ -136,7 +138,7 @@ export const claimCopy = {
     reissued:
       'The token on this claim had expired, so a new one has been issued. The value below has changed and the old record no longer matches.',
     challenger: (name: string) =>
-      `Another account currently holds ${name}. Adding this record proves you control the DNS, which is how a name changes hands. That decision is not built yet, so this claim does not take the name today.`,
+      `Another account currently holds ${name}. Adding this record proves you control the DNS for it. One account holds a name at a time, so this claim does not take it.`,
     provider: {
       recognized: (name: string) =>
         `${name} answers for this domain, so the record goes in the panel there, which may not be your registrar.`,
@@ -192,9 +194,23 @@ export const claimCopy = {
       notRecorded: 'proved, and not written down yet',
       heldByAnother: 'another account holds this name',
     },
-    /** Shown when the chain is closed, which is when there is nothing to act on. */
-    summary: (through: string) => `Checked just now. ${through}.`,
+    /**
+     * Shown when the chain is closed, which is when there is nothing to act on.
+     *
+     * The time is absolute because this string is rendered once, on the server, and then sits on
+     * the screen for as long as the person leaves the page open. "Just now" was true for a second
+     * and a lie after that. A relative time that stays true has to tick, which is a client
+     * component, and it arrives with the timeline.
+     */
+    summary: (when: string, through: string) => `Checked at ${when}. ${through}.`,
     summaryThrough: 'Zone and nameservers found, no record at that name yet',
+  },
+
+  /** Read out by the fallback each route shows while its own page is still on the server. */
+  loading: {
+    list: 'Loading your domains',
+    claim: 'Loading the claim form',
+    record: 'Loading this claim',
   },
 
   check: {
@@ -318,8 +334,8 @@ export type ClaimMessage = StatusMessage & { extra: string | null };
  *
  * `describeStatus` above reads the claim row and is what the page shell can say with no waiting.
  * This reads the finished check and replaces it. The two are separate on purpose: the fallback
- * genuinely knows less, and pretending otherwise is how a claim ended up reporting PENDING above
- * its own verified result.
+ * knows less, and pretending otherwise is how a claim ended up reporting PENDING above its own
+ * verified result.
  *
  * The failure title lands here rather than in a box of its own, so the top of the page says what is
  * true and the chain below says which of the five steps found it.
@@ -497,6 +513,12 @@ export const describeFailure = (reason: FailureReason): FailureMessage => {
  * One fixed locale and UTC, so the string is the same wherever it is rendered. A date formatted
  * from the viewer's locale on the server and again on the client is a hydration mismatch.
  */
+export const formatTime = (value: Date): string =>
+  `${new Intl.DateTimeFormat('en-GB', {
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }).format(value)} UTC`;
+
 export const formatWhen = (value: Date): string =>
   `${new Intl.DateTimeFormat('en-GB', {
     dateStyle: 'long',

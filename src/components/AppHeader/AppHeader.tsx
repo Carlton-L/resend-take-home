@@ -1,22 +1,13 @@
 // src/components/AppHeader/AppHeader.tsx
 import Link from 'next/link';
 import type React from 'react';
+import HeaderNav from '@/components/HeaderNav/HeaderNav';
 import { DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH } from '@/lib/auth/config';
 import { signInCopy } from '@/lib/auth/messages';
-import { CLAIM_PATH, DOMAINS_PATH } from '@/lib/claims/config';
-import { claimCopy } from '@/lib/claims/messages';
 
 type AppHeaderProps = {
   email: string | null;
 };
-
-/**
- * Both navigation controls are drawn as buttons, so they read as things to press rather than as
- * more of the wordmark beside them. Same fill as every other button in the app, so there is one
- * button in this product rather than a header variant of one.
- */
-const NAV_CLASS =
-  'rounded-md bg-neutral-900 px-3 py-1.5 font-medium text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2';
 
 /**
  * The address is shown rather than put behind a menu. This product is about which account owns
@@ -28,6 +19,9 @@ const NAV_CLASS =
  *
  * The wordmark goes to the list as well and that repetition is deliberate. A wordmark is not read
  * as a navigation control, so it cannot be the only way back.
+ *
+ * The pair itself lives in `HeaderNav`, which is a Client Component because marking the current
+ * page needs the current path. Everything else here stays on the server.
  */
 const AppHeader: React.FC<AppHeaderProps> = ({ email }) => {
   return (
@@ -41,16 +35,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ email }) => {
             DomainClaim
           </Link>
 
-          {email !== null && (
-            <nav className='flex items-center gap-2'>
-              <Link href={DOMAINS_PATH} className={NAV_CLASS}>
-                {claimCopy.list.nav}
-              </Link>
-              <Link href={CLAIM_PATH} className={NAV_CLASS}>
-                {claimCopy.list.claim}
-              </Link>
-            </nav>
-          )}
+          {email !== null && <HeaderNav />}
         </div>
 
         {email === null ? (

@@ -2,7 +2,7 @@
 import type React from 'react';
 import CopyField from '@/components/CopyField/CopyField';
 import type { ClaimOutcome } from '@/lib/claims/check';
-import { claimCopy } from '@/lib/claims/messages';
+import { claimCopy, formatTime } from '@/lib/claims/messages';
 import { answeredCount, type CheckStep, needsAttention, stepsFor } from '@/lib/claims/steps';
 
 type ClaimCheckProps = {
@@ -19,6 +19,31 @@ const GLYPHS = {
   wait: 'text-amber-700',
   idle: 'text-neutral-400',
 } as const;
+
+/**
+ * The disclosure marker, drawn rather than inherited.
+ *
+ * A `summary` only gets the browser's own triangle while it is `display: list-item`. This one is a
+ * flex row, which drops the marker in Chrome and Safari and leaves a line with no sign that it
+ * opens. Someone opened it by accident, saw the rows, reloaded, and had no way to tell whether the
+ * page had changed or they had.
+ */
+const Chevron: React.FC = () => (
+  <svg
+    aria-hidden='true'
+    viewBox='0 0 16 16'
+    fill='none'
+    className='size-3 shrink-0 text-neutral-400 transition-transform group-open:rotate-90 motion-reduce:transition-none'
+  >
+    <path
+      d='m6 3.5 5 4.5-5 4.5'
+      stroke='currentColor'
+      strokeWidth='1.5'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+    />
+  </svg>
+);
 
 /** A tick, a cross, a ring or a dot. The ring rests, because the check is not running. */
 const Glyph: React.FC<{ state: CheckStep['state'] }> = ({ state }) => {
@@ -137,12 +162,16 @@ const Rows: React.FC<{ steps: CheckStep[] }> = ({ steps }) => (
 const ClaimCheck: React.FC<ClaimCheckProps> = async ({ outcome }) => {
   const steps = stepsFor(await outcome);
   const copy = claimCopy.steps;
+  // Read after the check resolves rather than before it starts, so the time on screen is the time
+  // the nameservers answered rather than the time the request arrived.
+  const checkedAt = formatTime(new Date());
 
   if (!needsAttention(steps)) {
     return (
-      <details className='rounded-md border border-neutral-200 bg-white'>
-        <summary className='flex cursor-pointer items-center gap-3 px-5 py-3 text-neutral-600 text-sm marker:text-neutral-400'>
-          {copy.summary(copy.summaryThrough)}
+      <details className='group rounded-md border border-neutral-200 bg-white'>
+        <summary className='flex cursor-pointer list-none items-center gap-3 px-5 py-3 text-neutral-600 text-sm [&::-webkit-details-marker]:hidden'>
+          <Chevron />
+          {copy.summary(checkedAt, copy.summaryThrough)}
         </summary>
         <div className='border-neutral-100 border-t'>
           <Rows steps={steps} />

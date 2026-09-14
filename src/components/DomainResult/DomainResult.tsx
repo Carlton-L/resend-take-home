@@ -1,5 +1,6 @@
 // src/components/DomainResult/DomainResult.tsx
 import type React from 'react';
+import { useState } from 'react';
 import { claimCopy } from '@/lib/claims/messages';
 import { describeChange } from '@/lib/domain/messages';
 import type { NormalizedDomain } from '@/lib/domain/normalize';
@@ -21,11 +22,17 @@ type DomainResultProps = {
  *
  * A plain form post rather than a fetch, so claiming works with no client JavaScript.
  *
+ * The button disables itself on submit. This is a real browser navigation to a route handler that
+ * redirects, so the page it came from stays on screen while that happens and a second press is
+ * easy to make. `useFormStatus` does not help here: React only reports pending for a submission it
+ * is driving, and this one belongs to the browser.
+ *
  * The name is always the ASCII form, including for an internationalized domain, because that is the
  * string the user types into their DNS panel on the next screen. The readable form appears only as
  * the echo of what they typed, which is a quote rather than a claim about which domain this is.
  */
 const DomainResult: React.FC<DomainResultProps> = ({ value, onUseSuggestion }) => {
+  const [claiming, setClaiming] = useState(false);
   const changed = value.changes.length > 0;
 
   // www is the one subdomain conventionally treated as an alias for the name above it, so it is
@@ -73,13 +80,20 @@ const DomainResult: React.FC<DomainResultProps> = ({ value, onUseSuggestion }) =
         </div>
       )}
 
-      <form method='post' action='/api/claims' className='flex flex-col'>
+      <form
+        method='post'
+        action='/api/claims'
+        onSubmit={() => setClaiming(true)}
+        className='flex flex-col'
+      >
         <input type='hidden' name='name' value={value.name} />
         <button
           type='submit'
-          className='self-start break-all rounded-md bg-neutral-900 px-4 py-2 text-left font-medium font-mono text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2'
+          disabled={claiming}
+          aria-busy={claiming}
+          className='self-start break-all rounded-md bg-neutral-900 px-4 py-2 text-left font-medium font-mono text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2 disabled:cursor-wait disabled:bg-neutral-400'
         >
-          {claimCopy.create.submit(value.name)}
+          {claiming ? claimCopy.create.submitting : claimCopy.create.submit(value.name)}
         </button>
       </form>
 
