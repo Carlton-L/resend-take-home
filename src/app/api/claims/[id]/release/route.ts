@@ -48,5 +48,6 @@ export const POST = async (request: NextRequest, context: { params: Promise<{ id
     await deleteClaim(id, user.id);
   }
 
+  // The list, which is where the claim that was just released is no longer.
   return respond(DEFAULT_SIGNED_IN_PATH);
 };

@@ -3,8 +3,9 @@ import { redirect } from 'next/navigation';
 import type React from 'react';
 import DomainInputForm from '@/components/DomainInputForm/DomainInputForm';
 import FailureNotice from '@/components/FailureNotice/FailureNotice';
-import { DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH } from '@/lib/auth/config';
+import { SIGN_IN_PATH } from '@/lib/auth/config';
 import { signedInEmail } from '@/lib/auth/supabase/server';
+import { CLAIM_PATH } from '@/lib/claims/config';
 import { claimCopy } from '@/lib/claims/messages';
 import { testNames, testNamespaceEnabled } from '@/lib/dns/testNames';
 
@@ -28,7 +29,8 @@ const CREATE_ERRORS = {
 
 const ClaimPage: React.FC<ClaimPageProps> = async ({ searchParams }) => {
   if ((await signedInEmail()) === null) {
-    redirect(`${SIGN_IN_PATH}?next=${encodeURIComponent(DEFAULT_SIGNED_IN_PATH)}`);
+    // Back to this screen rather than to wherever sign in lands by default, which is the list.
+    redirect(`${SIGN_IN_PATH}?next=${encodeURIComponent(CLAIM_PATH)}`);
   }
 
   const { error } = await searchParams;

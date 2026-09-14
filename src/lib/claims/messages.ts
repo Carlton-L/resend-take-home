@@ -1,5 +1,6 @@
 // src/lib/claims/messages.ts
 import { TOKEN_TTL_DAYS } from '@/lib/claims/config';
+import { isExpired } from '@/lib/claims/evaluate';
 import {
   type CheckResult,
   type ClaimStatus,
@@ -47,6 +48,19 @@ export const claimCopy = {
       'These names route to a scripted resolver so each outcome is reachable without owning a broken domain. Claim one the same way as a real name.',
   },
 
+  /** The domain list. Every claim this account has, with no check run on any of them. */
+  list: {
+    nav: 'Domains',
+    heading: 'Domains',
+    intro: 'Every name this account has claimed, including the ones still to be proved.',
+    claim: 'Claim a domain',
+    empty: {
+      title: 'No claims yet',
+      description:
+        'A claim appears here as soon as it is created, before it has been proved, so a name you are part way through is always one click away.',
+    },
+  },
+
   /**
    * The claim's own state, read from the row rather than from the check. The row carries it before
    * the check runs, so this renders in the page shell while the check is still streaming.
@@ -74,6 +88,14 @@ export const claimCopy = {
     revoked: {
       label: 'Revoked',
       line: 'This claim no longer holds the name.',
+    },
+    /**
+     * Not a lifecycle state. A pending claim whose token has run out is still `pending` in the
+     * database and is finished as far as the person is concerned, so the list says so.
+     */
+    expired: {
+      label: 'Expired',
+      line: 'The token on this claim ran out before it was proved.',
     },
     provedButHeld: {
       label: 'Control proved',
@@ -253,6 +275,39 @@ export const describeStatus = (status: ClaimStatus, verifiedAt: Date | null): St
       return exhaustive;
     }
   }
+};
+
+/** The parts of a claim row a status message is built from. */
+export type ClaimRow = {
+  status: ClaimStatus;
+  verifiedAt: Date | null;
+  expiresAt: Date;
+};
+
+/**
+ * What a row in the domain list says about a claim.
+ *
+ * The list runs no check, so every word here comes from the row. That is the lifecycle status
+ * verbatim, plus the one thing the enum does not carry: a pending claim whose token has run out.
+ *
+ * `describeStatus` is left as it is rather than taught about expiry too. The record screen says it
+ * a beat later, out of the check, with the four part message and the action attached. The list is
+ * the only screen where nothing else will ever say it.
+ *
+ * The tone is the whole of the row's marker. Attention means the next move is the person's, which
+ * is the same rule that sorts the check steps, applied to what a row on its own can know. A pending
+ * claim inside its window is waiting on them adding a record, so it stays quiet.
+ */
+export const describeClaimRow = (claim: ClaimRow, now: Date = new Date()): StatusMessage => {
+  if (claim.status === 'pending' && isExpired(claim, now)) {
+    return {
+      label: claimCopy.status.expired.label,
+      line: claimCopy.status.expired.line,
+      tone: 'attention',
+    };
+  }
+
+  return describeStatus(claim.status, claim.verifiedAt);
 };
 
 /** The status block once the check has spoken. `extra` is a second line, or nothing. */

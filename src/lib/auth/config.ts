@@ -1,4 +1,5 @@
 // src/lib/auth/config.ts
+import { DOMAINS_PATH } from '@/lib/claims/config';
 
 /**
  * Supabase owns the expiry, so this number has to match the project's Email OTP expiration setting
@@ -16,8 +17,16 @@ export const SIGN_IN_PATH = '/signin';
 export const CONFIRM_PATH = '/auth/confirm';
 export const LINK_DEAD_PATH = '/auth/link-expired';
 
-/** Where sign in lands when the link carried no destination. No claims table yet, so no list. */
-export const DEFAULT_SIGNED_IN_PATH = '/claim';
+/**
+ * Where sign in lands when the link carried no destination.
+ *
+ * The list, always, rather than a rule that reads how many claims the account has. A first-time
+ * user gets an empty list whose only control is a link to the claim screen, so the first run is
+ * one extra click and every later visit starts on the account's own state.
+ *
+ * One line to change if that turns out to be wrong: point it at `CLAIM_PATH`.
+ */
+export const DEFAULT_SIGNED_IN_PATH = DOMAINS_PATH;
 
 /** carlton.dev is already verified with Resend. No sending subdomain at this volume. */
 export const MAIL_FROM = 'DomainClaim <domainclaim@carlton.dev>';

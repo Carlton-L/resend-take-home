@@ -10,10 +10,10 @@ import ClaimStatusChecked from '@/components/ClaimStatusChecked/ClaimStatusCheck
 import Notice from '@/components/Notice/Notice';
 import RecordCard from '@/components/RecordCard/RecordCard';
 import ReleaseClaim from '@/components/ReleaseClaim/ReleaseClaim';
-import { DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH } from '@/lib/auth/config';
+import { SIGN_IN_PATH } from '@/lib/auth/config';
 import { signedInUser } from '@/lib/auth/supabase/server';
 import { runCheck } from '@/lib/claims/check';
-import { isClaimId } from '@/lib/claims/config';
+import { claimPath, isClaimId } from '@/lib/claims/config';
 import { claimCopy, describeStatus } from '@/lib/claims/messages';
 import { formatRecordValue, recordFullName, recordRelativeHost } from '@/lib/claims/record';
 import { holdsTheName } from '@/lib/claims/state';
@@ -42,11 +42,14 @@ type ClaimRecordPageProps = {
  */
 const ClaimRecordPage: React.FC<ClaimRecordPageProps> = async ({ params, searchParams }) => {
   const user = await signedInUser();
+  const { id } = await params;
+
+  // Back to this claim rather than to the list. The id is not checked first on purpose: a signed
+  // out visitor with a malformed URL signs in and then gets the same 404 they would have had.
   if (user === null) {
-    redirect(`${SIGN_IN_PATH}?next=${encodeURIComponent(DEFAULT_SIGNED_IN_PATH)}`);
+    redirect(`${SIGN_IN_PATH}?next=${encodeURIComponent(claimPath(id))}`);
   }
 
-  const { id } = await params;
   if (!isClaimId(id)) {
     notFound();
   }

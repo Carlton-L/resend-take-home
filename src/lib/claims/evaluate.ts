@@ -21,7 +21,11 @@ export type ClaimForCheck = {
  * whoever controls the zone, so trusting the expiry inside it would let anyone keep a dead claim
  * alive by publishing a later date.
  */
-export const isExpired = (claim: ClaimForCheck, now: Date = new Date()): boolean =>
+/**
+ * Takes the expiry rather than the whole claim, because that is all it reads. The domain list asks
+ * this of a row that carries no token, and a token is not something a list should be selecting.
+ */
+export const isExpired = (claim: { expiresAt: Date }, now: Date = new Date()): boolean =>
   claim.expiresAt.getTime() <= now.getTime();
 
 export const evaluateClaim = (

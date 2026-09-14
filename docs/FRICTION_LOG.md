@@ -148,9 +148,9 @@ handler builds. That client existed already, with a comment saying exactly this.
 Claimed `slow-nameservers.test`, navigated away, and had no route back. There is no list, so the
 only ways to reach a claim are the URL and re-entering the name.
 
-Deferred to the domain list slice. Re-claiming the name does return the same claim rather than
-minting a second one, which is the fix that landed here, but it is a workaround for a missing
-screen.
+Resolved in #9. The list is at `/domains`, reached from the header and from sign in, and it holds
+pending claims as well as proved ones. Re-claiming the name still returns the same claim rather
+than minting a second one, which was the workaround for the missing screen.
 
 ### The TTL we tell people to enter cannot be entered
 
