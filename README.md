@@ -12,9 +12,9 @@ Decisions are in [docs/RFC.md](docs/RFC.md).
 
 ## Try it
 
-Fastest tour: sign in, claim `record-not-found.test` to see the record and the check that has nothing
-to find yet, then claim `verified.test` to watch a claim prove itself. `appended-zone.test` is the
-one to look at for how failures are explained.
+Fastest tour: sign in, which lands on an empty list of your claims. Claim `record-not-found.test` to
+see the record and the check that has nothing to find yet, then claim `verified.test` to watch a
+claim prove itself. `appended-zone.test` is the one to look at for how failures are explained.
 
 Sign in with a link sent to your address. No password.
 
@@ -60,6 +60,9 @@ claim.
   everything, where a record that was never added otherwise looks like one saved under the wrong
   type.
 - Failures are typed values, rendered as a title, the DNS value at fault, why, and one next action.
+- The list of an account's claims runs no check. A row's state is the claim's own, read from the
+  database, so opening the list costs one query however many names are in it. A check belongs on the
+  screen someone opened to act on the answer.
 
 ## Scope
 
@@ -70,11 +73,11 @@ Built:
 - Claim issue with a scoped token, and the record to add
 - The check, run on arrival, against real DNS, reported as its five steps
 - Seven of nine failure reasons, each with one action and the remediation in the step that produced it
+- The list of an account's claims, including the ones not proved yet
 - Releasing a claim
 
 Not built yet:
 
-- A list of an account's claims
 - The check as a live timeline, with Check now
 - Scheduled re-verification, grace window, notification email
 - Transfers for a contested name
