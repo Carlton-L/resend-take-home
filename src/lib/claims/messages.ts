@@ -17,6 +17,12 @@ import {
 export const claimCopy = {
   create: {
     submit: (name: string) => `Claim ${name}`,
+    /** The card before there is a name in it. */
+    nameToClaim: 'Name to claim',
+    awaitingName: '\u2014',
+    submitEmpty: 'Claim',
+    empty:
+      'Whatever you type is read back here, with anything that changed, before a claim is made.',
     tooMany: {
       title: 'Too many claims from this account',
       description: 'This account has created more claims in the last hour than the limit allows.',

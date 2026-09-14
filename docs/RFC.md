@@ -149,7 +149,10 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   approximate one asserts a guarantee this code cannot keep. Residual risk: the input echo
   still renders the readable form.
 - Input errors show title, subject, description, one action. Same shape as the DNS failures.
-- Submit stays enabled on an empty field. A disabled button gives the user nothing to act on.
+- No Check button on the claim screen. The answer is a pure function with no round trip, so the
+  product works it out rather than asking to be told when to. Same argument as the record screen's
+  check. It waits for a pause and for the value to look like a name, so nobody is corrected mid-word,
+  and leaving the field asks immediately. The deliberate act is still the button carrying the name.
 - Unrecognised suffixes refused at input. The Public Suffix List has an implicit `*` rule, so
   `192.0.2.carlton` otherwise parses as a subdomain of `2.carlton`. Test is `isIcann ||
   isPrivate`. Cost: the list ships inside `tldts`, so a brand new gTLD is refused until the

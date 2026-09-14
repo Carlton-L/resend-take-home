@@ -13,9 +13,11 @@ type DomainResultProps = {
 /**
  * The name we would claim, and every change made to get there, with the control that claims it.
  *
- * This card is the confirmation step. The user typed something, pressed Check, and is reading back
- * the name that would be taken, so the button carries that name and creating on submit is not
- * needed. A typo that passes validation would otherwise take a name with no one having seen it.
+ * This card is the confirmation step. The user typed something, the name that would be taken is read
+ * back to them, and the button carries that name, so creating on submit is not needed. A typo that
+ * passes validation would otherwise take a name with no one having seen it. The card now appears
+ * without being asked for, which changes nothing about that: the deliberate act was never pressing
+ * Check, it was pressing the button with the name on it.
  *
  * A plain form post rather than a fetch, so claiming works with no client JavaScript.
  *

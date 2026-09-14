@@ -35,6 +35,9 @@ const EVERY_REASON: FailureReason[] = [
 
 const everyString: string[] = [
   claimCopy.create.submit(NAME),
+  claimCopy.create.nameToClaim,
+  claimCopy.create.submitEmpty,
+  claimCopy.create.empty,
   ...Object.values(claimCopy.create.tooMany),
   ...Object.values(claimCopy.create.unavailable),
   ...Object.values(claimCopy.create.invalid),

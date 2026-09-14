@@ -29,6 +29,18 @@ Hover is out: there is no touch equivalent, and a tooltip means hand-building a 
 management in a project with no component library. Inline second lines or a `details` element per
 entry cost nothing and work on a phone.
 
+## The claim screen has no control that works without JavaScript
+
+Raised 2026-09-14, when the Check button was removed in favour of answering as you type. The screen
+already needed a script, since the normalization ran in the browser and the button called
+`preventDefault`. What changed is the appearance: there used to be a button that did nothing without
+a script, and now there is no button at all, so a script that fails to load leaves a field and
+silence.
+
+Cost: normalizing on the server for a plain form post, which means a second path through the same
+function and the result living in the URL. Buys: a first screen that degrades to something rather
+than to nothing. Related to the entry below, and they should be done together or not at all.
+
 ## The sign in form needs JavaScript
 
 Raised 2026-09-13. The form posts through `fetch`, so with no client JavaScript the button does

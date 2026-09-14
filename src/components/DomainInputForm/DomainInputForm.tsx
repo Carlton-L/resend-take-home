@@ -2,11 +2,24 @@
 'use client';
 
 import type React from 'react';
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import DomainError from '@/components/DomainError/DomainError';
 import DomainResult from '@/components/DomainResult/DomainResult';
+import DomainResultEmpty from '@/components/DomainResultEmpty/DomainResultEmpty';
 import type { DomainInputResult } from '@/lib/domain/normalize';
 import { normalizeDomainInput } from '@/lib/domain/normalize';
+
+/**
+ * Long enough that a name is not read back a letter at a time, short enough that a person who has
+ * stopped typing does not wonder whether anything is going to happen.
+ */
+const SETTLE_MS = 400;
+
+/**
+ * A dot with something after it. `normalizeDomainInput` is happy to judge `exa`, and judging it
+ * tells someone mid-word that what they are typing is wrong, which it is not yet.
+ */
+const LOOKS_LIKE_A_NAME = /\.[^.\s]/;
 
 type DomainInputFormProps = {
   /**
@@ -24,6 +37,15 @@ type DomainInputFormProps = {
  * `normalizeDomainInput` is pure and imports nothing platform specific, so it runs here for an
  * answer with no round trip. The claim endpoint runs the same function as the authority. One
  * function, so the two cannot drift.
+ *
+ * There is no Check button. The answer costs nothing, so the product works it out rather than
+ * asking to be told when to, which is the same argument the record screen makes about its own
+ * check. What remains deliberate is the claim itself: the name is read back and the button that
+ * takes it carries that name.
+ *
+ * Two things stop that from correcting someone mid-word. The answer waits for a pause, and it waits
+ * for the value to look like a name at all. Leaving the field asks immediately, because someone who
+ * has moved on has finished typing whatever they were going to type.
  */
 const DomainInputForm: React.FC<DomainInputFormProps> = ({ allowTestNamespace }) => {
   const inputId = useId();
@@ -34,9 +56,37 @@ const DomainInputForm: React.FC<DomainInputFormProps> = ({ allowTestNamespace })
 
   const check = (raw: string) => setResult(normalizeDomainInput(raw, { allowTestNamespace }));
 
+  // Reads the value rather than being called from the change handler, so a pause is measured from
+  // the last keystroke rather than from the first.
+  useEffect(() => {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      setResult(null);
+      return;
+    }
+    if (!LOOKS_LIKE_A_NAME.test(trimmed)) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setResult(normalizeDomainInput(trimmed, { allowTestNamespace }));
+    }, SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [value, allowTestNamespace]);
+
+  // Someone who has left the field has finished, whether or not what they left behind looks like a
+  // name. This is the path that answers for `localhost` and for a single label.
+  const handleBlur = () => {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      check(trimmed);
+    }
+  };
+
+  // Enter still asks, without waiting out the pause. The form has no submit button, and a form with
+  // one text field submits on Enter without one.
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    check(value);
+    check(value.trim());
   };
 
   // Applying a suggestion checks it straight away, so the user sees the result of the name they
@@ -56,7 +106,7 @@ const DomainInputForm: React.FC<DomainInputFormProps> = ({ allowTestNamespace })
         <label htmlFor={inputId} className='font-medium text-neutral-900 text-sm'>
           Domain
         </label>
-        <div className='flex w-full min-w-0 flex-col gap-2 sm:flex-row'>
+        <div className='flex w-full min-w-0 flex-col gap-2'>
           <input
             id={inputId}
             ref={inputRef}
@@ -67,6 +117,7 @@ const DomainInputForm: React.FC<DomainInputFormProps> = ({ allowTestNamespace })
             inputMode='url'
             value={value}
             onChange={(event) => setValue(event.target.value)}
+            onBlur={handleBlur}
             placeholder='example.com'
             // iOS capitalizes the first letter of a text field by default, which would make every
             // phone user type Example.com.
@@ -78,12 +129,6 @@ const DomainInputForm: React.FC<DomainInputFormProps> = ({ allowTestNamespace })
             aria-describedby={result === null ? undefined : resultId}
             className='w-full min-w-0 rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-neutral-900 text-base sm:text-sm transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus-visible:border-neutral-900 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-1 aria-[invalid=true]:border-red-400'
           />
-          <button
-            type='submit'
-            className='rounded-md bg-neutral-900 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-neutral-300'
-          >
-            Check
-          </button>
         </div>
       </form>
 
@@ -94,12 +139,13 @@ const DomainInputForm: React.FC<DomainInputFormProps> = ({ allowTestNamespace })
         accessibility tree and stops announcing.
       */}
       <div id={resultId} role='status' aria-live='polite'>
-        {result !== null &&
-          (result.ok ? (
-            <DomainResult value={result.value} onUseSuggestion={handleUseSuggestion} />
-          ) : (
-            <DomainError error={result.error} onUseSuggestion={handleUseSuggestion} />
-          ))}
+        {result === null ? (
+          <DomainResultEmpty />
+        ) : result.ok ? (
+          <DomainResult value={result.value} onUseSuggestion={handleUseSuggestion} />
+        ) : (
+          <DomainError error={result.error} onUseSuggestion={handleUseSuggestion} />
+        )}
       </div>
     </div>
   );
