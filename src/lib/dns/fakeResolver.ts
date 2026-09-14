@@ -22,6 +22,15 @@ export type DnsScript = {
   addresses?: Record<string, string[]>;
   /** What each nameserver does when asked for TXT. A nameserver missing here answers empty. */
   servers: Record<string, ScriptedAnswer>;
+  /**
+   * What a specific name answers, whichever server is asked. Consulted before `servers`, so a
+   * script without it behaves exactly as it did when every server answered the same for every name.
+   *
+   * Needed because two of the diagnostics ask a second question at a different name. Without it a
+   * zone cannot say "nothing here, and something one level down", which is the whole point of the
+   * appended zone probe, and every zone looks like a wildcard to the wildcard probe.
+   */
+  byName?: Record<string, ScriptedAnswer>;
   /** Milliseconds each nameserver waits before answering. Exercises the early return. */
   delaysMs?: Record<string, number>;
   soaMinTtlSeconds?: number;
@@ -68,10 +77,14 @@ export const createFakeResolver = (script: DnsScript): DnsResolver => {
       return answered(addresses);
     },
 
-    async resolveTxt(server, _name) {
+    async resolveTxt(server, name) {
       const nameserver = nameserverAt(server);
+      const perName = script.byName?.[name];
       const behaviour: ScriptedAnswer =
-        nameserver === null ? { kind: 'empty' } : (script.servers[nameserver] ?? { kind: 'empty' });
+        perName ??
+        (nameserver === null
+          ? { kind: 'empty' }
+          : (script.servers[nameserver] ?? { kind: 'empty' }));
       const delay = nameserver === null ? 0 : (script.delaysMs?.[nameserver] ?? 0);
 
       if (behaviour.kind === 'hangs') {

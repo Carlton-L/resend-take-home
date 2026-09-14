@@ -26,8 +26,13 @@ const OTHER_RECORD =
 
 /**
  * Only the outcomes reachable so far. `token_expired` is decided from the claim row rather than
- * from DNS, so no name can produce it. `cname_at_name`, `dnssec_broken` and
- * `appended_zone_suspected` need the DoH leg and arrive with it.
+ * from DNS, so no name can produce it. `cname_at_name` and `dnssec_broken` need the DoH leg and
+ * arrive with it.
+ *
+ * There is deliberately no wildcard zone here. The wildcard probe's whole effect is that a wrong
+ * message does not appear: a zone that answers for every name is reported as a record that is not
+ * there yet, which is what `record-not-found.test` already shows. A demo name for it would render
+ * identically to that one and teach nothing.
  */
 const scripts = (expected: string): Record<string, DnsScript> => ({
   'verified.test': {
@@ -52,15 +57,41 @@ const scripts = (expected: string): Record<string, DnsScript> => ({
     soaMinTtlSeconds: 300,
   },
 
+  /**
+   * NODATA at our name and NXDOMAIN everywhere else. Without the second half this zone answers for
+   * every name, the wildcard probe reads it as a wildcard, and the check correctly reports that the
+   * record is simply not there.
+   */
   'no-txt-at-name.test': {
     zone: 'no-txt-at-name.test',
     nameservers: DEMO_NAMESERVERS,
     servers: {
-      'ns1.example-dns.test': { kind: 'empty' },
-      'ns2.example-dns.test': { kind: 'empty' },
-      'ns3.example-dns.test': { kind: 'empty' },
+      'ns1.example-dns.test': { kind: 'name_not_found' },
+      'ns2.example-dns.test': { kind: 'name_not_found' },
+      'ns3.example-dns.test': { kind: 'name_not_found' },
+    },
+    byName: {
+      '_domainclaim-challenge.no-txt-at-name.test': { kind: 'empty' },
     },
     soaMinTtlSeconds: 7200,
+  },
+
+  /** The record one level down, because the panel put the domain on the end of the Name field. */
+  'appended-zone.test': {
+    zone: 'appended-zone.test',
+    nameservers: DEMO_NAMESERVERS,
+    servers: {
+      'ns1.example-dns.test': { kind: 'name_not_found' },
+      'ns2.example-dns.test': { kind: 'name_not_found' },
+      'ns3.example-dns.test': { kind: 'name_not_found' },
+    },
+    byName: {
+      '_domainclaim-challenge.appended-zone.test.appended-zone.test': {
+        kind: 'records',
+        records: [expected],
+      },
+    },
+    soaMinTtlSeconds: 300,
   },
 
   'nameservers-unreachable.test': {

@@ -1,8 +1,15 @@
 // src/lib/claims/check.ts
-import { evaluateClaim, isExpired } from '@/lib/claims/evaluate';
+import { diagnose } from '@/lib/claims/diagnose';
+import {
+  type ClaimAfterCheck,
+  claimAfterCheck,
+  evaluateClaim,
+  isExpired,
+  shouldMarkVerified,
+} from '@/lib/claims/evaluate';
 import { formatRecordValue, recordFullName } from '@/lib/claims/record';
 import type { CheckResult } from '@/lib/claims/state';
-import type { Claim } from '@/lib/claims/store';
+import { type Claim, markVerified } from '@/lib/claims/store';
 import { createFakeResolver } from '@/lib/dns/fakeResolver';
 import { createNodeResolver } from '@/lib/dns/nodeResolver';
 import { isTestName, scriptFor, testNamespaceEnabled } from '@/lib/dns/testNames';
@@ -42,5 +49,36 @@ export const checkClaim = async (claim: Claim, now: Date = new Date()): Promise<
     demo === null ? createNodeResolver(DEFAULT_TIMEOUT_MS) : createFakeResolver(demo);
 
   const trace = await traceName(resolver, queriedName, { timeoutMs: DEFAULT_TIMEOUT_MS });
-  return { trace, result: evaluateClaim(trace, claim, now) };
+  const result = evaluateClaim(trace, claim, now);
+
+  // A second look, only on a failure and only for the two reasons a probe can speak to. The trace
+  // layer stays a pure description of what DNS holds at one name; asking a second question about a
+  // second name belongs here, above it.
+  return { trace, result: await diagnose(resolver, trace, claim, result) };
+};
+
+/** A check, plus where it left the claim. One value, so every part of the screen agrees. */
+export type ClaimOutcome = Check & ClaimAfterCheck;
+
+/**
+ * Run the check and record what it found.
+ *
+ * The write is an observation rather than an action the user asked for: conditional on the row
+ * still being pending, scoped to its owner in the same statement, and therefore a no-op under a
+ * reload. The page is `force-dynamic`, so nothing prerenders or caches it into a shared copy.
+ *
+ * This returns one value that both the status at the top of the record screen and the result below
+ * it render from. Before it existed the status came from the claim row, which is what the shell was
+ * sent with, so a claim that verified during the render showed PENDING above its own verified
+ * result. The page now creates this promise once and hands it to both, each inside its own Suspense
+ * boundary, so the work happens once and both regions stream when it resolves.
+ */
+export const runCheck = async (claim: Claim, now: Date = new Date()): Promise<ClaimOutcome> => {
+  const { trace, result } = await checkClaim(claim, now);
+
+  const write = shouldMarkVerified(claim, result)
+    ? await markVerified(claim.id, claim.ownerId, now)
+    : null;
+
+  return { trace, result, ...claimAfterCheck(claim, write, now) };
 };

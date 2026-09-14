@@ -1,6 +1,11 @@
 // src/lib/claims/evaluate.test.ts
 import { describe, expect, it } from 'vitest';
-import { evaluateClaim, isExpired } from '@/lib/claims/evaluate';
+import {
+  claimAfterCheck,
+  evaluateClaim,
+  isExpired,
+  shouldMarkVerified,
+} from '@/lib/claims/evaluate';
 import { formatRecordValue, recordFullName } from '@/lib/claims/record';
 import { createFakeResolver } from '@/lib/dns/fakeResolver';
 import { scriptFor } from '@/lib/dns/testNames';
@@ -121,5 +126,70 @@ describe('evaluateClaim', () => {
 
   it('treats the moment of expiry as expired', () => {
     expect(isExpired({ token: CLAIM.token, expiresAt: NOW }, NOW)).toBe(true);
+  });
+});
+
+describe('shouldMarkVerified', () => {
+  const found = { status: 'verified', record: 'r', answeredBy: 'ns1.example.com' } as const;
+  const missed = {
+    status: 'failed',
+    reason: { code: 'no_txt_at_name', queriedName: 'x' },
+  } as const;
+
+  it('writes only when a pending claim was proved', () => {
+    expect(shouldMarkVerified({ status: 'pending' }, found)).toBe(true);
+    expect(shouldMarkVerified({ status: 'pending' }, missed)).toBe(false);
+  });
+
+  // A claim that already holds its name is already verified, and a record still sitting in a zone
+  // does not bring a revoked one back.
+  it('leaves every other status alone', () => {
+    expect(shouldMarkVerified({ status: 'verified' }, found)).toBe(false);
+    expect(shouldMarkVerified({ status: 'at_risk' }, found)).toBe(false);
+    expect(shouldMarkVerified({ status: 'contested' }, found)).toBe(false);
+    expect(shouldMarkVerified({ status: 'revoked' }, found)).toBe(false);
+  });
+});
+
+describe('claimAfterCheck', () => {
+  const PENDING = { status: 'pending', verifiedAt: null } as const;
+  const AT = new Date('2026-09-14T12:00:00Z');
+
+  it('moves the claim only when the write moved the row', () => {
+    expect(claimAfterCheck(PENDING, 'verified', AT)).toEqual({
+      status: 'verified',
+      verifiedAt: AT,
+      provedButHeld: false,
+    });
+  });
+
+  it('leaves the claim where it was when no write was attempted', () => {
+    expect(claimAfterCheck(PENDING, null, AT)).toEqual({
+      status: 'pending',
+      verifiedAt: null,
+      provedButHeld: false,
+    });
+  });
+
+  // The update can hit the partial unique index, which means another account verified the same
+  // name between this claim being created and this check landing.
+  it('reports control proved against a name another account holds', () => {
+    expect(claimAfterCheck(PENDING, 'held_by_another', AT)).toEqual({
+      status: 'pending',
+      verifiedAt: null,
+      provedButHeld: true,
+    });
+  });
+
+  // The check saying verified is an observation. A failed write means the row did not move, so the
+  // screen should not claim it did.
+  it('does not promote a claim whose write failed', () => {
+    expect(claimAfterCheck(PENDING, 'unavailable', AT).status).toBe('pending');
+  });
+
+  it('keeps the date a held claim already carries', () => {
+    const earlier = new Date('2026-09-01T09:00:00Z');
+    const held = { status: 'verified', verifiedAt: earlier } as const;
+    expect(claimAfterCheck(held, null, AT).verifiedAt).toBe(earlier);
   });
 });

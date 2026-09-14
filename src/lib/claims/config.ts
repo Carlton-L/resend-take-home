@@ -14,17 +14,6 @@ export const TOKEN_TTL_DAYS = 7;
 
 export const TOKEN_TTL_MS = TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
 
-/**
- * The TTL we suggest.
- *
- * It does not affect the answer that decides. The TXT query goes straight to authoritative
- * nameservers and those do not cache, so a corrected value is visible to the next check whatever
- * the TTL says. The window when the record is absent comes from the zone's SOA minimum, not from
- * this. What this number does decide is how long a corrected value takes to agree in public
- * resolvers, which is the `value_mismatch` case and nowhere else.
- */
-export const SUGGESTED_TTL_SECONDS = 300;
-
 /** RFC 8552. An underscore label cannot collide with a hostname, so the name is ours to define. */
 export const RECORD_LABEL = '_domainclaim-challenge';
 

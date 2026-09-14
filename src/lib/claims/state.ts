@@ -33,9 +33,9 @@ export const holdsTheName = (status: ClaimStatus): boolean =>
 /**
  * Why a check did not prove control.
  *
- * A subset of the nine reasons in the RFC. `cname_at_name`, `dnssec_broken` and
- * `appended_zone_suspected` all need the DoH leg to tell them apart from what is here, so they
- * arrive with it. The switch that renders these is exhaustive, so adding one breaks the build
+ * A subset of the nine reasons in the RFC. `cname_at_name` and `dnssec_broken` need the DoH leg to tell them
+ * apart from what is here. `appended_zone_suspected` turned out not to: asking the same
+ * authoritative servers for the doubled name answers it outright. The switch that renders these is exhaustive, so adding one breaks the build
  * until it has a message.
  */
 export type FailureReason =
@@ -46,6 +46,11 @@ export type FailureReason =
       negativeTtlSeconds: number | null;
     }
   | { code: 'no_txt_at_name'; queriedName: string }
+  /**
+   * Nothing at the name, and the record found one level further down. The panel appended the zone
+   * to what was typed into its Name field, so `_x.example.com` became `_x.example.com.example.com`.
+   */
+  | { code: 'appended_zone_suspected'; queriedName: string; foundAt: string }
   | { code: 'value_mismatch'; expected: string; found: string[] }
   | { code: 'token_expired'; expiredAt: Date }
   | { code: 'nameservers_unreachable'; attempted: string[]; timeoutMs: number }

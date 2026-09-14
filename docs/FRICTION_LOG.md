@@ -158,22 +158,86 @@ Squarespace offers TTL as a dropdown, defaulting to 4 hrs. There is no field to 
 record screen presents 300 as a value to copy, which is advice that cannot be followed on the one
 panel we have measured.
 
-Resolving in the record screen slice. TTL stops being a field. The instruction becomes leaving the
-default alone, which is true everywhere and was already true: the record TTL does not affect the
-answer that decides.
+Resolved in #7. TTL stops being a value to copy and becomes an instruction to leave the default,
+which is true everywhere and was already true: the record TTL does not affect the answer that
+decides. It keeps a cell, because it is a column in the panel.
 
 ### The field names do not match the panel
 
 We label them HOST and VALUE. Squarespace labels them NAME and TEXT. Their columns run TYPE, NAME,
 PRIORITY, TTL, TEXT, left to right.
 
-Resolving in the record screen slice. Name and Value are the labels most panels use, and the record
-is presented as a row in that order so it can be read against the form being filled in.
+Resolved in #7. Name and Value are the labels most panels use, and the record is presented as a row
+in that order so it can be read against the form being filled in.
 
 ### Verification is below the fold
 
 On a verified claim the screen still leads with "Add this record" and the eyebrow still says
 CLAIMING. The state of the thing is the last item on a page whose subject is state.
 
-Resolving in the record screen slice. The status is on the row already, so the top of the page can
-say it before the check has run.
+Resolved in #7. The status is on the row already, so the top of the page says it before the check
+has run, and a claim that already holds its name collapses the record card rather than leading with
+an instruction.
+
+## 2026-09-14, the record as a panel row, local dev
+
+Rebuilding the record screen against the measured panel. Three entries.
+
+### A claim said PENDING above its own verified result
+
+Claimed `verified.test`. The pill read PENDING and the record card stayed expanded while a green
+Verified box sat underneath saying the name was now held by this account. Reloading fixed it.
+
+Resolved in #7. The status came from the claim row, and the row says pending at the instant the page
+shell is sent. The check writes verified a moment later, but a streamed Server Component can only
+fill its own Suspense boundary and cannot change markup that already went out. The page now starts
+the check once without awaiting it and gives the same promise to the status block and to the result,
+each inside its own boundary, so both say the same thing. The status boundary falls back to the row,
+which still appears with no waiting.
+
+Residual: the record card is still driven by the row, so on that first render it stays expanded
+under a verified pill. That reads as redundant rather than contradictory, and collapsing it mid-read
+would move the page under the pointer. Revisit when the timeline gives the screen a client-side
+check.
+
+### The copy buttons did not say which field they belonged to
+
+With four cells in a row and a button beside each one, separated by a gap, the button nearest a
+value could be read as belonging to either neighbour.
+
+Resolved in #7. The control moved inside the field's border, with a divider between the value and
+the icon, so a field and its control are one object.
+
+### The value cannot be read against the panel
+
+Cells are one line and the value is 78 bytes, so about the first third is visible and the rest
+scrolls. Someone comparing what is on screen against what is already in their DNS panel cannot do
+it by eye.
+
+Accepted. The value is there to be copied rather than read, wrapping it costs the row the alignment
+that makes it readable as a row, and a value that went in wrong is reported by `value_mismatch`
+with both sides shown. Revisit if the timeline gives the screen somewhere better to put it.
+
+## 2026-09-14, the check as five steps, design session
+
+Not from using the product. From working through what the trace already holds and what a person can
+do about each part of it. Two entries.
+
+### A cross was shown on a step nobody had acted on
+
+The first check on every new claim looks for a record that has not been added. Drawing that as a
+failed step reports the product working exactly as designed as a fault.
+
+Resolved before shipping. Three states per step, sorted by whose move is next. If the person has to
+change something it is wrong; if time has to pass it is waiting; a step the check never reached is
+neither.
+
+### Making the chain conditional hid a fix
+
+Keeping the page quiet on a first load meant the chain only appeared when there was something to
+say. Someone with no nameservers set would see the failure, go and fix it, come back, and find the
+failure simply gone. An absence cannot tell them "you fixed it" apart from "we stopped looking".
+
+Resolved before shipping. The element is always present in the same place and its sentence changes,
+from a problem into a statement of progress that names the thing they just configured. Saying "that
+is now fixed" out loud needs `last_failure`, which is deferred, and this needs no stored state.

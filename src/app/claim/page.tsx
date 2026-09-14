@@ -50,7 +50,7 @@ const ClaimPage: React.FC<ClaimPageProps> = async ({ searchParams }) => {
       </div>
 
       {failure !== null && (
-        <FailureNotice tone='attention' message={{ ...failure, record: null }} />
+        <FailureNotice tone='attention' message={{ ...failure, record: null, copyable: null }} />
       )}
 
       <DomainInputForm allowTestNamespace={demo} />
