@@ -481,3 +481,18 @@ behaviour that once put CLAIMING above a name the account already held.
 
 It reads as a flicker only against the fake resolver, which answers in about a millisecond. A real
 zone takes long enough that the same sequence reads as an update.
+
+### The challenger screen reported a database problem instead of a taken name
+
+Claiming a name the other account already held, to reproduce the contested case. The check proved
+control, five of five, and the last step read "proved, and not written down yet", which is what this
+product says when a write fails for a reason it cannot name.
+
+Resolved in the pull request after this one. The write had not failed for an unknown reason, it had
+hit the owned-name index, which has its own state and its own words. `isUniqueViolation` read the
+SQLSTATE off the error it caught, and Drizzle has wrapped driver errors in its own class since 0.44,
+so that test was false for every unique violation and the Control proved screen had never been
+reachable.
+
+The part to keep: the state was designed, its copy written, its step answer written and its tests
+passing, and none of it had ever been on a screen. Reaching every state by hand is what found it.

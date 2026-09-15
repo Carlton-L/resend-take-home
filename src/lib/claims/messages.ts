@@ -219,7 +219,7 @@ export const claimCopy = {
     claim: {
       recorded: (when: string) => when,
       alreadyHeld: 'already held by this account',
-      notRecorded: 'proved, and not written down yet',
+      notRecorded: 'proved, and not saved yet',
       heldByAnother: 'another account holds this name',
     },
     /**
