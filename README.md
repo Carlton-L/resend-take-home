@@ -51,7 +51,10 @@ claim.
   build on that.
 - The token is public. It sits in a TXT record anyone can query, so its only job is being
   unguessable. 160 bits from `crypto.randomBytes`.
-- No Verify button. A check takes about 250ms, so the product runs it.
+- No Verify button. A check takes about 250ms, so the product runs it, and keeps running it while
+  the claim is open: 5s, 15s, 30s, 60s, then every minute, stopping after fifteen and saying so.
+  Check now is for the person who has just saved the record and does not want to wait for the next
+  one. Both are rate limited, per claim and per account.
 - The check reports itself as five steps, each carrying the answer it got: find the zone, reach the
   nameservers, find the TXT record, match the token, record the claim. A step that has not passed is
   not the same as one that has gone wrong, and they are drawn differently: if the next move belongs
@@ -78,14 +81,15 @@ Built:
 - Magic link sign in
 - Domain input, normalized, with a typed error for every way a name can be wrong
 - Claim issue with a scoped token, and the record to add
-- The check, run on arrival, against real DNS, reported as its five steps
+- The check, run on arrival and again on a cadence, against real DNS, reported as its five steps
+- Check now, at a rate limited endpoint
 - Seven of nine failure reasons, each with one action and the remediation in the step that produced it
 - The list of an account's claims, including the ones not proved yet
 - Releasing a claim
 
 Not built yet:
 
-- The check as a live timeline, with Check now
+- The five steps arriving one at a time, with the waiting ring animating while one is in flight
 - Scheduled re-verification, grace window, notification email
 - Transfers for a contested name
 - A second opinion over DNS-over-HTTPS. It separates a CNAME at the name and broken DNSSEC from the

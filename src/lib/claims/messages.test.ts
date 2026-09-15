@@ -7,6 +7,8 @@ import {
   describeFailure,
   describeStatus,
   formatDeadline,
+  formatMinutes,
+  formatSince,
   formatTime,
   formatWhen,
 } from '@/lib/claims/messages';
@@ -17,7 +19,6 @@ import { findBannedPhrases } from '@/lib/copy/rules';
 const NAME = 'example.com';
 const HOST = '_domainclaim-challenge.example.com';
 const WHEN = formatWhen(new Date('2026-09-20T18:42:07Z'));
-const TIME = formatTime(new Date('2026-09-20T18:42:07Z'));
 
 /** One of every reason, so the copy for each is exercised rather than only its type. */
 const EVERY_REASON: FailureReason[] = [
@@ -75,6 +76,16 @@ const everyString: string[] = [
   claimCopy.record.provider.unrecognized('some-small-host.com'),
   ...Object.values(claimCopy.loading),
   claimCopy.check.running,
+  claimCopy.check.now,
+  claimCopy.check.checking,
+  claimCopy.check.checkedAt('just now'),
+  claimCopy.check.waiting('4 minutes ago'),
+  claimCopy.check.stopped('15 minutes'),
+  ...Object.values(claimCopy.check.limited),
+  ...Object.values(claimCopy.check.unavailable),
+  ...Object.values(claimCopy.check.offline),
+  ...Object.values(claimCopy.check.signedOut),
+  ...Object.values(claimCopy.check.missing),
   claimCopy.check.keepRecord,
   claimCopy.steps.heading,
   claimCopy.steps.answered(3),
@@ -89,6 +100,7 @@ const everyString: string[] = [
   claimCopy.steps.nameservers.silent,
   claimCopy.steps.record.found(2),
   claimCopy.steps.record.none,
+  claimCopy.steps.record.gone,
   claimCopy.steps.record.wrongType,
   claimCopy.steps.record.appended,
   claimCopy.steps.token.matched('ns1.example.com'),
@@ -97,7 +109,7 @@ const everyString: string[] = [
   claimCopy.steps.claim.alreadyHeld,
   claimCopy.steps.claim.notRecorded,
   claimCopy.steps.claim.heldByAnother,
-  claimCopy.steps.summary(TIME, claimCopy.steps.summaryThrough),
+  claimCopy.steps.summary(claimCopy.steps.summaryThrough),
   claimCopy.status.provedButHeld.label,
   claimCopy.status.provedButHeld.line,
   claimCopy.status.proved('ns1.example.com', WHEN),
@@ -119,6 +131,11 @@ const everyString: string[] = [
     const message = describeFailure(reason);
     return [message.title, message.description, message.action];
   }),
+  // The same reasons said to someone whose claim already holds the name. One of them changes.
+  ...EVERY_REASON.flatMap((reason) => {
+    const message = describeFailure(reason, { held: true });
+    return [message.title, message.description, message.action];
+  }),
 ];
 
 describe('claim copy', () => {
@@ -132,14 +149,44 @@ describe('claim copy', () => {
   });
 
   /**
-   * It is rendered once on the server and then sits there. "Just now" was true for a second and
-   * wrong for as long as the page stayed open, which is the whole of the time someone spends
-   * waiting on a record.
+   * When the check ran is now said beside the control that runs it again, which is the one place
+   * on the screen where it can be acted on. Saying it twice would mean two strings that have to
+   * agree with each other.
    */
-  it('gives the closed chain a time rather than a claim about how long ago it was', () => {
-    const line = claimCopy.steps.summary(TIME, claimCopy.steps.summaryThrough);
-    expect(line).toContain(TIME);
-    expect(line.toLowerCase()).not.toContain('just now');
+  it('keeps the time out of the closed chain, where nothing can be done with it', () => {
+    const line = claimCopy.steps.summary(claimCopy.steps.summaryThrough);
+    expect(line).toBe(`${claimCopy.steps.summaryThrough}.`);
+    expect(line.toLowerCase()).not.toContain('checked');
+  });
+
+  /**
+   * The button is not the Verify button the RFC designed out, and the line beside it is what says
+   * so: the product is going to ask again either way.
+   */
+  it('says another check is coming beside the button that asks now', () => {
+    expect(claimCopy.check.waiting('just now').toLowerCase()).toContain('again');
+    expect(claimCopy.check.now.toLowerCase()).toContain('now');
+  });
+
+  it('says a record that has gone is gone rather than not added yet', () => {
+    const reason = EVERY_REASON[0];
+    const held = describeFailure(reason, { held: true });
+    const fresh = describeFailure(reason);
+    expect(held.title.toLowerCase()).not.toContain('yet');
+    expect(fresh.title.toLowerCase()).toContain('yet');
+    expect(held.action).not.toBe(fresh.action);
+  });
+
+  // Every other reason means the same thing on a held claim, so the words should not move.
+  it('leaves the reasons a held claim shares with a new one alone', () => {
+    for (const reason of EVERY_REASON.filter((one) => one.code !== 'record_not_found')) {
+      expect(describeFailure(reason, { held: true })).toEqual(describeFailure(reason));
+    }
+  });
+
+  it('stops telling people to reload a page that checks on its own', () => {
+    const actions = EVERY_REASON.map((reason) => describeFailure(reason).action.toLowerCase());
+    expect(actions.filter((action) => action.includes('reload this page'))).toEqual([]);
   });
 
   it('says the panel appends the domain at the Name cell, where it can be acted on', () => {
@@ -373,6 +420,40 @@ describe('describeFailure', () => {
     });
     expect(message.description).toContain('two seconds');
     expect(message.description).not.toContain('2000');
+  });
+});
+
+/**
+ * Shares its list of spelled numbers with `formatDeadline`, which is the trap: widening the list
+ * for this function silently changed what a deadline of eleven seconds reads as. The two ranges
+ * are one range on purpose, and these assertions are both ends of it.
+ */
+describe('formatMinutes', () => {
+  it('spells a small whole number of minutes', () => {
+    expect(formatMinutes(60_000)).toBe('one minute');
+    expect(formatMinutes(2 * 60_000)).toBe('two minutes');
+  });
+
+  it('falls back to digits above the spelled range', () => {
+    expect(formatMinutes(15 * 60_000)).toBe('15 minutes');
+    expect(formatMinutes(30 * 60_000)).toBe('30 minutes');
+  });
+});
+
+/**
+ * A relative time is only honest because the client re-renders it. These are the buckets, and they
+ * are coarse on purpose: a second by second count is motion on a page where nothing is happening.
+ */
+describe('formatSince', () => {
+  it('reads as just now for the first three quarters of a minute', () => {
+    expect(formatSince(0)).toBe('just now');
+    expect(formatSince(44_000)).toBe('just now');
+  });
+
+  it('rounds to whole minutes after that', () => {
+    expect(formatSince(45_000)).toBe('a minute ago');
+    expect(formatSince(60_000)).toBe('a minute ago');
+    expect(formatSince(4 * 60_000)).toBe('4 minutes ago');
   });
 });
 

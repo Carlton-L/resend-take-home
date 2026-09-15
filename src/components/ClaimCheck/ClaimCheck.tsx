@@ -1,17 +1,12 @@
 // src/components/ClaimCheck/ClaimCheck.tsx
-import type React from 'react';
-import CopyField from '@/components/CopyField/CopyField';
-import type { ClaimOutcome } from '@/lib/claims/check';
-import { claimCopy, formatTime } from '@/lib/claims/messages';
-import { answeredCount, type CheckStep, needsAttention, stepsFor } from '@/lib/claims/steps';
+'use client';
 
-type ClaimCheckProps = {
-  /**
-   * The check, awaited here rather than started here. The page creates it once and gives the same
-   * promise to the status block and the provider line, so one trace and one write feed all three.
-   */
-  outcome: Promise<ClaimOutcome>;
-};
+import type React from 'react';
+import { type CheckError, useCheck } from '@/components/CheckRunner/CheckRunner';
+import ClaimCheckPending from '@/components/ClaimCheckPending/ClaimCheckPending';
+import CopyField from '@/components/CopyField/CopyField';
+import { claimCopy } from '@/lib/claims/messages';
+import type { CheckStep } from '@/lib/claims/steps';
 
 const GLYPHS = {
   done: 'text-green-700',
@@ -45,7 +40,7 @@ const Chevron: React.FC = () => (
   </svg>
 );
 
-/** A tick, a cross, a ring or a dot. The ring rests, because the check is not running. */
+/** A tick, a cross, a ring or a dot. The ring rests, because this check has already answered. */
 const Glyph: React.FC<{ state: CheckStep['state'] }> = ({ state }) => {
   if (state === 'wait') {
     return (
@@ -148,6 +143,31 @@ const Rows: React.FC<{ steps: CheckStep[] }> = ({ steps }) => (
   </>
 );
 
+const PROBLEMS: Record<CheckError, { title: string; description: string; action: string }> = {
+  limited: claimCopy.check.limited,
+  unavailable: claimCopy.check.unavailable,
+  offline: claimCopy.check.offline,
+  signed_out: claimCopy.check.signedOut,
+  not_found: claimCopy.check.missing,
+};
+
+/**
+ * The check itself failing, which is a different thing from the check answering that DNS is wrong.
+ *
+ * Same four parts as every other failure, minus the DNS value, because there is no DNS answer to
+ * show. Each one names the one way back, and for four of the five that way is the button above.
+ */
+const Problem: React.FC<{ error: CheckError }> = ({ error }) => {
+  const problem = PROBLEMS[error];
+  return (
+    <div className='flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-4'>
+      <p className='font-medium text-neutral-900 text-sm'>{problem.title}</p>
+      <p className='text-neutral-700 text-sm leading-relaxed'>{problem.description}</p>
+      <p className='font-medium text-neutral-900 text-sm leading-relaxed'>{problem.action}</p>
+    </div>
+  );
+};
+
 /**
  * The check, as the five questions it asked and what each one answered.
  *
@@ -155,43 +175,54 @@ const Rows: React.FC<{ steps: CheckStep[] }> = ({ steps }) => (
  * nobody has added a record for deserves. Open it is because something needs the person, or because
  * everything passed and five rows are the receipt.
  *
- * The element never appears or disappears, only its sentence changes. Someone who fixed their
- * nameservers and came back would otherwise have to tell "you fixed it" apart from "we stopped
- * looking", and an absence cannot say either.
+ * The element never appears or disappears once it has said anything, only its sentence changes.
+ * Someone who fixed their nameservers and came back would otherwise have to tell "you fixed it"
+ * apart from "we stopped looking", and an absence cannot say either.
+ *
+ * When the check ran and when it runs again are not here. They sit beside the button that asks
+ * again, at the top of the page, which is where someone waiting is already looking.
  */
-const ClaimCheck: React.FC<ClaimCheckProps> = async ({ outcome }) => {
-  const steps = stepsFor(await outcome);
+const ClaimCheck: React.FC = () => {
+  const { view, error } = useCheck();
   const copy = claimCopy.steps;
-  // Read after the check resolves rather than before it starts, so the time on screen is the time
-  // the nameservers answered rather than the time the request arrived.
-  const checkedAt = formatTime(new Date());
 
-  if (!needsAttention(steps)) {
-    return (
-      <details className='group rounded-md border border-neutral-200 bg-white'>
-        <summary className='flex cursor-pointer list-none items-center gap-3 px-5 py-3 text-neutral-600 text-sm [&::-webkit-details-marker]:hidden'>
-          <Chevron />
-          {copy.summary(checkedAt, copy.summaryThrough)}
-        </summary>
-        <div className='border-neutral-100 border-t'>
-          <Rows steps={steps} />
-        </div>
-      </details>
-    );
+  if (view === null) {
+    return error === null ? <ClaimCheckPending /> : <Problem error={error} />;
   }
 
-  return (
+  const chain = view.needsAttention ? (
     <section className='overflow-hidden rounded-md border border-neutral-200 bg-white'>
       <div className='flex items-baseline justify-between gap-3 border-neutral-200 border-b px-5 py-2.5'>
         <span className='font-medium text-neutral-500 text-xs uppercase tracking-wider'>
           {copy.heading}
         </span>
-        <span className='font-mono text-neutral-500 text-xs'>
-          {copy.answered(answeredCount(steps))}
-        </span>
+        <span className='font-mono text-neutral-500 text-xs'>{copy.answered(view.answered)}</span>
       </div>
-      <Rows steps={steps} />
+      <Rows steps={view.steps} />
     </section>
+  ) : (
+    <details className='group rounded-md border border-neutral-200 bg-white'>
+      <summary className='flex cursor-pointer list-none items-center gap-3 px-5 py-3 text-neutral-600 text-sm [&::-webkit-details-marker]:hidden'>
+        <Chevron />
+        {copy.summary(copy.summaryThrough)}
+      </summary>
+      <div className='border-neutral-100 border-t'>
+        <Rows steps={view.steps} />
+      </div>
+    </details>
+  );
+
+  if (error === null) {
+    return chain;
+  }
+
+  // The last answer stays on screen under the problem. It is still the most recent thing DNS said,
+  // and taking it away would leave the person with nothing but the failure to ask again.
+  return (
+    <div className='flex flex-col gap-4'>
+      <Problem error={error} />
+      {chain}
+    </div>
   );
 };
 

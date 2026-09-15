@@ -25,6 +25,24 @@ export const RECORD_TYPE = 'TXT';
  */
 export const CLAIM_LIMIT = { max: 25, windowSeconds: 60 * 60 } as const;
 
+/**
+ * Checks one account can run per window, counted per claim and across the account.
+ *
+ * The screen asks on its own cadence, so these sit above it rather than near it: one claim polling
+ * for a full window spends about sixteen checks, and Check now is on top of that. A limit tight
+ * enough to trip on ordinary use would make the product argue with itself.
+ *
+ * Named in the security floor. A check spends DNS queries against nameservers belonging to whoever
+ * owns the name, so the ceiling is theirs rather than ours.
+ */
+export const CHECK_LIMITS = {
+  perClaim: { max: 20, windowSeconds: 5 * 60 },
+  perAccount: { max: 60, windowSeconds: 5 * 60 },
+} as const;
+
+/** Rows are counted inside the longest window, so nothing older than it is kept. */
+export const CHECK_ATTEMPT_RETENTION_SECONDS = CHECK_LIMITS.perAccount.windowSeconds;
+
 /** The claim entry screen. */
 export const CLAIM_PATH = '/claim';
 
@@ -37,6 +55,9 @@ export const CLAIM_PATH = '/claim';
 export const DOMAINS_PATH = '/domains';
 
 export const claimPath = (id: string): string => `${CLAIM_PATH}/${id}`;
+
+/** Where the record screen asks for a check. One constant, so the route and its caller agree. */
+export const claimCheckPath = (id: string): string => `/api/claims/${id}/check`;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
