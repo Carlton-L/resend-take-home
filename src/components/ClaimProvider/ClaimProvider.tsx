@@ -1,12 +1,8 @@
 // src/components/ClaimProvider/ClaimProvider.tsx
-import type React from 'react';
-import type { ClaimOutcome } from '@/lib/claims/check';
-import { claimCopy } from '@/lib/claims/messages';
-import { describeProvider } from '@/lib/claims/provider';
+'use client';
 
-type ClaimProviderProps = {
-  outcome: Promise<ClaimOutcome>;
-};
+import type React from 'react';
+import { useCheck } from '@/components/CheckRunner/CheckRunner';
 
 /**
  * Which company answers for this domain, at the foot of the page.
@@ -15,21 +11,17 @@ type ClaimProviderProps = {
  * looking at the record above it: this record goes in that panel. It is also the only part of the
  * page that cannot exist unless the first two steps passed, so it quietly confirms them even when
  * the chain is closed.
+ *
+ * Nothing renders until a check has answered, so there is no reserved space and nothing moves when
+ * it arrives.
  */
-const ClaimProvider: React.FC<ClaimProviderProps> = async ({ outcome }) => {
-  const { trace } = await outcome;
-  const provider = trace === null ? null : describeProvider(trace.nameservers);
-  if (provider === null) {
+const ClaimProvider: React.FC = () => {
+  const { view } = useCheck();
+  if (view === null || view.provider === null) {
     return null;
   }
 
-  return (
-    <p className='max-w-2xl text-neutral-600 text-sm leading-relaxed'>
-      {provider.recognized
-        ? claimCopy.record.provider.recognized(provider.name)
-        : claimCopy.record.provider.unrecognized(provider.name)}
-    </p>
-  );
+  return <p className='max-w-2xl text-neutral-600 text-sm leading-relaxed'>{view.provider}</p>;
 };
 
 export default ClaimProvider;

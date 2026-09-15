@@ -189,6 +189,49 @@ describe('stepsFor', () => {
     const step = stepsFor(outcome()).find((s) => s.key === 'nameservers');
     expect(step?.answer).toContain(NS);
   });
+
+  /**
+   * The friction log caught this against a real domain: the deployment held `loresprite.com` and a
+   * second check could not see the record, and the loudest thing this product can ever have to say
+   * came out as a grey line with a chevron on it.
+   *
+   * Whose move is next is the whole rule. On a claim nobody has acted on, a missing record is
+   * time's. On a claim that proved itself from that record, it is the person's.
+   */
+  describe('a claim that holds its name and has lost its record', () => {
+    const lost = outcome({
+      trace: trace({ outcome: { status: 'name_not_found' }, servers: [] }),
+      result: failed({
+        code: 'record_not_found',
+        queriedName: NAME,
+        nameservers: [NS],
+        negativeTtlSeconds: 300,
+      }),
+      status: 'verified',
+      verifiedAt: NOW,
+    });
+
+    it('marks the record step wrong rather than waiting', () => {
+      expect(states(lost)).toEqual(['done', 'done', 'wrong', 'idle', 'idle']);
+    });
+
+    it('says the record has gone rather than that it is not there yet', () => {
+      const step = stepsFor(lost).find((one) => one.key === 'record');
+      expect(step?.answer.toLowerCase()).not.toContain('yet');
+      expect(step?.fix?.title.toLowerCase()).not.toContain('yet');
+    });
+
+    it('opens the chain, since a cross under a closed line says nothing', () => {
+      expect(needsAttention(stepsFor(lost))).toBe(true);
+    });
+
+    // The same reason on a claim nobody has proved is still the quiet case.
+    it('leaves a pending claim on the same reason waiting', () => {
+      const pending = outcome({ ...lost, status: 'pending', verifiedAt: null });
+      expect(states(pending)).toEqual(['done', 'done', 'wait', 'idle', 'idle']);
+      expect(needsAttention(stepsFor(pending))).toBe(false);
+    });
+  });
 });
 
 describe('needsAttention', () => {

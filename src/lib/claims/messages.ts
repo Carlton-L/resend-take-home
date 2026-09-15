@@ -180,6 +180,7 @@ export const claimCopy = {
     record: {
       found: (n: number) => `${n === 1 ? '1 TXT record' : `${n} TXT records`} at the name`,
       none: 'no record at that name yet',
+      gone: 'the record that proved this name has gone',
       wrongType: 'the name answers, with no TXT on it',
       appended: 'nothing here, and the record is one level down',
     },
@@ -197,12 +198,10 @@ export const claimCopy = {
     /**
      * Shown when the chain is closed, which is when there is nothing to act on.
      *
-     * The time is absolute because this string is rendered once, on the server, and then sits on
-     * the screen for as long as the person leaves the page open. "Just now" was true for a second
-     * and a lie after that. A relative time that stays true has to tick, which is a client
-     * component, and it arrives with the timeline.
+     * No time in it. When the check ran and when it will run again are next to the control that
+     * asks again, which is where someone waiting on a record is already looking.
      */
-    summary: (when: string, through: string) => `Checked at ${when}. ${through}.`,
+    summary: (through: string) => `${through}.`,
     summaryThrough: 'Zone and nameservers found, no record at that name yet',
   },
 
@@ -215,6 +214,43 @@ export const claimCopy = {
 
   check: {
     running: 'Checking your nameservers',
+    /**
+     * The person who has just added the record and does not want to wait for the next check. The
+     * product runs the check either way, which is what `waiting` says beside this, so this button
+     * skips a wait rather than being the thing that starts a check.
+     */
+    now: 'Check now',
+    checking: 'Checking',
+    checkedAt: (since: string) => `Checked ${since}`,
+    waiting: (since: string) => `Checked ${since}, and again in a moment`,
+    stopped: (after: string) => `Automatic checks stopped after ${after}`,
+    limited: {
+      title: 'This claim has been checked too often',
+      description:
+        'Every check sends queries to the nameservers for this name, so the number of them in a few minutes is capped.',
+      action: 'Wait a minute, then press Check now.',
+    },
+    unavailable: {
+      title: 'The check could not run',
+      description: 'Something here failed before the nameservers were asked.',
+      action: 'Press Check now in a moment.',
+    },
+    offline: {
+      title: 'The check did not reach us',
+      description:
+        'The request failed before it got an answer, which is usually a dropped connection.',
+      action: 'Press Check now once you are back online.',
+    },
+    signedOut: {
+      title: 'This browser is no longer signed in',
+      description: 'The check was refused because the session behind this page has ended.',
+      action: 'Reload this page to sign in again.',
+    },
+    missing: {
+      title: 'This claim is no longer here',
+      description: 'It was released, or it belongs to a different account from the one signed in.',
+      action: 'Reload this page.',
+    },
     keepRecord:
       'Leave the record in place. It is re-checked from now on, and removing it puts the claim at risk.',
     provedButHeld: {
@@ -423,23 +459,78 @@ export const formatDeadline = (milliseconds: number): string => {
 };
 
 /**
+ * The same treatment for a window measured in minutes, sharing one list of spelled numbers with
+ * the deadline above. The list stops at ten, so the fifteen minute window reads as digits, which
+ * is the right register for a number that size anyway.
+ */
+export const formatMinutes = (milliseconds: number): string => {
+  const minutes = Math.round(milliseconds / 60_000);
+  const spelled =
+    Number.isInteger(minutes) && minutes < SPELLED.length ? SPELLED[minutes] : minutes;
+  return minutes === 1 ? 'one minute' : `${spelled} minutes`;
+};
+
+/**
+ * How long ago the last check was, in the words a person waiting would use.
+ *
+ * Rendered on the client and re-rendered on a timer, which is the only reason it can be relative
+ * at all. The server rendered this string once and it then sat on the screen saying "just now" for
+ * as long as the page was open.
+ *
+ * Coarse on purpose. A second by second count is motion on a page where nothing is happening.
+ */
+export const formatSince = (milliseconds: number): string => {
+  if (milliseconds < 45_000) {
+    return 'just now';
+  }
+  const minutes = Math.round(milliseconds / 60_000);
+  return minutes <= 1 ? 'a minute ago' : `${minutes} minutes ago`;
+};
+
+/** What a check knows about the claim that changes the words, rather than the reason. */
+export type FailureContext = {
+  /** The claim already holds this name, so a missing record is a loss rather than a beginning. */
+  held: boolean;
+};
+
+/**
  * Six of the nine reasons in the RFC. The three that need the DoH leg to be told apart from these
  * arrive with it, and this switch is exhaustive so adding one to the union breaks the build until
  * it has a message.
+ *
+ * `context` carries the one thing the reason cannot: whether this claim already proved itself. The
+ * same absent record means "not added yet" on a new claim and "taken out" on a name this account
+ * holds, and the words for those are not the same.
  */
-export const describeFailure = (reason: FailureReason): FailureMessage => {
+export const describeFailure = (
+  reason: FailureReason,
+  context: FailureContext = { held: false },
+): FailureMessage => {
   switch (reason.code) {
     case 'record_not_found': {
       const cacheNote =
         reason.negativeTtlSeconds === null
           ? ''
           : ` Public resolvers hold an absence for up to ${reason.negativeTtlSeconds} seconds, which is why other tools can lag behind this one.`;
+
+      // A record that was there and is gone. Saying "yet" to someone whose name verified from that
+      // record describes a claim they finished weeks ago as one they have not started.
+      if (context.held) {
+        return {
+          title: 'The record is no longer answering',
+          record: { label: 'Looked for', values: [reason.queriedName] },
+          description: `This name was proved from that record and your nameservers now have nothing at it. A DNS migration does this, and so does a panel tidied up by someone who did not know what the record was for.${cacheNote}`,
+          copyable: null,
+          action: 'Put the record below back in your DNS panel.',
+        };
+      }
+
       return {
         title: 'No record there yet',
         record: { label: 'Looked for', values: [reason.queriedName] },
-        description: `Your nameservers answered and had nothing at that name. This check asks them directly, so a record appears here as soon as you save it.${cacheNote}`,
+        description: `Your nameservers answered and had nothing at that name. This check asks them directly and runs again on its own, so a record appears here within seconds of you saving it.${cacheNote}`,
         copyable: null,
-        action: 'Add the record below, then reload this page.',
+        action: 'Add the record below.',
       };
     }
 
@@ -485,11 +576,12 @@ export const describeFailure = (reason: FailureReason): FailureMessage => {
 
     case 'nameservers_unreachable':
       return {
-        title: 'No answer from the nameservers',
+        title: 'Still waiting on your nameservers',
         record: { label: 'Asked', values: [...reason.attempted] },
-        description: `None of them answered within ${formatDeadline(reason.timeoutMs)}. A zone that is slow and a zone that is down look the same from here, so this on its own does not mean anything is broken.`,
+        description: `None of them answered within ${formatDeadline(reason.timeoutMs)}. A zone that is slow and a zone that is down look the same from here, and this page keeps asking, so a slow one clears itself.`,
         copyable: null,
-        action: 'Reload this page in a few minutes.',
+        action:
+          'If this does not clear, check the nameservers set for the domain at your registrar.',
       };
 
     case 'zone_not_found':
@@ -499,7 +591,7 @@ export const describeFailure = (reason: FailureReason): FailureMessage => {
         description:
           'Working up from the name, no level answered with nameservers. A domain registered without nameservers set does this, and so does one registered in the last few minutes.',
         copyable: null,
-        action: 'Set nameservers for the domain at your registrar, then reload this page.',
+        action: 'Set nameservers for the domain at your registrar.',
       };
 
     default: {

@@ -83,3 +83,32 @@ export const claims = pgTable(
     index('claims_name_idx').on(table.name),
   ],
 );
+
+/**
+ * One row per check we agreed to run, which is what the limit on checks is counted from.
+ *
+ * A table of its own rather than a kind column on `sign_in_attempts`. That table stores keyed
+ * hashes so it cannot be read back as a list of who tried to sign in, and a check is a signed in
+ * account acting on its own row, so there is nothing to hide from ourselves and hashing would make
+ * the per claim count impossible. Sharing one table would also mean two retention windows in one
+ * prune and a kind test added to a statement that already works.
+ *
+ * `claim_id` cascades, because releasing a claim deletes the row and a foreign key with no cascade
+ * would refuse that delete for the few minutes an attempt row survives.
+ */
+export const checkAttempts = pgTable(
+  'check_attempts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id').notNull(),
+    claimId: uuid('claim_id')
+      .notNull()
+      .references(() => claims.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('check_attempts_created_at_idx').on(table.createdAt),
+    index('check_attempts_owner_idx').on(table.ownerId, table.createdAt),
+    index('check_attempts_claim_idx').on(table.claimId, table.createdAt),
+  ],
+);

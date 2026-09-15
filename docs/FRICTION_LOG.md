@@ -197,8 +197,13 @@ which still appears with no waiting.
 
 Residual: the record card is still driven by the row, so on that first render it stays expanded
 under a verified pill. That reads as redundant rather than contradictory, and collapsing it mid-read
-would move the page under the pointer. Revisit when the timeline gives the screen a client-side
-check.
+would move the page under the pointer.
+
+Revisited in #12, now that the check does run on the client and the card could collapse itself when
+one comes back verified. It does not. The answer arrives seconds after the page settled, so the
+collapse would happen under someone who is reading, and the reason the card stays reachable on a
+held claim is that comparing this value against the panel is why they opened it. Closed rather than
+deferred again.
 
 ### The copy buttons did not say which field they belonged to
 
@@ -290,8 +295,7 @@ stopped answering", and underneath it a single collapsed grey line that had to b
 out what had happened. This is the `at_risk` shape, which the RFC says the product can model and
 never enter. It can be entered, by a check that disagrees with the row.
 
-Deferred, as one piece of work with the state that owns it. Three things are wrong and only the
-first two are cheap:
+Resolved in #12, all three together. Three things were wrong:
 
 1. The chain was closed. `needsAttention` sorts on which step stopped the check and never asks
    whether the claim holds the name. A verified claim whose record has gone is the loudest thing
@@ -301,9 +305,13 @@ first two are cheap:
 3. The message is written for a first-time claimant. "No record there yet" and "Add the record
    below" are the wrong words for a record that was there and is gone.
 
-One and two are a branch in `steps.ts`, which already receives the claim's status. Three needs a
-second variant of `record_not_found` that knows about the claim, which is the `at_risk` slice.
-Shipping one and two alone puts a cross beside copy that says "yet", so they go together.
+One and two are one branch in `steps.ts`, which already receives the claim's status. Three turned
+out not to need the `at_risk` state at all: `describeFailure` takes a second argument saying whether
+this claim already holds the name, and only `record_not_found` reads it. Every other reason means
+the same thing on a held claim and there is a test asserting the words do not move.
+
+The state is still not written by anything. A held claim failing a check reads as `at_risk` and is
+stored as `verified`, which is the same gap the RFC records, now with the right words on it.
 
 ### The check chain opened and I could not tell that I had opened it
 
@@ -319,8 +327,11 @@ had nothing to style. There is now a chevron that turns when it opens.
 The closed chain line reads "Checked just now" and never stops reading that, however long the page
 is left open. Waiting is exactly what someone does on this screen.
 
-Resolved in #9. It says the time instead. A relative time that stays true has to tick, which is a
-client component, and it arrives with the timeline.
+Resolved in #9. It said the time instead.
+
+Changed again in #12. The relative time is back and it is true, because the client re-checks and
+re-renders it, and it moved out of the chain to sit beside Check now. Saying when the last check
+ran is only useful next to the thing that runs another.
 
 ### I could not tell which of the two pages I was on
 
@@ -363,8 +374,13 @@ A pending claim is a screen someone sits on while they go and edit their zone. I
 and the only way to ask again is the browser's reload button. The list has the same gap with no
 way to refresh a row.
 
-Deferred to the timeline slice, which moves the check to an endpoint and gives both screens
-something to call.
+Resolved in #12 for the record screen. The check is an endpoint, the screen asks on its own at
+5s, 15s, 30s, 60s and then every minute, and Check now is for the person who has just saved the
+record and does not want to wait for the next one. It stops after fifteen minutes and says so.
+
+The list still has no way to refresh a row. It runs no check by design, and a row's state is the
+claim's own, so the gap there is that nothing re-checks a verified claim at all, which is the cron
+the Vercel plan cannot serve. Not closed, and recorded in the RFC rather than here.
 
 ### Focus seemed to leave the field after Enter on an incomplete name
 
@@ -374,3 +390,37 @@ and a stray Tab would explain it.
 
 Accepted for now, unreproduced. Nothing in the form moves focus and the disclosure is a sibling.
 A keyboard-only pass is queued, and if it is real it is a bug rather than a friction.
+
+## 2026-09-14, the check from an endpoint, local dev and a real domain
+
+Testing the check endpoint. One entry.
+
+### I deleted the record and the product kept saying the name was verified
+
+Deleted the `_domainclaim-challenge` TXT record for carlton.dev in the Squarespace panel, went back to
+the claim, pressed Check now, and the check found the record and matched the token. The panel row was
+gone and the screen said verified.
+
+Accepted, and the product is right. Measured with `dig` against each authoritative server in turn:
+
+```
+a1: "domainclaim-token=VD466EZ3NQWKH5PBGMSU2CX7VYUF2B4X expiry=2026-09-20T21:42:50Z"
+b1: same
+c1: same
+d1: same
+```
+
+All four Google nameservers were still serving the record after the panel said it had gone. carlton.dev
+is registered at Squarespace and served by Google, so deleting a record there is a write to
+Squarespace's control plane, which then has to publish the zone. That is a third kind of lag, alongside
+caching and alongside our own one vantage point, and it is the only one the person doing the deleting
+can see nothing of.
+
+Two things follow. The RFC's Background said nothing propagates and authoritative servers are current,
+which is true of a published zone and says nothing about the gap between a panel and the zone it
+publishes. It now says both. And the at risk case cannot be demonstrated on this domain on demand, so
+it moves to a zone whose panel publishes quickly.
+
+Not changed: the product should not start hedging about this. The check reports what the nameservers
+answer, which is what every other consumer of that zone sees too. A screen that said "your panel may
+disagree" on every successful check would be noise on the one outcome that is never in doubt.

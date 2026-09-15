@@ -67,11 +67,9 @@ export type ClaimOutcome = Check & ClaimAfterCheck;
  * still being pending, scoped to its owner in the same statement, and therefore a no-op under a
  * reload. The page is `force-dynamic`, so nothing prerenders or caches it into a shared copy.
  *
- * This returns one value that both the status at the top of the record screen and the result below
- * it render from. Before it existed the status came from the claim row, which is what the shell was
- * sent with, so a claim that verified during the render showed PENDING above its own verified
- * result. The page now creates this promise once and hands it to both, each inside its own Suspense
- * boundary, so the work happens once and both regions stream when it resolves.
+ * This returns one value that the status at the top of the record screen, the chain below it and
+ * the provider line at the foot all render from, so the three cannot disagree. It runs once per
+ * request to the check endpoint, which is the only caller.
  */
 export const runCheck = async (claim: Claim, now: Date = new Date()): Promise<ClaimOutcome> => {
   const { trace, result } = await checkClaim(claim, now);

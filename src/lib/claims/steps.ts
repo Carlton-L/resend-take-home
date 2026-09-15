@@ -47,12 +47,16 @@ const idle = (key: StepKey): CheckStep => ({
 export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
   const { trace, result, status, verifiedAt, provedButHeld } = outcome;
   const copy = claimCopy.steps;
+  // Whether this claim already proved itself, which changes the words on a record that has gone
+  // and changes whose move is next. Read once here and passed down, so one reading feeds the
+  // state, the answer and the message.
+  const held = holdsTheName(status);
 
   // An expired claim is decided from the row before any query, so there is no trace to read and no
   // step got as far as being asked.
   if (trace === null) {
     return [
-      { key: 'zone', state: 'wrong', answer: copy.zone.expired, fix: failureOf(result) },
+      { key: 'zone', state: 'wrong', answer: copy.zone.expired, fix: failureOf(result, held) },
       idle('nameservers'),
       idle('record'),
       idle('token'),
@@ -65,7 +69,7 @@ export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
       key: 'zone',
       state: 'wrong',
       answer: copy.zone.none,
-      fix: failureOf(result),
+      fix: failureOf(result, held),
     };
     return [none, idle('nameservers'), idle('record'), idle('token'), idle('claim')];
   }
@@ -92,7 +96,7 @@ export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
       key: 'nameservers',
       state: 'wait',
       answer: copy.nameservers.silent,
-      fix: failureOf(result),
+      fix: failureOf(result, held),
     };
     return [zone, silent, idle('record'), idle('token'), idle('claim')];
   }
@@ -108,12 +112,12 @@ export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
     fix: null,
   };
 
-  const record = recordStep(outcome);
+  const record = recordStep(outcome, held);
   if (record.state !== 'done') {
     return [zone, nameservers, record, idle('token'), idle('claim')];
   }
 
-  const token = tokenStep(outcome);
+  const token = tokenStep(outcome, held);
   if (token.state !== 'done') {
     return [zone, nameservers, record, token, idle('claim')];
   }
@@ -121,10 +125,10 @@ export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
   return [zone, nameservers, record, token, claimStep(status, verifiedAt, provedButHeld)];
 };
 
-const failureOf = (result: ClaimOutcome['result']): FailureMessage | null =>
-  result.status === 'failed' ? describeFailure(result.reason) : null;
+const failureOf = (result: ClaimOutcome['result'], held: boolean): FailureMessage | null =>
+  result.status === 'failed' ? describeFailure(result.reason, { held }) : null;
 
-const recordStep = ({ trace, result }: ClaimOutcome): CheckStep => {
+const recordStep = ({ trace, result }: ClaimOutcome, held: boolean): CheckStep => {
   const copy = claimCopy.steps.record;
 
   if (trace !== null && trace.outcome.status === 'records_found') {
@@ -139,19 +143,26 @@ const recordStep = ({ trace, result }: ClaimOutcome): CheckStep => {
   // A name that exists with no TXT on it is the person's to fix. A name with nothing at it on a
   // claim nobody has acted on is the expected state, so it waits rather than failing.
   if (result.status === 'failed' && result.reason.code === 'no_txt_at_name') {
-    return { key: 'record', state: 'wrong', answer: copy.wrongType, fix: failureOf(result) };
+    return { key: 'record', state: 'wrong', answer: copy.wrongType, fix: failureOf(result, held) };
   }
 
   // Nothing at the name and the record one level down. The person has to move it, so this is theirs
   // rather than time's.
   if (result.status === 'failed' && result.reason.code === 'appended_zone_suspected') {
-    return { key: 'record', state: 'wrong', answer: copy.appended, fix: failureOf(result) };
+    return { key: 'record', state: 'wrong', answer: copy.appended, fix: failureOf(result, held) };
   }
 
-  return { key: 'record', state: 'wait', answer: copy.none, fix: failureOf(result) };
+  // Nothing at the name on a claim that already holds it. The record was there when the name was
+  // proved, so its absence is the person's move and the loudest thing this product ever has to
+  // say. Waiting is the right reading only while nobody has added it yet.
+  if (held) {
+    return { key: 'record', state: 'wrong', answer: copy.gone, fix: failureOf(result, held) };
+  }
+
+  return { key: 'record', state: 'wait', answer: copy.none, fix: failureOf(result, held) };
 };
 
-const tokenStep = ({ result }: ClaimOutcome): CheckStep => {
+const tokenStep = ({ result }: ClaimOutcome, held: boolean): CheckStep => {
   const copy = claimCopy.steps.token;
 
   if (result.status === 'verified') {
@@ -159,10 +170,10 @@ const tokenStep = ({ result }: ClaimOutcome): CheckStep => {
   }
 
   if (result.reason.code === 'token_expired') {
-    return { key: 'token', state: 'wrong', answer: copy.expired, fix: failureOf(result) };
+    return { key: 'token', state: 'wrong', answer: copy.expired, fix: failureOf(result, held) };
   }
 
-  return { key: 'token', state: 'wrong', answer: copy.mismatch, fix: failureOf(result) };
+  return { key: 'token', state: 'wrong', answer: copy.mismatch, fix: failureOf(result, held) };
 };
 
 const claimStep = (
@@ -215,6 +226,10 @@ export const stoppedAt = (steps: CheckStep[]): CheckStep | null =>
  * added a record for yet. Everything else, including a failure before the record was ever looked
  * for, opens the chain, because a broken zone should not be hidden from someone about to spend ten
  * minutes adding a record that can never answer.
+ *
+ * A claim that already holds its name and cannot find its record is not that silent case, and it
+ * does not need a rule here: `recordStep` marks it wrong rather than waiting, which opens the
+ * chain on its own. Whose move is next is the only question either of them asks.
  */
 export const needsAttention = (steps: CheckStep[]): boolean => {
   const stopped = stoppedAt(steps);

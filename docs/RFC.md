@@ -13,6 +13,10 @@ User: one person who controls their own DNS.
   and is correct.
 - Token goes in a scoped underscore TXT label. Underscores cannot collide with hostnames.
 - Nothing propagates. Authoritative servers are current, caches lag.
+- A DNS panel is not the zone. Deleting a record at a registrar whose DNS is served elsewhere is a
+  write to that registrar's control plane, which then publishes to the nameservers. Measured
+  2026-09-14: a record deleted in the Squarespace panel for carlton.dev was still served by all four
+  Google nameservers afterwards. That lag is separate from caching and nothing in DNS reports it.
 - Negative caching happens in recursive resolvers. Authoritative servers do not cache. The TXT
   query goes straight to authoritative, so the answer that decides caches nothing. The zone walk
   and the address lookups are recursive, and ask about NS and A rather than the token. The DoH
@@ -46,8 +50,9 @@ User: one person who controls their own DNS.
    provider from NS.
 4. Check runs on arrival, no Verify button. Timeline shows nameservers found, each server queried,
    answer compared. First check always misses, the record is not added yet.
-5. Re-checks while the claim is open. Backoff 5s, 15s, 30s, 60s, then every 60s. Stops at 15
-   minutes or token expiry. "Check now" for a user who has just added the record. Both rate limited.
+5. Re-checks while the claim is open. Backoff 5s, 15s, 30s, 60s, then every 60s, each gap measured
+   from the previous answer. Stops at 15 minutes or token expiry, and says it stopped. "Check now"
+   for a user who has just added the record, which also starts the cadence over. Both rate limited.
 6. Verified. Show `verified_at`, `last_checked_at`, `next_check_at`.
 7. Domain list. Each row carries the claim's own status, read from the row. Scheduled re-checks.
    Email on status change.
@@ -87,10 +92,15 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
   the screen derives `checking` from the in-flight request and shows each server as it lands
 - Public suffix and parse failures are validation errors, not states
 - Route Handlers, not Server Actions. Node runtime, never Edge
-- Rate limits on claims created per account and on sign in email, counted in Postgres. The sign in
-  check and its record are one SQL statement, which also prunes the window. Limits on automatic
-  re-checks and on "Check now" arrive with those features. The record screen's own check is
-  unlimited until it moves to an endpoint, which the Open list carries
+- Checks run from the browser against `POST /api/claims/[id]/check`, which answers with the five
+  steps as the screen renders them. The page renders the record from the row and runs no query
+- Rate limits on claims created per account, on sign in email, and on checks, counted in Postgres.
+  Each decision and its record are one SQL statement, which also prunes the window. Checks are
+  counted per claim and per account, 20 and 60 per five minutes, both above the cadence so the
+  product does not limit itself
+- `maxDuration` 20 on the check route. The worst case is the 2s deadline on every step a trace
+  reaches, five for a four label name, plus a second each for the two probes that only run after a
+  failure. Below that, a slow zone returns a platform error instead of our message
 - One way in to the resolver: a claim this account owns. The public trace route that the DNS slice
   shipped with is deleted, since it let anyone aim our nameserver queries at any zone, as often as
   they liked, with no account and no ceiling
@@ -122,10 +132,20 @@ type ClaimState =
 `claims`, with a unique index on the normalized name covering verified, at risk and contested rows.
 One owner per name, any number of pending attempts, which is what step 8 needs. A contested row is
 still the incumbent's, so leaving it out would free the name for a third account for the length of
-the contest. `checks`, one row per check holding its full trace. `transfers`.
+the contest.
+
+`check_attempts`, one row per check we agreed to run, which is what the check limit counts. Rows are
+pruned by the statement that counts them.
+
+`checks` and `transfers` are designed here and not built. `checks` held the full trace of every
+check for a history nothing renders, and the timeline turned out not to need it: the steps are
+derived from a check that has just run and sent as the screen reads them. `transfers` belongs to
+step 8, which is dropped.
 
 `sign_in_attempts`, one row per sign in email sent. Address and source address are stored as keyed
-hashes, so the table counts without becoming a list of who tried to sign in.
+hashes, so the table counts without becoming a list of who tried to sign in. `check_attempts` stores
+ids plainly instead, because a check is a signed in account acting on its own row and hashing would
+make the per claim count impossible.
 
 ### Test mode
 
@@ -234,9 +254,42 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 - The trace says what DNS holds at a name. Comparing that against a claim happens above it, which
   keeps the trace usable as a diagnostic on its own.
 - The record screen renders before its first check. The record is what the user came for and the
-  check is the slow part, so the record card is sent first and the check streams in behind it. The
-  worst case for a trace is the deadline times the number of steps, so blocking on it is not a
-  rounding error.
+  check is the slow part, so the page sends the record from the row and the browser asks for the
+  check. The worst case for a trace is the deadline times the number of steps, so blocking on it is
+  not a rounding error.
+- The check runs from the browser against an endpoint rather than in the page body. One cause sat
+  under three problems: it could not be rate limited, a prefetched list row spent a trace and a
+  write on a cursor passing over it, and the only way to ask again was the browser's reload button.
+  Cost: a browser with JavaScript off sees the record and no check. Accepted, because the record is
+  what the user came for and proving control is a round trip either way. The claim form still posts
+  a plain form and still works without it.
+- The endpoint answers with the five steps as the screen renders them rather than with the trace.
+  Sending the trace would put the copy, the step rules and the provider table into the browser
+  bundle to produce the same strings a second time, and every date in it would arrive as a string
+  under a type that still said `Date`.
+- Each gap in the cadence is measured from the previous answer. A check costs about 250ms on a
+  healthy zone and the deadline on every step of a broken one, so gaps timed from the start would
+  overlap requests against exactly the zones already struggling.
+- Check now restarts the cadence rather than running one check. Someone pressing it has just
+  changed their zone, which is the moment the schedule was designed around.
+- The cadence stops after 15 minutes and says so. A page left open overnight should not keep a tab
+  polling, and an absence of checks that is not stated is the same ambiguity as a chain that
+  disappears.
+- A check that fails to run is not a check that failed. Limited, unavailable, offline, signed out
+  and released each get the four part message minus the DNS value, and four of the five are
+  answered by the button that is already there.
+- The timeline stores nothing. `last_checked_at` would buy one string the client can produce
+  truthfully from its own last answer, and a stored check has no reader until history is rendered.
+- `check_attempts` is its own table rather than a kind column on `sign_in_attempts`. That table
+  stores hashes so it cannot be read back as a list of who tried to sign in, which is the wrong
+  shape for counting checks per claim, and sharing it would put two retention windows in one prune.
+- A claim that holds its name and cannot find its record is the person's move, not time's. The
+  record step reads as wrong, the chain opens, and the message says the record has gone rather than
+  that it has not been added yet.
+- `nameservers_unreachable` reads as waiting rather than as a warning now that the page keeps
+  asking. A zone that has not answered yet is a notification. No third step state: whose move is
+  next already has an answer for it, and a second vocabulary for the same answer is how a person
+  learns to stop reading either.
 - A check that finds the record verifies the claim. Finding it and leaving the claim pending would
   be a bug rather than a scope line.
 - The check renders as its five steps rather than a result box: find the zone, reach the
@@ -257,8 +310,8 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   did everything right.
 - The provider line sits at the foot, beneath both cards, where it is acted on.
 - No per-server timings. One count of answered steps in the chain header.
-- One check promise feeds the status, the chain and the provider line. The page starts it without
-  awaiting and hands it to three Suspense boundaries, so the trace and the write happen once.
+- One check answer feeds the status, the chain and the provider line. The browser holds it and the
+  three regions read it, so the trace and the write happen once and the three cannot disagree.
   Without this a claim that verified mid-render showed PENDING above its own verified result.
 - The row moving decides the status, not the check. A write that hits the unique index or fails
   leaves the claim where it was.
@@ -332,9 +385,12 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   and a row before they can send anything, and a navigation with nothing on screen reads as a
   product that has hung. The claim button disables itself separately, because a form post is a
   fresh document load and no route fallback covers it.
-- The closed check line says the time it checked rather than "just now". The string is rendered
-  once and then sits on a screen somebody is waiting at. A relative time that stays true has to
-  tick, which needs the client, so it arrives with the timeline.
+- The closed check line carries no time at all. When the check ran, and that another is coming,
+  are said next to the button that asks now, which is the one place either can be acted on. The
+  relative time is honest again because the client re-renders it, and it is coarse, since a second
+  by second count is motion on a page where nothing is happening.
+- The list's rows prefetch again, and the comment explaining why they did not is deleted with the
+  prop. A prefetched record screen now costs a render and two reads.
 - A pending claim whose token has run out reads as expired on the list. The row is still pending in
   the database, and the list is the one screen that no check will correct.
 
@@ -355,13 +411,6 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   told nothing, because notification and the decision both belong to step 8.
 - Whether the incumbent decides, a timer decides, or proving control simply wins after a notice
   period. Atlassian and Google both keep the incumbent until a person acts.
-- Checks are not rate limited yet. The security floor names the limit and the record screen runs a
-  check on every load, so a signed in account can point the resolver at a stranger's nameservers as
-  fast as it can reload. It lands with the timeline, which moves the check to an endpoint the limit
-  can sit on.
-- The list's rows do not prefetch, because the record screen runs its check in the page body and a
-  prefetched row would spend a DNS trace and a database write on a cursor passing over it. The
-  prefetch comes back when the timeline moves the check to an endpoint.
 - The claim limit counts rows rather than attempts, so releasing a claim frees quota. The sign in
   limiter counts attempts in a table of their own and does not have this.
 - Nothing re-checks a verified claim, so `at_risk` is a state the product can model and never enter.
@@ -374,15 +423,16 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 
 | Reason | Title | Next action | Test |
 | --- | --- | --- | --- |
-| `record_not_found` | No record there yet | Add the record above, then reload this page. | `record-not-found.test` |
+| `record_not_found` | No record there yet | Add the record above. | `record-not-found.test` |
+| `record_not_found`, on a claim that holds the name | The record is no longer answering | Put the record above back in your DNS panel. | Verified claim, record removed |
 | `no_txt_at_name` | The name exists with no TXT record on it | Check what your panel already has on that one name, since only this TXT record should be on it. | `no-txt-at-name.test` |
 | `cname_at_name` | | | |
 | `value_mismatch` | A TXT record is there with a different value | Replace the value with the one above, copied whole. | `value-mismatch.test` |
 | `appended_zone_suspected` | Your DNS panel added the domain to the name | Delete that record and add it again using the short name below. | `appended-zone.test` |
 | `token_expired` | This claim has expired | Release this claim and start a new one, which issues a fresh token. | Claim row, no query |
 | `dnssec_broken` | | | |
-| `nameservers_unreachable` | No answer from the nameservers | Reload this page in a few minutes. | `nameservers-unreachable.test` |
-| `zone_not_found` | No nameservers found for this domain | Set nameservers for the domain at your registrar, then reload this page. | `zone-not-found.test` |
+| `nameservers_unreachable` | Still waiting on your nameservers | If this does not clear, check the nameservers set for the domain at your registrar. | `nameservers-unreachable.test` |
+| `zone_not_found` | No nameservers found for this domain | Set nameservers for the domain at your registrar. | `zone-not-found.test` |
 
 `cname_at_name` needs a CNAME query, which is a new method on the resolver interface, for one
 message. `dnssec_broken` needs the DoH leg, which is dropped. Both stay empty.
