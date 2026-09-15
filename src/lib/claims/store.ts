@@ -25,8 +25,40 @@ export type Claim = {
 /** Postgres unique violation. Both indexes on `claims` are unique, so either can raise it. */
 const UNIQUE_VIOLATION = '23505';
 
-const isUniqueViolation = (error: unknown): boolean =>
-  typeof error === 'object' && error !== null && 'code' in error && error.code === UNIQUE_VIOLATION;
+/** How far to follow `cause`. Enough for any wrapping here, and short enough that a cause
+ * pointing back at its own error cannot spin inside a catch block. */
+const CAUSE_DEPTH = 5;
+
+/**
+ * Whether this error is Postgres refusing a duplicate, however deep it is wrapped.
+ *
+ * It reads `code` off the error that was caught, and Drizzle does not throw the driver's error.
+ * Since 0.44 it throws its own `DrizzleQueryError` and hangs the original off `cause`, so `code`
+ * on what arrives here is undefined and every unique violation read as an outage. That made
+ * `held_by_another` unreachable: a challenger who proved control of a name another account holds
+ * was told the write had not landed rather than that the name was taken.
+ *
+ * Walks the chain rather than reaching for `cause` once, since nothing promises how many wrappers
+ * there are, and a version of Drizzle that stops wrapping should not break this either.
+ *
+ * Exported because it is the one thing in this module that can be tested without Postgres.
+ */
+export const isUniqueViolation = (error: unknown): boolean => {
+  let current: unknown = error;
+  for (let depth = 0; depth < CAUSE_DEPTH; depth += 1) {
+    if (typeof current !== 'object' || current === null) {
+      return false;
+    }
+    if ('code' in current && current.code === UNIQUE_VIOLATION) {
+      return true;
+    }
+    if (!('cause' in current)) {
+      return false;
+    }
+    current = current.cause;
+  }
+  return false;
+};
 
 /**
  * This account's live claim on this name, if it has one.
