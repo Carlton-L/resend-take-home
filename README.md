@@ -4,8 +4,9 @@ Claim a domain, prove you control it, and see what is happening at every step.
 
 Most verification is opaque: paste a record, wait 48 hours, check back. This asks your zone's
 authoritative nameservers directly and reports what each one answered. Every failure names a reason
-and one next action. Ownership is persistent state, so the claim keeps being checked after it
-verifies.
+and one next action. Ownership keeps being checked after it is proved: a name whose record stops
+answering moves to At risk on the next check, and back when the record returns. Nothing re-checks on
+a schedule, for the reason in the RFC.
 
 Live at [domainclaim-pi.vercel.app](https://domainclaim-pi.vercel.app). Take-home for Resend.
 Decisions are in [docs/RFC.md](docs/RFC.md).
@@ -37,6 +38,15 @@ claim.
 | `zone-not-found.test` | No level answers with nameservers |
 | `slow-nameservers.test` | Alive but past the deadline, which reads the same as down |
 
+`slow-nameservers.test` and `nameservers-unreachable.test` render the same screen today. A slow zone
+and a dead one differ in whether they resolve while you watch, which is what the five steps arriving
+one at a time would show, and that is not built. Both names are kept, because the difference is real
+and the screen is what does not show it yet.
+
+No demo name reaches At risk. A script is fixed per name, so a name that fails can never verify
+first, and that state needs a claim that proved itself and then lost its record. It is reachable
+only on a real domain.
+
 ## How it works
 
 - Checks go straight to the zone's authoritative nameservers over UDP/53. Those do not cache, so a
@@ -55,6 +65,11 @@ claim.
   the claim is open: 5s, 15s, 30s, 60s, then every minute, stopping after fifteen and saying so.
   Check now is for the person who has just saved the record and does not want to wait for the next
   one. Both are rate limited, per claim and per account.
+- A check that disagrees with the row moves the row. A name this account holds whose record has gone
+  becomes At risk, stamped with when it started failing, and a record that answers again clears it
+  and says so. Only the failures where the nameservers answered and the record was not in what came
+  back write that state. A timeout says nothing about what is in a zone, and from one vantage point
+  it should not be allowed to take a name off an account.
 - The check reports itself as five steps, each carrying the answer it got: find the zone, reach the
   nameservers, find the TXT record, match the token, record the claim. A step that has not passed is
   not the same as one that has gone wrong, and they are drawn differently: if the next move belongs
@@ -83,6 +98,7 @@ Built:
 - Claim issue with a scoped token, and the record to add
 - The check, run on arrival and again on a cadence, against real DNS, reported as its five steps
 - Check now, at a rate limited endpoint
+- At risk when a held name loses its record, and recovery when it comes back
 - Seven of nine failure reasons, each with one action and the remediation in the step that produced it
 - The list of an account's claims, including the ones not proved yet
 - Releasing a claim
@@ -90,8 +106,11 @@ Built:
 Not built yet:
 
 - The five steps arriving one at a time, with the waiting ring animating while one is in flight
-- Scheduled re-verification, grace window, notification email
-- Transfers for a contested name
+- Scheduled re-verification. A name that loses its record while nobody has it open goes unnoticed
+  until somebody opens it
+- The grace window and the notification email, which both sit behind that schedule, so At risk has
+  no exit to Revoked
+- Transfers for a contested name. `contested` and `revoked` are modelled and nothing writes them
 - A second opinion over DNS-over-HTTPS. It separates a CNAME at the name and broken DNSSEC from the
   failures above, and shows how far behind public resolvers are while they catch up. Its larger job
   is doubt, for the reason in the section above
@@ -127,13 +146,16 @@ Node 24.x. Needs a Supabase project and a Resend API key. Every variable is docu
 CI runs `pnpm verify` on every pull request, with no secrets, because nothing reads an environment
 variable at module scope.
 
-350 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the
-comparison against a claim, the step list and every user-facing string. The DNS layer sits behind an
+370 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the
+comparison against a claim, the state each check leaves the claim in, the step list and every
+user-facing string. The DNS layer sits behind an
 interface with a scripted fake, so no test touches the network.
 
 The coverage is deliberately lopsided and the gap should be named. The database layer needs a real
-Postgres and has no automated tests, and three of the bugs found in review lived there. It is covered
-by a manual pass, and in-process Postgres is queued.
+Postgres and has almost no automated tests, and four of the bugs found in review lived there. It is
+covered by a manual pass, and in-process Postgres is queued. The one test it does have is the
+function that decides whether an error is Postgres refusing a duplicate, which needs no database
+because it runs before anything is written.
 
 ## Documents
 
