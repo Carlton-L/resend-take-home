@@ -1,5 +1,6 @@
 // src/app/claim/[id]/loading.tsx
 import type React from 'react';
+import BackLink from '@/components/BackLink/BackLink';
 import Skeleton from '@/components/Skeleton/Skeleton';
 import { claimCopy } from '@/lib/claims/messages';
 
@@ -12,7 +13,12 @@ import { claimCopy } from '@/lib/claims/messages';
  * page with nothing said.
  */
 const Loading: React.FC = () => (
-  <main className='mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:py-24'>
+  <main
+    id='main'
+    className='mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:py-24'
+  >
+    {/* Static, so it renders in the skeleton too and nothing shifts when the page lands. */}
+    <BackLink />
     <div role='status' className='flex flex-col gap-6'>
       <span className='sr-only'>{claimCopy.loading.record}</span>
 
@@ -21,8 +27,8 @@ const Loading: React.FC = () => (
         <Skeleton className='h-8 w-64' />
       </div>
 
-      <Skeleton className='h-12 w-full max-w-2xl rounded-md' />
-      <Skeleton className='h-64 w-full rounded-md' />
+      <Skeleton className='h-12 w-full rounded-lg' />
+      <Skeleton className='h-64 w-full rounded-lg' />
     </div>
   </main>
 );

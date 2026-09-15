@@ -85,10 +85,10 @@ describe('checkView', () => {
     const PROVED = new Date('2026-09-01T09:00:00Z');
     const back = verified({ recovered: true, verifiedAt: PROVED });
 
-    it('says the record is answering again and names the server', () => {
+    it('says the record is back and names the server', () => {
       expect(back.status).toBe('verified');
       expect(checkView(back).status.line).toContain(NS);
-      expect(checkView(back).status.line.toLowerCase()).toContain('again');
+      expect(checkView(back).status.line.toLowerCase()).toContain('no longer at risk');
     });
 
     it('reads as held rather than as something to act on', () => {

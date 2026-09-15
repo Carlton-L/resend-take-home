@@ -13,8 +13,8 @@ type FailureNoticeProps = {
 };
 
 const TONES = {
-  neutral: 'border-neutral-200 bg-neutral-50',
-  attention: 'border-amber-300 bg-amber-50',
+  neutral: 'border-line bg-surface-2',
+  attention: 'border-attention-line bg-attention-bg',
 } as const;
 
 /**
@@ -23,17 +23,17 @@ const TONES = {
  */
 const FailureNotice: React.FC<FailureNoticeProps> = ({ message, tone }) => {
   return (
-    <div className={`flex flex-col gap-3 rounded-md border p-5 ${TONES[tone]}`}>
-      <h3 className='font-medium text-neutral-900'>{message.title}</h3>
+    <div className={`flex flex-col gap-3 rounded-lg border p-5 ${TONES[tone]}`}>
+      <h3 className='font-medium text-fg'>{message.title}</h3>
 
       {message.record !== null && (
         <div className='flex flex-col gap-1'>
-          <span className='font-medium text-neutral-500 text-xs uppercase tracking-wider'>
+          <span className='font-medium text-fg-3 text-xs uppercase tracking-wider'>
             {message.record.label}
           </span>
           <ul className='flex flex-col gap-1'>
             {message.record.values.map((value) => (
-              <li key={value} className='break-all font-mono text-neutral-900 text-sm'>
+              <li key={value} className='break-all font-mono text-fg text-sm'>
                 {value}
               </li>
             ))}
@@ -41,8 +41,8 @@ const FailureNotice: React.FC<FailureNoticeProps> = ({ message, tone }) => {
         </div>
       )}
 
-      <p className='text-neutral-700 text-sm leading-relaxed'>{message.description}</p>
-      <p className='font-medium text-neutral-900 text-sm leading-relaxed'>{message.action}</p>
+      <p className='max-w-2xl font-medium text-fg text-sm leading-relaxed'>{message.action}</p>
+      <p className='max-w-2xl text-fg-2 text-sm leading-relaxed'>{message.description}</p>
     </div>
   );
 };

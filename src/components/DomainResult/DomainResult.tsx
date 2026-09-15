@@ -44,19 +44,15 @@ const DomainResult: React.FC<DomainResultProps> = ({ value, onUseSuggestion }) =
   const withoutWww = !value.isApex && labels[0] === 'www' ? labels.slice(1).join('.') : null;
 
   return (
-    <div className='flex flex-col gap-5 rounded-md border border-neutral-200 bg-white p-5'>
+    <div className='flex flex-col gap-5 rounded-lg border border-line bg-surface p-5'>
       <div className='flex flex-col gap-1'>
-        {changed && (
-          <span className='break-all font-mono text-neutral-500 text-sm'>{value.input}</span>
-        )}
-        <span className='font-medium text-neutral-500 text-xs uppercase tracking-wider'>
+        {changed && <span className='break-all font-mono text-fg-3 text-sm'>{value.input}</span>}
+        <span className='font-medium text-fg-3 text-xs uppercase tracking-wider'>
           Name to claim
         </span>
-        <span className='break-all font-medium font-mono text-lg text-neutral-900'>
-          {value.name}
-        </span>
+        <span className='break-all font-medium font-mono text-lg text-fg'>{value.name}</span>
         {!value.isApex && (
-          <span className='text-neutral-600 text-sm'>
+          <span className='text-fg-2 text-sm'>
             Subdomain of <span className='font-mono'>{value.registrableDomain}</span>. Claimed
             separately from it.
           </span>
@@ -64,8 +60,8 @@ const DomainResult: React.FC<DomainResultProps> = ({ value, onUseSuggestion }) =
       </div>
 
       {withoutWww !== null && (
-        <div className='flex flex-col items-start gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-4'>
-          <p className='text-neutral-700 text-sm leading-relaxed'>
+        <div className='flex flex-col items-start gap-2 rounded-md border border-line bg-surface-2 p-4'>
+          <p className='text-fg-2 text-sm leading-relaxed'>
             <span className='font-mono'>{value.name}</span> and{' '}
             <span className='font-mono'>{withoutWww}</span> are different names, and this claim does
             not cover the other one. Most people claiming www want the name without it.
@@ -73,7 +69,7 @@ const DomainResult: React.FC<DomainResultProps> = ({ value, onUseSuggestion }) =
           <button
             type='button'
             onClick={() => onUseSuggestion(withoutWww)}
-            className='rounded-md border border-neutral-300 bg-white px-3 py-1.5 font-medium font-mono text-neutral-900 text-sm transition-colors hover:border-neutral-400 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2'
+            className='rounded-md border border-line-2 bg-surface px-3 py-1.5 font-medium font-mono text-fg text-sm transition-colors hover:border-fg-4 hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2'
           >
             Use {withoutWww}
           </button>
@@ -91,15 +87,15 @@ const DomainResult: React.FC<DomainResultProps> = ({ value, onUseSuggestion }) =
           type='submit'
           disabled={claiming}
           aria-busy={claiming}
-          className='self-start break-all rounded-md bg-neutral-900 px-4 py-2 text-left font-medium font-mono text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2 disabled:cursor-wait disabled:bg-neutral-400'
+          className='self-start break-all rounded-md bg-primary px-4 py-2 text-left font-medium font-mono text-on-primary text-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2 disabled:cursor-wait disabled:bg-fg-4'
         >
           {claiming ? claimCopy.create.submitting : claimCopy.create.submit(value.name)}
         </button>
       </form>
 
       {changed && (
-        <div className='flex flex-col gap-3 border-neutral-200 border-t pt-4'>
-          <span className='font-medium text-neutral-500 text-xs uppercase tracking-wider'>
+        <div className='flex flex-col gap-3 border-line border-t pt-4'>
+          <span className='font-medium text-fg-3 text-xs uppercase tracking-wider'>
             What changed
           </span>
           <ul className='flex flex-col gap-2'>
@@ -108,19 +104,14 @@ const DomainResult: React.FC<DomainResultProps> = ({ value, onUseSuggestion }) =
               return (
                 // Each kind is recorded at most once, so the kind is a stable key.
                 <li key={change.kind} className='flex flex-col gap-1 text-sm'>
-                  <span className='text-neutral-700'>
+                  <span className='text-fg-2'>
                     {described.summary}
                     {described.value !== null && (
-                      <span className='break-all font-mono text-neutral-900'>
-                        {' '}
-                        {described.value}
-                      </span>
+                      <span className='break-all font-mono text-fg'> {described.value}</span>
                     )}
                   </span>
                   {described.detail !== null && (
-                    <span className='text-neutral-500 text-xs leading-relaxed'>
-                      {described.detail}
-                    </span>
+                    <span className='text-fg-3 text-xs leading-relaxed'>{described.detail}</span>
                   )}
                 </li>
               );

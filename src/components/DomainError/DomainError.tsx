@@ -29,12 +29,12 @@ const MarkedName: React.FC<MarkedNameProps> = ({ name, labelIndex }) => {
   }));
 
   return (
-    <span className='break-all font-mono text-red-800 text-sm'>
+    <span className='break-all font-mono text-wrong-fg text-sm'>
       {segments.map((segment) => (
         <span key={segment.id}>
           {segment.isFirst ? null : '.'}
           {segment.isMarked ? (
-            <span className='rounded-sm bg-red-200 px-0.5 font-semibold text-red-950'>
+            <span className='rounded-sm bg-wrong-line px-0.5 font-semibold text-wrong-label'>
               {segment.label}
             </span>
           ) : (
@@ -52,28 +52,27 @@ const DomainError: React.FC<DomainErrorProps> = ({ error, onUseSuggestion }) => 
   const { suggestion } = message;
 
   return (
-    <div className='flex flex-col gap-2 rounded-md border border-red-200 bg-red-50 p-5'>
-      <span className='font-medium text-red-900 text-sm'>{message.title}</span>
+    <div className='flex flex-col gap-2 rounded-lg border border-wrong-line bg-wrong-bg p-5'>
+      <span className='font-medium text-wrong-label text-sm'>{message.title}</span>
 
       {message.subject !== null &&
         (message.subject.kind === 'marked_name' ? (
           <MarkedName name={message.subject.name} labelIndex={message.subject.labelIndex} />
         ) : (
-          <span className='break-all font-mono text-red-800 text-sm'>{message.subject.value}</span>
+          <span className='break-all font-mono text-wrong-fg text-sm'>{message.subject.value}</span>
         ))}
 
-      <p className='text-red-800 text-sm leading-relaxed'>{message.description}</p>
-      <p className='font-medium text-red-900 text-sm leading-relaxed'>{message.action}</p>
-
+      <p className='font-medium text-wrong-label text-sm leading-relaxed'>{message.action}</p>
       {suggestion !== null && (
         <button
           type='button'
           onClick={() => onUseSuggestion(suggestion)}
-          className='mt-1 w-fit rounded-md border border-red-300 bg-white px-3 py-1.5 font-medium font-mono text-red-900 text-sm transition-colors hover:border-red-400 hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-red-900 focus-visible:outline-offset-2'
+          className='w-fit rounded-md border border-wrong-line bg-surface px-3 py-1.5 font-medium font-mono text-wrong-label text-sm transition-colors hover:border-wrong-fg hover:bg-wrong-bg focus-visible:outline-2 focus-visible:outline-wrong-fg focus-visible:outline-offset-2'
         >
           Use {suggestion}
         </button>
       )}
+      <p className='text-wrong-fg text-sm leading-relaxed'>{message.description}</p>
     </div>
   );
 };

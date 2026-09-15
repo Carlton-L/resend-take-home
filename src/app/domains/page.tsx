@@ -2,7 +2,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type React from 'react';
-import ClaimRow from '@/components/ClaimRow/ClaimRow';
+import DomainList from '@/components/DomainList/DomainList';
+import RefreshList from '@/components/RefreshList/RefreshList';
 import { SIGN_IN_PATH } from '@/lib/auth/config';
 import { signedInUser } from '@/lib/auth/supabase/server';
 import { CLAIM_PATH, DOMAINS_PATH } from '@/lib/claims/config';
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 /** Only the empty state uses it. Every other screen reaches the claim form from the header. */
 const ACTION_CLASS =
-  'w-fit rounded-md bg-neutral-900 px-3 py-1.5 font-medium text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2';
+  'w-fit rounded-md bg-primary px-3 py-1.5 font-medium text-on-primary text-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2';
 
 /**
  * The domain list.
@@ -39,35 +40,43 @@ const DomainsPage: React.FC = async () => {
   const copy = claimCopy.list;
 
   return (
-    <main className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 py-16 sm:py-24'>
+    <main
+      id='main'
+      className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 py-16 sm:py-24'
+    >
       {/*
-        No claim control beside the heading. The header carries one on every screen, so a second
-        copy of it here would be two controls saying the same thing in one viewport. The empty
-        state below is the exception, because that is the first screen an account sees and the
-        sentence explaining what will appear here is the place to act on.
+        The claim control sits beside the heading, since this list is where claims live and the
+        header no longer carries one. The empty state keeps its own, the only control on that
+        screen, and this one is hidden there so the two never share a viewport.
       */}
-      <div className='flex flex-col gap-2'>
-        <h1 className='font-medium text-2xl tracking-tight'>{copy.heading}</h1>
-        <p className='text-neutral-600 leading-relaxed'>{copy.intro}</p>
+      <div className='flex flex-wrap items-start justify-between gap-4'>
+        <div className='flex flex-col gap-2'>
+          <h1 className='font-medium text-2xl tracking-tight'>{copy.heading}</h1>
+          <p className='text-fg-2 leading-relaxed'>{copy.intro}</p>
+        </div>
+        {claims.length > 0 && (
+          <div className='flex flex-wrap items-center gap-2'>
+            <Link href={CLAIM_PATH} className={ACTION_CLASS}>
+              {copy.claim}
+            </Link>
+            <RefreshList />
+          </div>
+        )}
       </div>
 
-      <div className='rounded-md border border-neutral-200'>
-        {claims.length === 0 ? (
+      {claims.length === 0 ? (
+        <div className='overflow-hidden rounded-lg border border-line bg-surface'>
           <div className='flex flex-col items-start gap-3 p-8'>
-            <h2 className='font-medium text-neutral-900'>{copy.empty.title}</h2>
-            <p className='text-neutral-600 text-sm leading-relaxed'>{copy.empty.description}</p>
+            <h2 className='font-medium text-fg'>{copy.empty.title}</h2>
+            <p className='text-fg-2 text-sm leading-relaxed'>{copy.empty.description}</p>
             <Link href={CLAIM_PATH} className={`${ACTION_CLASS} mt-1`}>
               {copy.claim}
             </Link>
           </div>
-        ) : (
-          <ul className='divide-y divide-neutral-200'>
-            {claims.map((claim) => (
-              <ClaimRow key={claim.id} claim={claim} />
-            ))}
-          </ul>
-        )}
-      </div>
+        </div>
+      ) : (
+        <DomainList claims={claims} />
+      )}
     </main>
   );
 };

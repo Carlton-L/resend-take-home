@@ -362,8 +362,54 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 - The record card collapses on a claim that already holds its name. "Add this record" is
   instruction for work already done. It stays one click away, because comparing this value against
   the one in the panel is why someone opens a verified claim.
-- The record screen is wider than the rest of the app. Four columns need the width. Prose does not,
-  so the check and the notices keep the measure the other screens read at.
+- The record screen is wider than the rest of the app. Four columns need the width. The check and
+  the notices span the same width, so the cards line up, and each paragraph inside them is capped
+  at the measure the other screens read at. Two card widths on one screen read as unfinished.
+- One measure for every other screen, 672px, top aligned. The header shares the measure of the
+  page under it, read from the path.
+- No section navigation in the header. Three screens make one section: the list is the hub and
+  carries Claim a domain beside its heading, the claim form and the record screen carry a back
+  link to the list above their heading, and the wordmark goes to the list. A link is named for a
+  place and a button for an action, so Claim a domain is a button on the page where claims live.
+  Two filled buttons, tabs, a sidebar, the paths `/domains` and `/claim`, and two plain words were
+  each tried in the bar and each read as more navigation than three screens need, and a single
+  Domains link would have been a slot for sections that do not exist. Below `sm` the paths, the address and Sign
+  out fold into one button and a popover, since the bar wrapped to two lines on a phone.
+- One auth round trip per render. The header's address is read through the same cached call the
+  page makes, where it used to make its own.
+- A list row is one line. A long name scrolls under a fade, the rule the record row already uses,
+  and the at risk date is hidden below `sm`. The record screen carries both in full.
+- The demo names are a table: name with its copy control, outcome in the chain's words, and what
+  the script does. Three things are said about every name and a reader compares down a column.
+- The theme is a token block in `globals.css` and nothing else names a colour, radius or face. Dark
+  only, from carlton.dev's tokens: near black surfaces, signal green for the primary action and
+  focus, amber for the attention tone. Resend ships dark only too. Light is a second block of the
+  same names, when there is a reason for it.
+- In a four part message the action comes before the description. What to do matters more than why,
+  and a copyable value sits between them so it reads as instruction, thing to paste, reason.
+- The keep-the-record line on a verified claim is a warning with a bold lead. It is the one thing on
+  that screen the person could get wrong.
+- A claim can be released from the list. Each row has a menu built on the popover attribute, which
+  closes on Escape and returns focus without a hand built menu, and it opens the same confirmation
+  the record screen uses.
+- Refresh on the list re-reads the rows and runs no check. The list never asks DNS anything, so
+  what it reflects is a release made elsewhere or a claim a record screen verified since the page
+  loaded. Checking every pending row from the list would spend each claim's rate limit on a page
+  that cannot act on the answer.
+- The primary action is pale, and signal green means live, held, current or focused and nothing
+  else. One hue for "this is good" and "press this" put a semantic colour on the accent.
+- A tinted check row carries a 3px stripe in its tone and the fix panel prints the state word.
+  The two tints are both near black, and for red-green colour vision the red and the amber drift
+  together, so the glyph was carrying the state alone. Wrong is vermilion and attention a yellower
+  amber, the nearest pair in Wong's colour-blind safe set.
+- The list filters by the word on the pill and sorts three ways, on the rows already loaded, with
+  the choice in the URL. The chips carry counts, so the account is summarized before a row is read.
+- The list sorts needs-attention first by default, stable, so newest still leads inside each
+  group, and a notice above the list counts the rows that need the person with a button that
+  filters to them. A long list under any sort can put those rows below the fold; the sentence
+  cannot be scrolled past.
+- Each demo name says what it is scripted to do. A name whose outcome has to be guessed from its
+  spelling is a demo that cannot be checked.
 - Releasing a claim deletes the row. A released state would qualify every later query for nothing.
   The confirmation names the record to remove, since a released claim otherwise leaves a live TXT
   record in the zone that nothing will mention again.

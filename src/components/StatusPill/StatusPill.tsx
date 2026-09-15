@@ -8,9 +8,9 @@ type StatusPillProps = {
 };
 
 const TONES = {
-  neutral: 'border-neutral-300 bg-white text-neutral-600',
-  good: 'border-green-300 bg-green-50 text-green-700',
-  attention: 'border-amber-300 bg-amber-50 text-neutral-800',
+  neutral: 'border-line-2 bg-surface text-fg-2',
+  good: 'border-good-line bg-good-bg text-good-fg',
+  attention: 'border-attention-line bg-attention-bg text-attention-glyph',
 } as const;
 
 /**

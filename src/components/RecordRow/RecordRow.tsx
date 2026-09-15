@@ -10,7 +10,7 @@ type RecordRowProps = {
   value: string;
 };
 
-const LABEL = 'font-medium text-neutral-500 text-xs uppercase tracking-wider';
+const LABEL = 'font-medium text-fg-3 text-xs uppercase tracking-wider';
 
 /**
  * The record laid out as one row, in the column order of the panel it is being copied into.
@@ -34,7 +34,7 @@ const RecordRow: React.FC<RecordRowProps> = ({ host, fullName, value }) => {
     <div className='flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-4'>
       <div className='flex min-w-0 flex-col gap-1.5 lg:w-16'>
         <span className={LABEL}>{claimCopy.record.typeLabel}</span>
-        <code className='w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 font-mono text-neutral-900 text-sm'>
+        <code className='w-full rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-fg text-sm'>
           {RECORD_TYPE}
         </code>
       </div>
@@ -59,7 +59,7 @@ const RecordRow: React.FC<RecordRowProps> = ({ host, fullName, value }) => {
                 drops the disclosure triangle in WebKit and the triangle is the part that says this
                 opens.
               */}
-              <summary className='cursor-pointer text-neutral-600 text-sm underline underline-offset-4 marker:text-neutral-400 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2'>
+              <summary className='cursor-pointer text-fg-2 text-sm underline underline-offset-4 marker:text-fg-4 hover:text-fg focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2'>
                 {claimCopy.record.fullNameSummary}
               </summary>
               <div className='mt-2'>
@@ -96,8 +96,8 @@ const RecordRow: React.FC<RecordRowProps> = ({ host, fullName, value }) => {
       */}
       <div className='flex min-w-0 flex-col gap-1.5 lg:w-40'>
         <span className={LABEL}>{claimCopy.record.ttlLabel}</span>
-        <p className='py-2 text-neutral-700 text-sm'>{claimCopy.record.ttlValue}</p>
-        <p className='text-neutral-600 text-sm leading-relaxed'>{claimCopy.record.ttlHint}</p>
+        <p className='py-2 text-fg-2 text-sm'>{claimCopy.record.ttlValue}</p>
+        <p className='text-fg-2 text-sm leading-relaxed'>{claimCopy.record.ttlHint}</p>
       </div>
     </div>
   );

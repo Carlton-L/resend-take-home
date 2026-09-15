@@ -53,15 +53,15 @@ export const describeDomainInputError = (error: DomainInputError): DomainErrorMe
       return {
         title: 'Input is too long',
         subject: text(`${error.length} characters`),
-        description: `The field accepts up to ${error.max} characters. This is usually a paste of something larger than a domain.`,
-        action: 'Paste just the domain.',
+        description: `The field accepts up to ${error.max} characters.`,
+        action: 'Paste only the domain.',
         suggestion: null,
       };
     case 'email_address':
       return {
-        title: 'That looks like an email address',
+        title: 'This is an email address',
         subject: text(error.input),
-        description: `The domain part is ${error.domainPart}. Claiming it proves you control that whole domain, not the mailbox.`,
+        description: `The domain part is ${error.domainPart}. A claim covers the whole domain rather than a mailbox.`,
         action: `Enter ${error.domainPart} if that is the domain you control.`,
         suggestion: error.domainPart,
       };

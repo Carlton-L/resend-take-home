@@ -37,11 +37,11 @@ const CheckNow: React.FC = () => {
         type='button'
         onClick={recheck}
         disabled={checking}
-        className='rounded-md border border-neutral-300 bg-white px-3 py-2 font-medium text-neutral-700 text-sm transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:text-neutral-400'
+        className='rounded-md border border-line-2 bg-surface px-3 py-2 font-medium text-fg-2 text-sm transition-colors hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:text-fg-4'
       >
         {copy.now}
       </button>
-      {line !== null && <span className='text-neutral-500 text-xs sm:text-right'>{line}</span>}
+      {line !== null && <span className='text-fg-3 text-xs sm:text-right'>{line}</span>}
     </div>
   );
 };

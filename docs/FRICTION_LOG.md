@@ -496,3 +496,56 @@ reachable.
 
 The part to keep: the state was designed, its copy written, its step answer written and its tests
 passing, and none of it had ever been on a screen. Reaching every state by hand is what found it.
+
+## 2026-09-15, the UI pass. Clicking through every demo name.
+
+### The sign in button wrapped
+
+"Send sign in link" broke onto two lines beside the field. The row goes horizontal at `sm` and the
+field is `w-full`, so the button was the only thing that could give.
+
+Resolved. `shrink-0 whitespace-nowrap` on the button.
+
+### Four failure messages explained the check instead of the finding
+
+`no_txt_at_name`, `nameservers_unreachable`, `zone_not_found` and `value_mismatch` each opened with
+a sentence about what the check did ("Working up from the name, no level answered"), which is how
+the code sees it and not how a person reads it. The second half of each, naming what does this, was
+the useful half.
+
+Resolved. Each now opens by saying what was found, in plain words, then what does that, and the
+action names the wait where waiting is the answer. The action moved above the description in every
+four part message, since the thing to do matters more than the reason.
+
+### The demo names did not say what they would do
+
+`one-dead-nameserver.test` and `crowded-name.test` are only legible if you know the script.
+
+Resolved. Each name carries its outcome on a second line, in the words the chain uses. A tooltip
+was already rejected in the polish backlog.
+
+### The keep-the-record line read as a footnote
+
+"Leave the record in place" sat under the status in the same grey as everything else, on the one
+screen where that is the thing to get wrong.
+
+Resolved. A warning with a bold lead: "Keep the TXT record in place."
+
+### The held expiry line only made sense right after a fix
+
+"This name was proved before then, so it no longer applies" reads well the day of the fix and reads
+as a non sequitur a week later.
+
+Resolved. The line says what the date was rather than when it would have run out, and it reads the
+same at any distance from the fix.
+
+### The record card and the chain were different widths
+
+The chain and the notices were capped at the reading measure inside the wider record page, so the
+two cards on the screen had two right edges. It looked unfinished.
+
+Resolved. Both span the page and the paragraphs inside are capped instead. The RFC records it.
+
+### The first check runs before the record has been seen
+
+Accepted, in the polish backlog with the reasoning.

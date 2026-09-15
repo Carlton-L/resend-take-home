@@ -8,13 +8,16 @@ type NoticeProps = {
 };
 
 const TONES = {
-  neutral: 'border-neutral-200 bg-neutral-50 text-neutral-700',
-  attention: 'border-amber-300 bg-amber-50 text-neutral-800',
+  neutral: 'border-line bg-surface-2 text-fg-2',
+  attention: 'border-attention-line bg-attention-bg text-attention-fg',
 } as const;
 
 /** One paragraph of context. Not a failure, so it does not use the four-part message shape. */
 const Notice: React.FC<NoticeProps> = ({ children, tone = 'neutral' }) => (
-  <p className={`rounded-md border p-4 text-sm leading-relaxed ${TONES[tone]}`}>{children}</p>
+  <div className={`rounded-lg border p-4 text-sm leading-relaxed ${TONES[tone]}`}>
+    {/* The box spans the page so it lines up with the cards. The line does not. */}
+    <p className='max-w-2xl'>{children}</p>
+  </div>
 );
 
 export default Notice;

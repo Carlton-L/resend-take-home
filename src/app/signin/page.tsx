@@ -30,9 +30,15 @@ const SignInPage: React.FC<SignInPageProps> = async ({ searchParams }) => {
   }
 
   return (
-    <main className='mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16'>
-      <h1 className='font-medium text-2xl tracking-tight'>{signInCopy.form.heading}</h1>
-      <SignInForm next={next} />
+    <main
+      id='main'
+      className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-16 sm:py-24'
+    >
+      {/* The page keeps the app's measure. A one field form does not, so it is capped inside it. */}
+      <div className='flex max-w-md flex-col gap-6'>
+        <h1 className='font-medium text-2xl tracking-tight'>{signInCopy.form.heading}</h1>
+        <SignInForm next={next} />
+      </div>
     </main>
   );
 };

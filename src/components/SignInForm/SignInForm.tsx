@@ -83,16 +83,18 @@ const SignInForm: React.FC<SignInFormProps> = ({ next }) => {
     inputRef.current?.focus();
   };
 
+  // The row goes horizontal at sm and the field is w-full, so without this the button is the only
+  // thing that can give and it wraps onto two lines.
   const buttonClass =
-    'rounded-md bg-neutral-900 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-neutral-300';
+    'shrink-0 whitespace-nowrap rounded-md bg-primary px-4 py-2 font-medium text-on-primary text-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-line-2';
 
-  const noticeClass = 'flex flex-col gap-1 rounded-md border p-3';
+  const noticeClass = 'flex flex-col gap-1 rounded-lg border p-4';
 
   return (
     <div className='flex flex-col gap-5'>
       {phase !== 'sent' && (
         <form onSubmit={handleSubmit} noValidate className='flex flex-col gap-2'>
-          <label htmlFor={inputId} className='font-medium text-neutral-900 text-sm'>
+          <label htmlFor={inputId} className='font-medium text-fg text-sm'>
             {signInCopy.form.label}
           </label>
           <div className='flex w-full min-w-0 flex-col gap-2 sm:flex-row'>
@@ -113,7 +115,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ next }) => {
               aria-describedby={statusId}
               // 16px below the sm breakpoint. iOS Safari zooms the viewport when a focused field is
               // smaller than that, which reads as the page overflowing sideways.
-              className='w-full min-w-0 rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus-visible:border-neutral-900 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-1 sm:text-sm aria-[invalid=true]:border-red-400'
+              className='w-full min-w-0 rounded-md border border-line-2 bg-surface px-3 py-2 text-base text-fg transition-colors placeholder:text-fg-4 hover:border-fg-4 focus-visible:border-signal focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-1 sm:text-sm aria-[invalid=true]:border-wrong-fg'
             />
             <button type='submit' disabled={phase === 'sending'} className={buttonClass}>
               {phase === 'sending' ? signInCopy.form.submitting : signInCopy.form.submit}
@@ -139,7 +141,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ next }) => {
               >
                 {signInCopy.sent.title}
               </h2>
-              <p className='text-neutral-600 leading-relaxed'>
+              <p className='text-fg-2 leading-relaxed'>
                 {signInCopy.sent.description(email.trim())}
               </p>
             </div>
@@ -155,7 +157,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ next }) => {
               <button
                 type='button'
                 onClick={startOver}
-                className='rounded-md px-2 py-2 font-medium text-neutral-600 text-sm underline underline-offset-4 transition-colors hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2'
+                className='rounded-md px-2 py-2 font-medium text-fg-2 text-sm underline underline-offset-4 transition-colors hover:text-fg focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2'
               >
                 {signInCopy.sent.changeAddress}
               </button>
@@ -164,26 +166,22 @@ const SignInForm: React.FC<SignInFormProps> = ({ next }) => {
         )}
 
         {invalid && (
-          <div className={`${noticeClass} border-red-200 bg-red-50`}>
-            <p className='font-medium text-neutral-900 text-sm'>{signInCopy.invalidEmail.title}</p>
-            <p className='text-neutral-600 text-sm leading-relaxed'>
+          <div className={`${noticeClass} border-wrong-line bg-wrong-bg`}>
+            <p className='font-medium text-fg text-sm'>{signInCopy.invalidEmail.title}</p>
+            <p className='text-fg-2 text-sm leading-relaxed'>
               {signInCopy.invalidEmail.description}
             </p>
-            <p className='text-neutral-600 text-sm leading-relaxed'>
-              {signInCopy.invalidEmail.action}
-            </p>
+            <p className='text-fg-2 text-sm leading-relaxed'>{signInCopy.invalidEmail.action}</p>
           </div>
         )}
 
         {phase === 'unavailable' && (
-          <div className={`${noticeClass} border-neutral-200 bg-neutral-50`}>
-            <p className='font-medium text-neutral-900 text-sm'>{signInCopy.unavailable.title}</p>
-            <p className='text-neutral-600 text-sm leading-relaxed'>
+          <div className={`${noticeClass} border-line bg-surface-2`}>
+            <p className='font-medium text-fg text-sm'>{signInCopy.unavailable.title}</p>
+            <p className='text-fg-2 text-sm leading-relaxed'>
               {signInCopy.unavailable.description}
             </p>
-            <p className='text-neutral-600 text-sm leading-relaxed'>
-              {signInCopy.unavailable.action}
-            </p>
+            <p className='text-fg-2 text-sm leading-relaxed'>{signInCopy.unavailable.action}</p>
           </div>
         )}
       </div>

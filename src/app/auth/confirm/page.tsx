@@ -54,22 +54,28 @@ const ConfirmPage: React.FC<ConfirmPageProps> = async ({ searchParams }) => {
   }
 
   return (
-    <main className='mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-4 px-6 py-16'>
-      <h1 className='font-medium text-2xl tracking-tight'>{signInCopy.confirm.title}</h1>
-      <p className='text-neutral-600 leading-relaxed'>{signInCopy.confirm.description(email)}</p>
-      <form method='post' action='/api/auth/confirm' className='flex flex-col gap-3'>
-        <input type='hidden' name='token_hash' value={tokenHash} />
-        <input type='hidden' name='email' value={email} />
-        <input type='hidden' name='sig' value={signature} />
-        {next !== null && <input type='hidden' name='next' value={next} />}
-        <button
-          type='submit'
-          className='w-fit rounded-md bg-neutral-900 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2'
-        >
-          {signInCopy.confirm.submit}
-        </button>
-      </form>
-      <p className='text-neutral-500 text-sm'>{signInCopy.confirm.note}</p>
+    <main
+      id='main'
+      className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-6 py-16 sm:py-24'
+    >
+      {/* The page keeps the app's measure. A one field form does not, so it is capped inside it. */}
+      <div className='flex max-w-md flex-col gap-6'>
+        <h1 className='font-medium text-2xl tracking-tight'>{signInCopy.confirm.title}</h1>
+        <p className='text-fg-2 leading-relaxed'>{signInCopy.confirm.description(email)}</p>
+        <form method='post' action='/api/auth/confirm' className='flex flex-col gap-3'>
+          <input type='hidden' name='token_hash' value={tokenHash} />
+          <input type='hidden' name='email' value={email} />
+          <input type='hidden' name='sig' value={signature} />
+          {next !== null && <input type='hidden' name='next' value={next} />}
+          <button
+            type='submit'
+            className='w-fit rounded-md bg-primary px-4 py-2 font-medium text-on-primary text-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2'
+          >
+            {signInCopy.confirm.submit}
+          </button>
+        </form>
+        <p className='text-fg-3 text-sm'>{signInCopy.confirm.note}</p>
+      </div>
     </main>
   );
 };

@@ -15,7 +15,7 @@ type SkeletonProps = {
 const Skeleton: React.FC<SkeletonProps> = ({ className = '' }) => (
   <span
     aria-hidden='true'
-    className={`block animate-pulse rounded bg-neutral-200 motion-reduce:animate-none ${className}`}
+    className={`block animate-pulse rounded bg-line motion-reduce:animate-none ${className}`}
   />
 );
 

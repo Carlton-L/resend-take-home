@@ -9,10 +9,10 @@ import { claimCopy } from '@/lib/claims/messages';
 import type { CheckStep } from '@/lib/claims/steps';
 
 const GLYPHS = {
-  done: 'text-green-700',
-  wrong: 'text-red-800',
-  wait: 'text-amber-700',
-  idle: 'text-neutral-400',
+  done: 'text-good-fg',
+  wrong: 'text-wrong-fg',
+  wait: 'text-attention-glyph',
+  idle: 'text-fg-4',
 } as const;
 
 /**
@@ -28,7 +28,7 @@ const Chevron: React.FC = () => (
     aria-hidden='true'
     viewBox='0 0 16 16'
     fill='none'
-    className='size-3 shrink-0 text-neutral-400 transition-transform group-open:rotate-90 motion-reduce:transition-none'
+    className='size-3 shrink-0 text-fg-4 transition-transform group-open:rotate-90 motion-reduce:transition-none'
   >
     <path
       d='m6 3.5 5 4.5-5 4.5'
@@ -46,14 +46,12 @@ const Glyph: React.FC<{ state: CheckStep['state'] }> = ({ state }) => {
     return (
       <span
         aria-hidden='true'
-        className='mt-0.5 size-3 shrink-0 rounded-full border-[1.5px] border-amber-500'
+        className='mt-0.5 size-3 shrink-0 rounded-full border-[1.5px] border-attention-glyph'
       />
     );
   }
   if (state === 'idle') {
-    return (
-      <span aria-hidden='true' className='mt-1.5 size-1 shrink-0 rounded-full bg-neutral-300' />
-    );
+    return <span aria-hidden='true' className='mt-1.5 size-1 shrink-0 rounded-full bg-line-2' />;
   }
   return (
     <svg
@@ -77,35 +75,66 @@ const Glyph: React.FC<{ state: CheckStep['state'] }> = ({ state }) => {
   );
 };
 
-/** The four parts, in the row that owns them rather than in a box of their own below. */
+/**
+ * The four parts, in the row that owns them rather than in a box of their own below.
+ *
+ * Action first. The thing to do matters more than why, and the copyable value sits between them
+ * so it reads as instruction, thing to paste, reason. A waiting step gets the attention tone,
+ * because its fix is advice for later rather than a change to make now.
+ */
+/*
+ * A tinted row also carries a 3px stripe in the tone colour and, in the fix panel, the state word
+ * in that colour. The two tints are both near black and differ mostly by hue, and for red-green
+ * colour vision the hues themselves drift together, so the stripe and the word are the channels
+ * that survive when the tint does not.
+ */
+const FIX_TONES = {
+  wrong: 'border-wrong-line bg-wrong-bg shadow-[inset_3px_0_0_var(--color-wrong-fg)]',
+  wait: 'border-attention-line bg-attention-bg shadow-[inset_3px_0_0_var(--color-attention-glyph)]',
+} as const;
+const FIX_LABELS = {
+  wrong: 'text-wrong-label',
+  wait: 'text-attention-glyph',
+} as const;
+const FIX_WORDS = {
+  wrong: 'bg-wrong-fg/15 text-wrong-fg',
+  wait: 'bg-attention-glyph/15 text-attention-glyph',
+} as const;
+
 const Fix: React.FC<{ step: CheckStep }> = ({ step }) => {
   if (step.fix === null) {
     return null;
   }
   const { fix } = step;
+  const tone = step.state === 'wait' ? 'wait' : 'wrong';
   return (
-    <div className='flex flex-col gap-3 border-red-100 border-b bg-red-50/60 px-5 pt-1 pb-4 sm:pl-12'>
+    <div className={`flex flex-col gap-3 border-b px-5 pt-1 pb-4 sm:pl-12 ${FIX_TONES[tone]}`}>
+      <span
+        className={`w-fit rounded-sm px-1.5 py-0.5 font-mono font-semibold text-[11px] uppercase tracking-wider ${FIX_WORDS[tone]}`}
+      >
+        {claimCopy.steps.state[step.state]}
+      </span>
       {fix.record !== null && (
         <div className='flex flex-col gap-0.5'>
-          <span className='font-medium text-red-900 text-xs uppercase tracking-wider'>
+          <span className={`font-medium text-xs uppercase tracking-wider ${FIX_LABELS[tone]}`}>
             {fix.record.label}
           </span>
           <ul className='flex flex-col gap-0.5'>
             {fix.record.values.map((value) => (
-              <li key={value} className='break-all font-mono text-neutral-900 text-sm'>
+              <li key={value} className='break-all font-mono text-fg text-sm'>
                 {value}
               </li>
             ))}
           </ul>
         </div>
       )}
-      <p className='text-neutral-700 text-sm leading-relaxed'>{fix.description}</p>
+      <p className='max-w-2xl font-medium text-fg text-sm leading-relaxed'>{fix.action}</p>
       {fix.copyable !== null && (
         <div className='max-w-md'>
           <CopyField label={fix.copyable.label} value={fix.copyable.value} />
         </div>
       )}
-      <p className='font-medium text-neutral-900 text-sm leading-relaxed'>{fix.action}</p>
+      <p className='max-w-2xl text-fg-2 text-sm leading-relaxed'>{fix.description}</p>
     </div>
   );
 };
@@ -115,23 +144,29 @@ const Rows: React.FC<{ steps: CheckStep[] }> = ({ steps }) => (
     {steps.map((step) => (
       <div key={step.key}>
         <div
-          className={`grid grid-cols-[1rem_1fr] items-start gap-x-3 gap-y-0.5 border-neutral-100 border-b px-5 py-2 text-sm sm:grid-cols-[1rem_11rem_1fr] ${
-            step.state === 'wrong' ? 'bg-red-50/60 border-red-100' : ''
+          className={`grid grid-cols-[1rem_1fr] items-start gap-x-3 gap-y-0.5 border-line border-b px-5 py-2 text-sm sm:grid-cols-[1rem_11rem_1fr] ${
+            step.state === 'wrong'
+              ? 'bg-wrong-bg border-wrong-line shadow-[inset_3px_0_0_var(--color-wrong-fg)]'
+              : step.state === 'wait' && step.fix !== null
+                ? 'bg-attention-bg border-attention-line shadow-[inset_3px_0_0_var(--color-attention-glyph)]'
+                : ''
           }`}
         >
           <Glyph state={step.state} />
-          <span className={step.state === 'idle' ? 'text-neutral-400' : 'text-neutral-900'}>
+          <span className={step.state === 'idle' ? 'text-fg-4' : 'text-fg'}>
             {claimCopy.steps.label[step.key]}
+            {/* The glyph carries the state for a sighted reader. This carries it for the rest. */}
+            <span className='sr-only'>, {claimCopy.steps.state[step.state]}</span>
           </span>
           <span
             className={`col-start-2 break-words font-mono text-xs leading-5 sm:col-start-3 ${
               step.state === 'wrong'
-                ? 'text-red-800'
+                ? 'text-wrong-fg'
                 : step.state === 'wait'
-                  ? 'text-amber-800'
+                  ? 'text-attention-glyph'
                   : step.state === 'idle'
-                    ? 'text-neutral-400'
-                    : 'text-neutral-600'
+                    ? 'text-fg-4'
+                    : 'text-fg-2'
             }`}
           >
             {step.answer}
@@ -160,10 +195,10 @@ const PROBLEMS: Record<CheckError, { title: string; description: string; action:
 const Problem: React.FC<{ error: CheckError }> = ({ error }) => {
   const problem = PROBLEMS[error];
   return (
-    <div className='flex flex-col gap-2 rounded-md border border-amber-300 bg-amber-50 p-4'>
-      <p className='font-medium text-neutral-900 text-sm'>{problem.title}</p>
-      <p className='text-neutral-700 text-sm leading-relaxed'>{problem.description}</p>
-      <p className='font-medium text-neutral-900 text-sm leading-relaxed'>{problem.action}</p>
+    <div className='flex flex-col gap-2 rounded-lg border border-attention-line bg-attention-bg p-4'>
+      <p className='font-medium text-fg text-sm'>{problem.title}</p>
+      <p className='max-w-2xl font-medium text-fg text-sm leading-relaxed'>{problem.action}</p>
+      <p className='max-w-2xl text-fg-2 text-sm leading-relaxed'>{problem.description}</p>
     </div>
   );
 };
@@ -191,22 +226,20 @@ const ClaimCheck: React.FC = () => {
   }
 
   const chain = view.needsAttention ? (
-    <section className='overflow-hidden rounded-md border border-neutral-200 bg-white'>
-      <div className='flex items-baseline justify-between gap-3 border-neutral-200 border-b px-5 py-2.5'>
-        <span className='font-medium text-neutral-500 text-xs uppercase tracking-wider'>
-          {copy.heading}
-        </span>
-        <span className='font-mono text-neutral-500 text-xs'>{copy.answered(view.answered)}</span>
+    <section className='overflow-hidden rounded-lg border border-line bg-surface'>
+      <div className='flex items-baseline justify-between gap-3 border-line border-b px-5 py-2.5'>
+        <h2 className='font-medium text-fg-3 text-xs uppercase tracking-wider'>{copy.heading}</h2>
+        <span className='font-mono text-fg-3 text-xs'>{copy.answered(view.answered)}</span>
       </div>
       <Rows steps={view.steps} />
     </section>
   ) : (
-    <details className='group rounded-md border border-neutral-200 bg-white'>
-      <summary className='flex cursor-pointer list-none items-center gap-3 px-5 py-3 text-neutral-600 text-sm [&::-webkit-details-marker]:hidden'>
+    <details className='group rounded-lg border border-line bg-surface'>
+      <summary className='flex cursor-pointer list-none items-center gap-3 rounded-lg px-5 py-3 text-fg-2 text-sm focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-signal [&::-webkit-details-marker]:hidden'>
         <Chevron />
         {copy.summary(copy.summaryThrough)}
       </summary>
-      <div className='border-neutral-100 border-t'>
+      <div className='border-line border-t'>
         <Rows steps={view.steps} />
       </div>
     </details>

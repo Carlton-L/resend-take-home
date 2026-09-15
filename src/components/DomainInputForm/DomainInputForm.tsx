@@ -103,7 +103,7 @@ const DomainInputForm: React.FC<DomainInputFormProps> = ({ allowTestNamespace })
     <div className='flex flex-col gap-5'>
       {/* noValidate because the browser's own messages cannot say any of what ours say. */}
       <form onSubmit={handleSubmit} noValidate className='flex flex-col gap-2'>
-        <label htmlFor={inputId} className='font-medium text-neutral-900 text-sm'>
+        <label htmlFor={inputId} className='font-medium text-fg text-sm'>
           Domain
         </label>
         <div className='flex w-full min-w-0 flex-col gap-2'>
@@ -127,7 +127,7 @@ const DomainInputForm: React.FC<DomainInputFormProps> = ({ allowTestNamespace })
             spellCheck={false}
             aria-invalid={hasError}
             aria-describedby={result === null ? undefined : resultId}
-            className='w-full min-w-0 rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-neutral-900 text-base sm:text-sm transition-colors placeholder:text-neutral-400 hover:border-neutral-400 focus-visible:border-neutral-900 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-1 aria-[invalid=true]:border-red-400'
+            className='w-full min-w-0 rounded-md border border-line-2 bg-surface px-3 py-2 font-mono text-fg text-base sm:text-sm transition-colors placeholder:text-fg-4 hover:border-fg-4 focus-visible:border-signal focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-1 aria-[invalid=true]:border-wrong-fg'
           />
         </div>
       </form>

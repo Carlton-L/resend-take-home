@@ -127,3 +127,24 @@ which is true. None of that is decidable without drawing it.
 
 Cost: prototypes outside the repo, then one of them built. Buys: navigation that reads as
 navigation rather than as two calls to action.
+
+## Hold the first check until the record has been touched
+
+Raised 2026-09-15, using it. On a claim opened straight after creating it, the first check runs
+before the person has seen the record, so it can only find nothing. Waiting for a copy or a click
+on the record card would give the cadence its best chance of catching the paste.
+
+Accepted as it is rather than deferred. The first check is what puts "no record there yet" on the
+screen, and the chain never appears or disappears, so holding it would leave an empty chain until
+the first click. A claim opened from the list has no paste to wait for. The cadence already covers
+the gap, 5s, 15s, 30s, 60s and then per minute, and Check now restarts it after a paste. If asked
+why the first check runs at once: it sets the baseline the later checks are read against.
+
+## Arrow keys on the row menu
+
+Raised 2026-09-15. The list's row menu is a popover holding a link and a button. Escape, outside
+click and focus return come from the browser. Arrow keys do not, and nothing claims the menu role,
+so none are promised. A real menu role needs the arrow keys and a hand rolled roving tabindex.
+
+Cost: forty lines and a test. Buys: the keystrokes a screen reader user expects from something
+announced as a menu, which this is not, yet.

@@ -21,7 +21,7 @@ const ClaimProvider: React.FC = () => {
     return null;
   }
 
-  return <p className='max-w-2xl text-neutral-600 text-sm leading-relaxed'>{view.provider}</p>;
+  return <p className='max-w-2xl text-fg-2 text-sm leading-relaxed'>{view.provider}</p>;
 };
 
 export default ClaimProvider;
