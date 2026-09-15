@@ -16,7 +16,10 @@ import { claimCopy } from '@/lib/claims/messages';
  * displacing it.
  */
 const Loading: React.FC = () => (
-  <main className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 py-16 sm:py-24'>
+  <main
+    id='main'
+    className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 py-16 sm:py-24'
+  >
     <div role='status' className='flex flex-col gap-8'>
       <span className='sr-only'>{claimCopy.loading.list}</span>
 
@@ -25,7 +28,7 @@ const Loading: React.FC = () => (
         <Skeleton className='h-4 w-full max-w-md' />
       </div>
 
-      <div className='flex flex-col divide-y divide-neutral-200 rounded-md border border-neutral-200'>
+      <div className='flex flex-col divide-y divide-line rounded-lg border border-line bg-surface'>
         {[0, 1, 2].map((row) => (
           <div key={row} className='flex items-center justify-between gap-4 px-5 py-4'>
             <Skeleton className='h-4 w-48' />

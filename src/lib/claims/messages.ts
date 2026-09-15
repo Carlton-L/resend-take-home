@@ -24,21 +24,20 @@ export const claimCopy = {
     nameToClaim: 'Name to claim',
     awaitingName: '\u2014',
     submitEmpty: 'Claim',
-    empty:
-      'Whatever you type is read back here, with anything that changed, before a claim is made.',
+    empty: 'The name that will be claimed appears here.',
     tooMany: {
-      title: 'Too many claims from this account',
-      description: 'This account has created more claims in the last hour than the limit allows.',
-      action: 'Release a claim you are not using, or try again later.',
+      title: 'Claim limit reached',
+      description: 'This account has reached the number of claims allowed per hour.',
+      action: 'Release a claim you no longer need, or try again later.',
     },
     unavailable: {
       title: 'The claim could not be created',
-      description: 'Something here failed before the claim was saved.',
+      description: 'A server error stopped the claim from being saved.',
       action: 'Try again in a moment.',
     },
     invalid: {
-      title: 'That name could not be read',
-      description: 'The name sent to the server did not survive being read back as a domain.',
+      title: 'The name could not be read',
+      description: 'The submitted value is not a valid domain.',
       action: 'Enter the domain again.',
     },
   },
@@ -47,19 +46,92 @@ export const claimCopy = {
   demo: {
     heading: 'Demo names',
     description:
-      'These names route to a scripted resolver so each outcome is reachable without owning a broken domain. Claim one the same way as a real name.',
+      'These names resolve against a scripted resolver, so every outcome can be reached without a real domain. Claim one like any other name.',
+    /** Column headings for the table of names. */
+    columns: { name: 'Name', outcome: 'Outcome', script: 'What the resolver does' },
+    /** What each name is scripted to do, so the outcome can be checked against the screen. */
+    outcome: {
+      'verified.test': { tone: 'good', label: 'Verifies', line: 'on the first check.' },
+      'record-not-found.test': {
+        tone: 'neutral',
+        label: 'Waits',
+        line: 'the zone answers and has no record at the name.',
+      },
+      'no-txt-at-name.test': {
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'the name exists with no TXT record on it.',
+      },
+      'appended-zone.test': {
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'the record is at the name with the zone appended a second time.',
+      },
+      'nameservers-unreachable.test': {
+        tone: 'neutral',
+        label: 'Waits',
+        line: 'no nameserver answers inside the deadline.',
+      },
+      'zone-not-found.test': {
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'no nameservers at any level.',
+      },
+      'one-dead-nameserver.test': {
+        tone: 'good',
+        label: 'Verifies',
+        line: 'one of three servers hangs, the other two answer, no warning.',
+      },
+      'crowded-name.test': {
+        tone: 'good',
+        label: 'Verifies',
+        line: 'our record sits beside an SPF record and a Google one at the same name.',
+      },
+      'value-mismatch.test': {
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'a TXT record is there with another token.',
+      },
+      'slow-nameservers.test': {
+        tone: 'neutral',
+        label: 'Waits',
+        line: 'the servers are alive and slower than the deadline.',
+      },
+    } as Record<string, { tone: 'good' | 'neutral' | 'attention'; label: string; line: string }>,
   },
 
   /** The domain list. Every claim this account has, with no check run on any of them. */
   list: {
     nav: 'Domains',
     heading: 'Domains',
-    intro: 'Every name this account has claimed, including the ones still to be proved.',
+    intro: 'All claims on this account, both pending and verified.',
     claim: 'Claim a domain',
+    /** Re-reads the list. It says refresh whatever it reads, since that is what a person expects. */
+    refresh: 'Refresh',
+    refreshing: 'Refreshing',
+    /** The chips above the list. Each one is the word on a pill, so they need no copy of their own. */
+    filter: {
+      label: 'Filter by status',
+      all: 'All',
+      none: (label: string) => `No ${label.toLowerCase()} claims.`,
+    },
+    sort: {
+      label: 'Sort',
+      attention: 'Needs attention first',
+      newest: 'Newest first',
+      name: 'Name A to Z',
+    },
+    /** Above the list whenever a row needs the person. Stated in words, since a sort can hide it. */
+    attention: {
+      count: (n: number) => (n === 1 ? '1 claim needs attention.' : `${n} claims need attention.`),
+      show: 'Show',
+    },
+    /** The row menu. The name is in the label because every row has one of these. */
+    actions: (name: string) => `Actions for ${name}`,
+    open: 'Open',
     empty: {
       title: 'No claims yet',
-      description:
-        'A claim appears here as soon as it is created, before it has been proved, so a name you are part way through is always one click away.',
+      description: 'Claims appear here as soon as they are started.',
     },
   },
 
@@ -70,18 +142,16 @@ export const claimCopy = {
   status: {
     pending: {
       label: 'Pending',
-      line: 'This claim has not been proved yet.',
+      line: 'Not yet verified.',
     },
     verified: {
       label: 'Verified',
       line: (when: string | null) =>
-        when === null
-          ? 'This name is held by this account.'
-          : `Held by this account since ${when}.`,
+        when === null ? 'Verified for this account.' : `Verified for this account since ${when}.`,
     },
     atRisk: {
       label: 'At risk',
-      line: 'The record stopped answering. This account still holds the name for now.',
+      line: 'The TXT record is no longer found. The claim stays verified until the record is restored or the claim is released.',
       /**
        * The list's only detail line. It sits after the pill and reads on from it, so it carries a
        * date and no second copy of the word the pill has already said.
@@ -96,7 +166,7 @@ export const claimCopy = {
     },
     contested: {
       label: 'Contested',
-      line: 'Another account has proved control of this name.',
+      line: 'Another account has verified control of this name.',
     },
     revoked: {
       label: 'Revoked',
@@ -108,16 +178,16 @@ export const claimCopy = {
      */
     expired: {
       label: 'Expired',
-      line: 'The token on this claim ran out before it was proved.',
+      line: 'The token expired before the claim was verified.',
     },
     provedButHeld: {
       label: 'Control proved',
-      line: 'The record is in place and the value matches. Another account holds this name.',
+      line: 'The record matches. Another account currently holds this name.',
     },
     /** Said once the check has run, so it can name the server that answered. */
-    proved: (nameserver: string, when: string) =>
-      `${nameserver} returned the record at ${when}. Held by this account.`,
-    stillHeld: 'The record stopped answering. This account still holds the name for now.',
+    proved: (nameserver: string, when: string) => `Verified at ${when} by ${nameserver}.`,
+    stillHeld:
+      'The TXT record is no longer found. The claim stays verified until the record is restored or the claim is released.',
     /**
      * Said on the one check that finds the record of an at-risk name again.
      *
@@ -126,22 +196,22 @@ export const claimCopy = {
      * the chain never disappearing is there to avoid.
      */
     recovered: (nameserver: string) =>
-      `${nameserver} is answering with the record again. This name is no longer at risk.`,
+      `${nameserver} returned the record. The claim is no longer at risk.`,
   },
 
   record: {
     heading: 'Add this record',
     /** A claim that already holds its name has done this work, so the card becomes a disclosure. */
     headingHeld: 'Show the record',
-    intro: (name: string) => `One TXT record proves you control ${name}.`,
+    intro: (name: string) => `Add this TXT record to the DNS for ${name}.`,
     typeLabel: 'Type',
     nameLabel: 'Name',
     nameHint:
-      'Most DNS panels put your domain on the end of this field for you, so paste the short form. Some panels call this field Host.',
+      'Paste the short form. Most DNS panels append your domain to this field. Some panels call it Host.',
     fullNameSummary: 'My panel does not add the domain for me',
     fullNameHint: 'Use this if your panel leaves the field exactly as typed.',
     valueLabel: 'Value',
-    valueHint: 'Copy the whole value. Both halves are read back.',
+    valueHint: 'Token and expiry, in one value.',
     ttlLabel: 'TTL',
     /**
      * Not a value to copy. Squarespace offers TTL as a dropdown defaulting to 4 hrs, measured
@@ -149,28 +219,28 @@ export const claimCopy = {
      * true on every panel.
      */
     ttlValue: 'Leave the default',
-    ttlHint: 'Any value works. This does not affect the check.',
+    ttlHint: 'Any value works. TTL does not affect verification.',
     copy: 'Copy',
     copied: 'Copied',
     expiry: (when: string) =>
-      `The token is good until ${when}. A claim that has not been proved by then needs a new one.`,
+      `This token expires on ${when}. Claiming the name again after that date issues a new one.`,
     /**
      * The same date on a claim that already holds its name. Verifying does not clear `expires_at`,
      * so every name held for longer than the token's seven days carries an expiry in the past, and
      * that date is visible in the record value being compared against the panel.
      */
     heldExpiry: (when: string) =>
-      `The date in the record value is ${when}, which is when the token would have run out. This name was proved before then, so it no longer applies.`,
-    existing: 'This account already had a claim on this name, so here it is.',
+      `The date in the record value, ${when}, was the verification deadline. It no longer applies to a verified claim.`,
+    existing: 'This account already has a claim on this name.',
     reissued:
-      'The token on this claim had expired, so a new one has been issued. The value below has changed and the old record no longer matches.',
+      'The previous token expired and a new one was issued. The value below has changed; the old record no longer matches.',
     challenger: (name: string) =>
-      `Another account currently holds ${name}. Adding this record proves you control the DNS for it. One account holds a name at a time, so this claim does not take it.`,
+      `Another account currently holds ${name}. Adding this record verifies your control of the DNS. It does not transfer the name.`,
     provider: {
       recognized: (name: string) =>
-        `${name} answers for this domain, so the record goes in the panel there, which may not be your registrar.`,
+        `DNS for this domain is at ${name}. Add the record there, which may be a different company from your registrar.`,
       unrecognized: (name: string) =>
-        `Your nameservers are at ${name}, so the record goes in the panel there, which may not be your registrar.`,
+        `Nameservers: ${name}. Add the record in that DNS panel, which may be a different company from your registrar.`,
     },
   },
 
@@ -185,6 +255,13 @@ export const claimCopy = {
     answered: (n: number) => `${n} of 5 answered`,
     more: 'what the check did',
     notReached: 'not reached',
+    /** Read out after the label. The glyph says this to a sighted reader and to nobody else. */
+    state: {
+      done: 'done',
+      wait: 'waiting',
+      wrong: 'needs a change',
+      idle: 'not reached',
+    },
     label: {
       zone: 'Find the zone',
       nameservers: 'Reach the nameservers',
@@ -197,7 +274,7 @@ export const claimCopy = {
         `${zone}, ${count === 1 ? '1 nameserver' : `${count} nameservers`} at ${provider}`,
       foundUnnamed: (zone: string) => `${zone}, nameservers found`,
       none: 'no nameservers for this domain',
-      expired: 'not asked, the token had already expired',
+      expired: 'skipped, token expired',
     },
     nameservers: {
       answered: (nameserver: string) => `${nameserver} answered`,
@@ -206,20 +283,20 @@ export const claimCopy = {
     },
     record: {
       found: (n: number) => `${n === 1 ? '1 TXT record' : `${n} TXT records`} at the name`,
-      none: 'no record at that name yet',
-      gone: 'the record that proved this name has gone',
-      wrongType: 'the name answers, with no TXT on it',
-      appended: 'nothing here, and the record is one level down',
+      none: 'no record at this name yet',
+      gone: 'the verified record is missing',
+      wrongType: 'name exists, no TXT record',
+      appended: 'not here; found one level down',
     },
     token: {
       matched: (nameserver: string) => `matched on ${nameserver}`,
-      mismatch: 'no value there carries this token',
+      mismatch: 'no value matches this token',
       expired: 'the token expired before this check',
     },
     claim: {
       recorded: (when: string) => when,
       alreadyHeld: 'already held by this account',
-      notRecorded: 'proved, and not saved yet',
+      notRecorded: 'verified, not yet saved',
       heldByAnother: 'another account holds this name',
     },
     /**
@@ -229,7 +306,7 @@ export const claimCopy = {
      * asks again, which is where someone waiting on a record is already looking.
      */
     summary: (through: string) => `${through}.`,
-    summaryThrough: 'Zone and nameservers found, no record at that name yet',
+    summaryThrough: 'Zone and nameservers found. No record at this name yet',
   },
 
   /** Read out by the fallback each route shows while its own page is still on the server. */
@@ -240,7 +317,7 @@ export const claimCopy = {
   },
 
   check: {
-    running: 'Checking your nameservers',
+    running: 'Checking nameservers',
     /**
      * The person who has just added the record and does not want to wait for the next check. The
      * product runs the check either way, which is what `waiting` says beside this, so this button
@@ -249,42 +326,43 @@ export const claimCopy = {
     now: 'Check now',
     checking: 'Checking',
     checkedAt: (since: string) => `Checked ${since}`,
-    waiting: (since: string) => `Checked ${since}, and again in a moment`,
+    waiting: (since: string) => `Checked ${since}. Checks again shortly.`,
     stopped: (after: string) => `Automatic checks stopped after ${after}`,
     limited: {
-      title: 'This claim has been checked too often',
-      description:
-        'Every check sends queries to the nameservers for this name, so the number of them in a few minutes is capped.',
+      title: 'Check limit reached',
+      description: 'Checks for this claim are rate limited to protect the nameservers.',
       action: 'Wait a minute, then press Check now.',
     },
     unavailable: {
       title: 'The check could not run',
-      description: 'Something here failed before the nameservers were asked.',
+      description: 'A server error stopped the check before DNS was queried.',
       action: 'Press Check now in a moment.',
     },
     offline: {
-      title: 'The check did not reach us',
-      description:
-        'The request failed before it got an answer, which is usually a dropped connection.',
+      title: 'The check did not complete',
+      description: 'The request failed, usually because the connection dropped.',
       action: 'Press Check now once you are back online.',
     },
     signedOut: {
-      title: 'This browser is no longer signed in',
-      description: 'The check was refused because the session behind this page has ended.',
+      title: 'Signed out',
+      description: 'The session has ended, so the check was refused.',
       action: 'Reload this page to sign in again.',
     },
     missing: {
-      title: 'This claim is no longer here',
-      description: 'It was released, or it belongs to a different account from the one signed in.',
+      title: 'Claim not found',
+      description: 'It was released, or belongs to another account.',
       action: 'Reload this page.',
     },
-    keepRecord:
-      'Leave the record in place. It is re-checked from now on, and removing it puts the claim at risk.',
+    /** Rendered with the lead in bold. It is the one warning on a screen that is otherwise good news. */
+    keepRecord: {
+      lead: 'Keep the TXT record in place.',
+      rest: 'It is checked periodically. Removing it puts the claim at risk.',
+    },
     provedButHeld: {
-      title: 'Control proved, and another account holds the name',
+      title: 'Control verified. Another account holds this name.',
       description:
-        'The record is in place and the value matches. One account at a time can hold a name, and moving one between accounts is a decision this product does not make yet.',
-      action: 'Leave the record in place, since a transfer would be decided from it.',
+        'The record matches. A name is held by one account at a time, and transfers are not yet supported.',
+      action: 'Leave the record in place.',
     },
   },
 
@@ -292,11 +370,11 @@ export const claimCopy = {
     trigger: 'Release this claim',
     title: 'Release this claim',
     description: (name: string) =>
-      `This deletes the claim on ${name} and the token with it. Anyone can claim the name afterwards.`,
+      `This deletes the claim on ${name} and its token. The name can then be claimed by anyone.`,
     removeRecord: (host: string) =>
-      `The TXT record stays in your DNS until you take it out. Delete ${host} once this is done.`,
+      `The TXT record remains in your DNS. Delete ${host} after releasing.`,
     confirm: 'Release claim',
-    cancel: 'Keep it',
+    cancel: 'Cancel',
   },
 } as const;
 
@@ -409,8 +487,12 @@ export const describeClaimRow = (claim: ClaimRow, now: Date = new Date()): Claim
   return { ...message, detail: null };
 };
 
-/** The status block once the check has spoken. `extra` is a second line, or nothing. */
-export type ClaimMessage = StatusMessage & { extra: string | null };
+/**
+ * The status block once the check has spoken. `extra` is a second line, or nothing. A line with a
+ * `lead` is a warning and is rendered as one, with the lead in bold.
+ */
+export type ExtraLine = { lead: string | null; rest: string };
+export type ClaimMessage = StatusMessage & { extra: ExtraLine | null };
 
 /**
  * What the top of the record screen says after a check.
@@ -447,7 +529,7 @@ export const describeClaim = (outcome: {
     return {
       label: claimCopy.status.provedButHeld.label,
       line: claimCopy.status.provedButHeld.line,
-      extra: claimCopy.check.provedButHeld.action,
+      extra: { lead: null, rest: claimCopy.check.provedButHeld.action },
       tone: 'attention',
     };
   }
@@ -570,24 +652,24 @@ export const describeFailure = (
       const cacheNote =
         reason.negativeTtlSeconds === null
           ? ''
-          : ` Public resolvers hold an absence for up to ${reason.negativeTtlSeconds} seconds, which is why other tools can lag behind this one.`;
+          : ` Public resolvers cache a missing record for up to ${reason.negativeTtlSeconds} seconds, so other tools may lag behind this check.`;
 
       // A record that was there and is gone. Saying "yet" to someone whose name verified from that
       // record describes a claim they finished weeks ago as one they have not started.
       if (context.held) {
         return {
-          title: 'The record is no longer answering',
+          title: 'The record is missing',
           record: { label: 'Looked for', values: [reason.queriedName] },
-          description: `This name was proved from that record and your nameservers now have nothing at it. A DNS migration does this, and so does a panel tidied up by someone who did not know what the record was for.${cacheNote}`,
+          description: `The nameservers no longer return the record this claim was verified with. Common causes: a DNS migration, or a record removed during cleanup.${cacheNote}`,
           copyable: null,
-          action: 'Put the record below back in your DNS panel.',
+          action: 'Add the record below back to your DNS panel.',
         };
       }
 
       return {
-        title: 'No record there yet',
+        title: 'No record found yet',
         record: { label: 'Looked for', values: [reason.queriedName] },
-        description: `Your nameservers answered and had nothing at that name. This check asks them directly and runs again on its own, so a record appears here within seconds of you saving it.${cacheNote}`,
+        description: `The nameservers answered with no record at this name. Checks query them directly and repeat automatically, so a saved record is found within seconds.${cacheNote}`,
         copyable: null,
         action: 'Add the record below.',
       };
@@ -595,52 +677,52 @@ export const describeFailure = (
 
     case 'no_txt_at_name':
       return {
-        title: 'The name exists with no TXT record on it',
+        title: 'The name exists but has no TXT record',
         record: { label: 'Looked for', values: [reason.queriedName] },
         description:
-          'A record saved under the wrong type does this, so does a CNAME, and so does a name that exists only because something sits below it.',
+          'The nameservers returned the name with no TXT record on it. Usually a record of another type, a CNAME, or a subdomain exists at this name.',
         copyable: null,
         action:
-          'Check what your panel already has on that one name, since only this TXT record should be on it.',
+          'Check the existing records at this exact name in your DNS panel and add the TXT record beside them.',
       };
 
     case 'appended_zone_suspected':
       return {
-        title: 'Your DNS panel added the domain to the name',
+        title: 'The record was saved with the domain appended twice',
         record: { label: 'Found at', values: [reason.foundAt] },
         description:
-          'Most panels put your domain on the end of their Name field, so a full name typed into that field becomes the domain twice.',
+          'Most DNS panels append your domain to the Name field. Entering the full name there produces the domain twice.',
         copyable: null,
-        action: 'Delete that record and add it again using the short name below.',
+        action: 'Delete that record and add it again with the short name below.',
       };
 
     case 'value_mismatch':
       return {
-        title: 'A TXT record is there with a different value',
+        title: 'The TXT record has a different value',
         record: { label: 'Found', values: reason.found },
         description:
-          'The name holds TXT records and none of them carry this token. A value pasted with an end missing looks like this, and so does a record left behind by an earlier claim.',
+          'A TXT record exists at this name, but its value does not match this claim. Common causes: a partial paste, a typo, or a record from an earlier claim.',
         copyable: { label: claimCopy.record.valueLabel, value: reason.expected },
-        action: 'Replace the value in your DNS panel with this one.',
+        action: 'Replace the value in your DNS panel with the one below.',
       };
 
     case 'token_expired':
       return {
         title: 'This claim has expired',
         record: { label: 'Expired', values: [formatWhen(reason.expiredAt)] },
-        description: `The token was issued for ${TOKEN_TTL_DAYS} days and that time has passed. The record in your DNS no longer matches anything that can be verified.`,
+        description: `Tokens are valid for ${TOKEN_TTL_DAYS} days. This one has passed its date, and the record in your DNS can no longer be verified.`,
         copyable: null,
-        action: 'Release this claim and start a new one, which issues a fresh token.',
+        action: 'Release this claim and create a new one to get a new token.',
       };
 
     case 'nameservers_unreachable':
       return {
-        title: 'Still waiting on your nameservers',
+        title: 'Nameservers did not respond',
         record: { label: 'Asked', values: [...reason.attempted] },
-        description: `None of them answered within ${formatDeadline(reason.timeoutMs)}. A zone that is slow and a zone that is down look the same from here, and this page keeps asking, so a slow one clears itself.`,
+        description: `None of them answered within ${formatDeadline(reason.timeoutMs)}. The zone may be down, slow, or pointed at the wrong nameservers. Checks repeat automatically, so a slow zone resolves on its own.`,
         copyable: null,
         action:
-          'If this does not clear, check the nameservers set for the domain at your registrar.',
+          'If this persists for more than a few minutes, check the nameservers set for the domain at your registrar.',
       };
 
     case 'zone_not_found':
@@ -648,9 +730,10 @@ export const describeFailure = (
         title: 'No nameservers found for this domain',
         record: { label: 'Asked at', values: [...reason.walked] },
         description:
-          'Working up from the name, no level answered with nameservers. A domain registered without nameservers set does this, and so does one registered in the last few minutes.',
+          'DNS returned no nameservers for this domain. Either none are set at the registrar, or they were set within the last few minutes.',
         copyable: null,
-        action: 'Set nameservers for the domain at your registrar.',
+        action:
+          'Check the nameservers set for the domain at your registrar, and allow a few minutes if they were set recently.',
       };
 
     default: {

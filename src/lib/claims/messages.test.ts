@@ -15,6 +15,7 @@ import {
 import { CLAIM_STATUSES, type FailureReason } from '@/lib/claims/state';
 import { appCopy } from '@/lib/copy/app';
 import { findBannedPhrases } from '@/lib/copy/rules';
+import { testNames } from '@/lib/dns/testNames';
 
 const NAME = 'example.com';
 const HOST = '_domainclaim-challenge.example.com';
@@ -45,11 +46,25 @@ const everyString: string[] = [
   ...Object.values(claimCopy.create.tooMany),
   ...Object.values(claimCopy.create.unavailable),
   ...Object.values(claimCopy.create.invalid),
-  ...Object.values(claimCopy.demo),
+  claimCopy.demo.heading,
+  claimCopy.demo.description,
+  ...Object.values(claimCopy.demo.columns),
+  ...Object.values(claimCopy.demo.outcome).flatMap((outcome) => [outcome.label, outcome.line]),
   claimCopy.list.nav,
   claimCopy.list.heading,
   claimCopy.list.intro,
   claimCopy.list.claim,
+  claimCopy.list.refresh,
+  claimCopy.list.filter.label,
+  claimCopy.list.filter.all,
+  claimCopy.list.filter.none('Pending'),
+  ...Object.values(claimCopy.list.sort),
+  claimCopy.list.attention.count(1),
+  claimCopy.list.attention.count(2),
+  claimCopy.list.attention.show,
+  claimCopy.list.refreshing,
+  claimCopy.list.actions(NAME),
+  claimCopy.list.open,
   ...Object.values(claimCopy.list.empty),
   claimCopy.status.expired.label,
   claimCopy.status.expired.line,
@@ -87,11 +102,13 @@ const everyString: string[] = [
   ...Object.values(claimCopy.check.offline),
   ...Object.values(claimCopy.check.signedOut),
   ...Object.values(claimCopy.check.missing),
-  claimCopy.check.keepRecord,
+  claimCopy.check.keepRecord.lead,
+  claimCopy.check.keepRecord.rest,
   claimCopy.steps.heading,
   claimCopy.steps.answered(3),
   claimCopy.steps.notReached,
   ...Object.values(claimCopy.steps.label),
+  ...Object.values(claimCopy.steps.state),
   claimCopy.steps.zone.found('example.com', 4, 'Google'),
   claimCopy.steps.zone.foundUnnamed('example.com'),
   claimCopy.steps.zone.none,
@@ -229,7 +246,7 @@ describe('claim copy', () => {
   });
 
   it('says the record stays in place after verifying, because re-checks need it', () => {
-    expect(claimCopy.check.keepRecord.toLowerCase()).toContain('leave the record');
+    expect(claimCopy.check.keepRecord.lead.toLowerCase()).toContain('keep the txt record');
   });
 
   it('tells a reissued claim that the value it already published no longer matches', () => {
@@ -248,7 +265,7 @@ describe('claim copy', () => {
   // Without this the product tells someone to add a record they added weeks ago, while the
   // database still has the name as theirs.
   it('says a held name is still held when its record stops answering', () => {
-    expect(claimCopy.status.stillHeld.toLowerCase()).toContain('still holds the name');
+    expect(claimCopy.status.stillHeld.toLowerCase()).toContain('no longer found');
   });
 
   // A label that is a statement can only be true, so it fights its own glyph on a step that is
@@ -257,6 +274,14 @@ describe('claim copy', () => {
     for (const label of Object.values(claimCopy.steps.label)) {
       expect(label.toLowerCase()).not.toContain('found');
       expect(label).not.toContain('?');
+    }
+  });
+});
+
+describe('the demo list', () => {
+  it('says what every scripted name does', () => {
+    for (const name of testNames()) {
+      expect(claimCopy.demo.outcome[name]).toBeDefined();
     }
   });
 });
@@ -561,12 +586,14 @@ describe('describeStatus', () => {
   });
 
   it('still says a verified claim is held when the row carries no date', () => {
-    expect(describeStatus('verified', null).line.toLowerCase()).toContain('held by this account');
+    expect(describeStatus('verified', null).line.toLowerCase()).toContain(
+      'verified for this account',
+    );
   });
 
   // This is the line the friction log caught: the eyebrow said CLAIMING on a name already proved.
   it('does not describe a held claim as unproved', () => {
-    expect(describeStatus('verified', null).line.toLowerCase()).not.toContain('not been proved');
-    expect(describeStatus('pending', null).line.toLowerCase()).toContain('not been proved');
+    expect(describeStatus('verified', null).line.toLowerCase()).not.toContain('not yet verified');
+    expect(describeStatus('pending', null).line.toLowerCase()).toContain('not yet verified');
   });
 });

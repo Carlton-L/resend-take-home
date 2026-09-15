@@ -1,5 +1,6 @@
 // src/components/ClaimStatus/ClaimStatus.tsx
 import type React from 'react';
+import Notice from '@/components/Notice/Notice';
 import StatusPill from '@/components/StatusPill/StatusPill';
 import type { ClaimMessage, StatusMessage } from '@/lib/claims/messages';
 
@@ -27,10 +28,17 @@ const ClaimStatus: React.FC<ClaimStatusProps> = ({ name, message, action = null 
           <StatusPill label={message.label} tone={message.tone} />
         </span>
         <h1 className='break-all font-medium font-mono text-2xl tracking-tight'>{name}</h1>
-        <p className='max-w-2xl text-neutral-600 text-sm leading-relaxed'>{message.line}</p>
-        {extra !== null && (
-          <p className='max-w-2xl text-neutral-600 text-sm leading-relaxed'>{extra}</p>
-        )}
+        <p className='max-w-2xl text-fg-2 text-sm leading-relaxed'>{message.line}</p>
+        {extra !== null &&
+          (extra.lead === null ? (
+            <p className='max-w-2xl text-fg-2 text-sm leading-relaxed'>{extra.rest}</p>
+          ) : (
+            <div className='mt-2'>
+              <Notice tone='attention'>
+                <strong className='font-semibold text-fg'>{extra.lead}</strong> {extra.rest}
+              </Notice>
+            </div>
+          ))}
       </div>
       {action}
     </div>

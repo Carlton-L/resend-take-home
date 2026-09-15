@@ -17,15 +17,18 @@ const HomePage: React.FC = async () => {
   }
 
   return (
-    <main className='mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4 px-6 py-16'>
+    <main
+      id='main'
+      className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-6 py-16 sm:py-24'
+    >
       <h1 className='font-medium text-2xl tracking-tight'>DomainClaim</h1>
-      <p className='text-neutral-600 leading-relaxed'>
+      <p className='text-fg-2 leading-relaxed'>
         Claim a domain, prove you control it, and see exactly what is happening at each step,
         including when verification fails and what to do about it.
       </p>
       <Link
         href={SIGN_IN_PATH}
-        className='w-fit rounded-md bg-neutral-900 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2'
+        className='w-fit rounded-md bg-primary px-4 py-2 font-medium text-on-primary text-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2'
       >
         Sign in to claim a domain
       </Link>

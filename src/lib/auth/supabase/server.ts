@@ -46,24 +46,16 @@ export const supabaseServerClient = async () => {
 };
 
 /**
- * The signed in address, or null. Used by the layout header and by the protected pages.
+ * The signed in address, or null. Used by the layout header.
  *
- * Cached for the length of one render, because the layout and the page both need it and each call
- * is a round trip to Supabase. The proxy makes its own call before rendering starts and cannot
- * share this one.
+ * Read through `signedInUser` rather than asking Supabase again. The two used to be cached
+ * separately, so a page that called both spent two auth round trips on every render, one for the
+ * header and one for itself. The proxy makes its own call before rendering starts and cannot share
+ * this one.
  */
-export const signedInEmail = cache(async (): Promise<string | null> => {
-  const supabase = await supabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-  return data.user?.email ?? null;
-});
+export const signedInEmail = async (): Promise<string | null> =>
+  (await signedInUser())?.email ?? null;
 
-/**
- * The signed in user's id and address, or null. Claims are keyed on the id, so anything that reads
- * or writes a claim needs this rather than the address.
- *
- * Cached the same way and for the same reason as `signedInEmail`.
- */
 export const signedInUser = cache(async (): Promise<{ id: string; email: string } | null> => {
   const supabase = await supabaseServerClient();
   const { data } = await supabase.auth.getUser();

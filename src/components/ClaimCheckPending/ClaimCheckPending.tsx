@@ -14,10 +14,10 @@ import { claimCopy } from '@/lib/claims/messages';
  */
 const ClaimCheckPending: React.FC = () => {
   return (
-    <div className='flex items-center gap-3 rounded-md border border-neutral-200 bg-white p-5 text-neutral-600 text-sm'>
+    <div className='flex items-center gap-3 rounded-lg border border-line bg-surface p-5 text-fg-2 text-sm'>
       <span
         aria-hidden='true'
-        className='size-2 animate-pulse rounded-full bg-neutral-400 motion-reduce:animate-none'
+        className='size-2 animate-pulse rounded-full bg-fg-4 motion-reduce:animate-none'
       />
       {claimCopy.check.running}
     </div>

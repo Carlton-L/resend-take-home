@@ -5,15 +5,17 @@
  * feature, because they can be reached from anywhere.
  */
 export const appCopy = {
+  /** The skip link, first in the tab order on every page. */
+  skipToContent: 'Skip to content',
   notFound: {
-    title: 'Nothing at this address',
-    description:
-      'No page matches it. A claim also reads this way when it belongs to a different account, since telling a stranger that an id exists is an answer they have no use for.',
+    title: 'Page not found',
+    description: 'No page exists at this address.',
+    note: 'A claim that belongs to another account also shows this page.',
     action: 'Back to the start',
   },
   unexpected: {
-    title: 'This page stopped early',
-    description: 'Something failed while the page was being built and it did not finish.',
+    title: 'Something went wrong',
+    description: 'The page could not be loaded.',
     action: 'Try again',
   },
 } as const;

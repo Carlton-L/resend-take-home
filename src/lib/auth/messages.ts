@@ -18,36 +18,38 @@ export const signInCopy = {
     submitting: 'Sending',
   },
   invalidEmail: {
-    title: 'That is not an email address',
-    description: 'The field needs an address in the form name@example.com.',
-    action: 'Check it for a typo and send again.',
+    title: 'Enter a valid email address',
+    description: 'The address must be in the form name@example.com.',
+    action: 'Correct the address and send again.',
   },
   sent: {
     title: 'Check your email',
     description: (email: string) =>
-      `A sign in link is on its way to ${email}. It expires in ${SIGN_IN_LINK_TTL_MINUTES} minutes.`,
+      `A sign in link was sent to ${email}. It expires in ${SIGN_IN_LINK_TTL_MINUTES} minutes.`,
     resend: 'Send another link',
     resendIn: (seconds: number) => `Send another link in ${seconds}s`,
     changeAddress: 'Use a different address',
   },
   unavailable: {
     title: 'The link could not be sent',
-    description: 'Something here failed before the email went out.',
+    description: 'The email was not sent.',
     action: 'Try again in a moment.',
   },
   confirm: {
     title: 'Sign in to DomainClaim',
-    description: (email: string) => `You are about to sign in as ${email}.`,
+    description: (email: string) => `Continue as ${email}.`,
     submit: 'Sign in',
-    note: 'This link can be used once.',
+    note: 'This link works once.',
   },
   dead: {
     title: 'This link no longer works',
-    description: `A sign in link works once. Sending a new one replaces the last one, and every link stops working after ${SIGN_IN_LINK_TTL_MINUTES} minutes.`,
+    description: `Sign in links work once, expire after ${SIGN_IN_LINK_TTL_MINUTES} minutes, and are replaced when a new one is sent.`,
     action: 'Send a new link',
   },
   header: {
     signOut: 'Sign out',
+    /** The button the address and Sign out fold into on a phone. */
+    account: 'Account',
   },
 } as const;
 

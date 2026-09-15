@@ -1,12 +1,108 @@
 @import "tailwindcss";
 
 /*
-  Tailwind 4 gives buttons the default arrow cursor. Everything clickable here should say it is
-  clickable, and a disabled control should not.
+  The theme. Every colour, radius and face the app uses is named here and nowhere else, so a
+  component says what a surface is for and this file says what that looks like.
+
+  Values come from carlton.dev's tokens (src/styles/tokens.css there): patch chrome near black,
+  phosphor signal for the primary action and focus, amber for the attention tone. Dark only, which
+  is also how Resend ships. A light palette would be a second block of the same names.
+
+  Tones keep their meaning from the RFC. good: held. attention: the next move is the person's.
+  wrong: a check step that needs a change. neutral: waiting. The colour is the only thing that
+  changes here.
 */
+@theme {
+  --color-*: initial;
+
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-bg: #0a0a0b;
+  --color-surface: #101013;
+  --color-surface-2: #161619;
+  --color-surface-3: #1c1c20;
+  --color-line: #232326;
+  --color-line-2: #3a3a3e;
+
+  --color-fg: #e6e6e2;
+  --color-fg-2: #b3b3ad;
+  --color-fg-3: #8f8f8a;
+  --color-fg-4: #6a6a66;
+
+  --color-signal: #3dff88;
+  --color-signal-hover: #7dffae;
+  --color-on-signal: #0a0a0b;
+
+  /* The primary action is pale, so signal green only ever means live, held, current or focused. */
+  --color-primary: #e6e6e2;
+  --color-primary-hover: #ffffff;
+  --color-on-primary: #0a0a0b;
+
+  --color-good-bg: #123c24;
+  --color-good-line: #2a8a52;
+  --color-good-fg: #3dff88;
+
+  /*
+    Attention is a yellower amber and wrong is vermilion rather than pink red: the pair nearest
+    the originals in Wong's colour-blind safe set, so they stay apart for deuteranopia and
+    protanopia. Both are already tokens on carlton.dev.
+  */
+  --color-attention-bg: #2a2410;
+  --color-attention-line: #8a7410;
+  --color-attention-fg: #f1e6b5;
+  --color-attention-glyph: #f0c93a;
+
+  --color-wrong-bg: #2c1410;
+  --color-wrong-line: #6a2a1c;
+  --color-wrong-fg: #ff7a5c;
+  --color-wrong-label: #ffb39f;
+  --color-wrong-strong: #c92a2a;
+  --color-wrong-strong-hover: #e03a3a;
+
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 12px;
+}
+
+/* Faces are loaded in layout.tsx and arrive as variables, so these have to be resolved inline. */
+@theme inline {
+  --font-sans: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+
 @layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  /*
+    Tailwind 4 gives buttons the default arrow cursor. Everything clickable here should say it is
+    clickable, and a disabled control should not.
+  */
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+
+  /*
+    Autofill. Chrome and Safari paint a fixed pale-yellow behind an autofilled field, which on a
+    dark surface reads as an olive box. The box-shadow trick is the standard way to hold the field
+    on its own surface; the text-fill-color keeps the text the theme colour. Firefox uses its own
+    :autofill and honours a background, so it gets the same surface.
+  */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--color-fg);
+    -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
+    caret-color: var(--color-fg);
+    transition: background-color 100000s ease-in-out 0s;
+  }
+  input:autofill {
+    background: var(--color-surface);
+    color: var(--color-fg);
   }
 }

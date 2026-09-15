@@ -15,23 +15,23 @@ import { claimCopy } from '@/lib/claims/messages';
  */
 const DomainResultEmpty: React.FC = () => {
   return (
-    <div className='flex flex-col gap-5 rounded-md border border-neutral-200 border-dashed bg-white p-5'>
+    <div className='flex flex-col gap-5 rounded-lg border border-line border-dashed bg-surface p-5'>
       <div className='flex flex-col gap-1'>
-        <span className='font-medium text-neutral-400 text-xs uppercase tracking-wider'>
+        <span className='font-medium text-fg-4 text-xs uppercase tracking-wider'>
           {claimCopy.create.nameToClaim}
         </span>
-        <span className='font-mono text-lg text-neutral-300'>{claimCopy.create.awaitingName}</span>
+        <span className='font-mono text-lg text-fg-4'>{claimCopy.create.awaitingName}</span>
       </div>
 
       <button
         type='button'
         disabled
-        className='self-start cursor-not-allowed rounded-md bg-neutral-200 px-4 py-2 font-medium font-mono text-neutral-400 text-sm'
+        className='self-start cursor-not-allowed rounded-md bg-line px-4 py-2 font-medium font-mono text-fg-4 text-sm'
       >
         {claimCopy.create.submitEmpty}
       </button>
 
-      <p className='border-neutral-200 border-t pt-4 text-neutral-500 text-sm leading-relaxed'>
+      <p className='border-line border-t pt-4 text-fg-3 text-sm leading-relaxed'>
         {claimCopy.create.empty}
       </p>
     </div>

@@ -1,6 +1,7 @@
 // src/app/claim/[id]/page.tsx
 import { notFound, redirect } from 'next/navigation';
 import type React from 'react';
+import BackLink from '@/components/BackLink/BackLink';
 import CheckRunner from '@/components/CheckRunner/CheckRunner';
 import ClaimCheck from '@/components/ClaimCheck/ClaimCheck';
 import ClaimProvider from '@/components/ClaimProvider/ClaimProvider';
@@ -65,12 +66,16 @@ const ClaimRecordPage: React.FC<ClaimRecordPageProps> = async ({ params, searchP
   const value = formatRecordValue(claim.token, claim.expiresAt);
 
   return (
-    <main className='mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:py-24'>
+    <main
+      id='main'
+      className='mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-16 sm:py-24'
+    >
       {/*
         A Client Component wrapping Server Components. Everything below is rendered on the server
         and handed to the runner as `children`, already built, so the check's state reaches three
         places without any of this markup going into the browser bundle.
       */}
+      <BackLink />
       <CheckRunner claimId={claim.id}>
         {/*
           The status starts as the claim's own row, which is what the page can say with no waiting,
@@ -82,7 +87,7 @@ const ClaimRecordPage: React.FC<ClaimRecordPageProps> = async ({ params, searchP
           initial={describeStatus(claim.status, claim.verifiedAt)}
         />
 
-        <div className='flex max-w-2xl flex-col gap-6 empty:hidden'>
+        <div className='flex flex-col gap-6 empty:hidden'>
           {reissued === '1' && <Notice>{claimCopy.record.reissued}</Notice>}
           {existing === '1' && reissued !== '1' && <Notice>{claimCopy.record.existing}</Notice>}
           {contested && <Notice tone='attention'>{claimCopy.record.challenger(claim.name)}</Notice>}
@@ -104,10 +109,10 @@ const ClaimRecordPage: React.FC<ClaimRecordPageProps> = async ({ params, searchP
           read out, which is the behaviour this region wants and the reason not to rebuild it out of
           keys or timestamps.
 
-          The record row needs the wider page. Prose does not, so the check keeps the measure the
-          rest of the app reads at.
+          The chain and the record card share one width. Prose inside the chain is capped on the
+          paragraph, so a line stays readable while the two cards line up.
         */}
-        <div role='status' aria-live='polite' className='flex max-w-2xl flex-col'>
+        <div role='status' aria-live='polite' className='flex flex-col'>
           <ClaimCheck />
         </div>
 
@@ -123,7 +128,7 @@ const ClaimRecordPage: React.FC<ClaimRecordPageProps> = async ({ params, searchP
         {/* At the foot, beneath both cards, because it is acted on while looking at the record. */}
         <ClaimProvider />
 
-        <div className='mt-auto border-neutral-200 border-t pt-6'>
+        <div className='mt-auto border-line border-t pt-6'>
           <ReleaseClaim id={claim.id} name={claim.name} host={fullName} />
         </div>
       </CheckRunner>

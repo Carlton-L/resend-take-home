@@ -11,12 +11,20 @@ import { appCopy } from '@/lib/copy/app';
  */
 const NotFound: React.FC = () => {
   return (
-    <main className='mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-6 py-16 sm:py-24'>
+    <main
+      id='main'
+      className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-6 py-16 sm:py-24'
+    >
       <h1 className='font-medium text-2xl tracking-tight'>{appCopy.notFound.title}</h1>
-      <p className='text-neutral-600 leading-relaxed'>{appCopy.notFound.description}</p>
+      <p className='text-fg-2 leading-relaxed'>{appCopy.notFound.description}</p>
+      {/* The claim-belongs-to-another-account case is the one a signed in person actually hits, so
+          it gets its own card rather than a clause in the sentence above. */}
+      <p className='rounded-lg border border-line bg-surface-2 p-4 text-fg-2 text-sm leading-relaxed'>
+        {appCopy.notFound.note}
+      </p>
       <Link
         href='/'
-        className='self-start rounded-md bg-neutral-900 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-neutral-700 focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2'
+        className='self-start rounded-md bg-primary px-4 py-2 font-medium text-on-primary text-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2'
       >
         {appCopy.notFound.action}
       </Link>

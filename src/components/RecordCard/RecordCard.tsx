@@ -16,7 +16,7 @@ type RecordCardProps = {
   held: boolean;
 };
 
-const SHELL = 'rounded-md border border-neutral-200 bg-white p-5';
+const SHELL = 'rounded-lg border border-line bg-surface p-5';
 
 /**
  * The record to add, and nothing about whether it has been found. This renders in the page body
@@ -47,7 +47,7 @@ const RecordCard: React.FC<RecordCardProps> = ({
         than the token's seven days, because verifying does not clear it, and that date is sitting
         in the record value directly above. Said where it is read rather than left to be worked out.
       */}
-      <p className='mt-5 border-neutral-200 border-t pt-4 text-neutral-600 text-sm leading-relaxed'>
+      <p className='mt-5 border-line border-t pt-4 text-fg-2 text-sm leading-relaxed'>
         {held
           ? claimCopy.record.heldExpiry(formatWhen(expiresAt))
           : claimCopy.record.expiry(formatWhen(expiresAt))}
@@ -58,7 +58,7 @@ const RecordCard: React.FC<RecordCardProps> = ({
   if (held) {
     return (
       <details className={SHELL}>
-        <summary className='cursor-pointer font-medium marker:text-neutral-500'>
+        <summary className='cursor-pointer rounded-sm font-medium marker:text-fg-3 focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2'>
           {claimCopy.record.headingHeld}
         </summary>
         <div className='mt-5'>{body}</div>
@@ -70,7 +70,7 @@ const RecordCard: React.FC<RecordCardProps> = ({
     <section className={SHELL}>
       <div className='mb-5 flex flex-col gap-1'>
         <h2 className='font-medium text-lg tracking-tight'>{claimCopy.record.heading}</h2>
-        <p className='text-neutral-600 text-sm leading-relaxed'>{claimCopy.record.intro(name)}</p>
+        <p className='text-fg-2 text-sm leading-relaxed'>{claimCopy.record.intro(name)}</p>
       </div>
       {body}
     </section>
