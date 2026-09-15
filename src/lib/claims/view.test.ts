@@ -34,6 +34,7 @@ const verified = (over: Partial<ClaimOutcome> = {}): ClaimOutcome => ({
   status: 'verified',
   verifiedAt: NOW,
   provedButHeld: false,
+  recovered: false,
   ...over,
 });
 
@@ -60,6 +61,7 @@ const missing = (over: Partial<ClaimOutcome> = {}): ClaimOutcome => ({
   status: 'pending',
   verifiedAt: null,
   provedButHeld: false,
+  recovered: false,
   ...over,
 });
 
@@ -73,6 +75,33 @@ describe('checkView', () => {
   it('survives a round trip through JSON unchanged', () => {
     const view = checkView(missing());
     expect(JSON.parse(JSON.stringify(view))).toEqual(view);
+  });
+
+  /**
+   * The one check that finds the record again says so. Going quietly back to Verified would leave
+   * the person who has just fixed their zone watching a screen that says nothing about it.
+   */
+  describe('recovering', () => {
+    const PROVED = new Date('2026-09-01T09:00:00Z');
+    const back = verified({ recovered: true, verifiedAt: PROVED });
+
+    it('says the record is answering again and names the server', () => {
+      expect(back.status).toBe('verified');
+      expect(checkView(back).status.line).toContain(NS);
+      expect(checkView(back).status.line.toLowerCase()).toContain('again');
+    });
+
+    it('reads as held rather than as something to act on', () => {
+      expect(checkView(back).status.tone).toBe('good');
+      expect(checkView(back).status.label).toBe(checkView(verified()).status.label);
+    });
+
+    // The name has been held since it was first proved. A recovery is not a second proof of it,
+    // so it does not borrow the line that reports one.
+    it('does not report the name as proved all over again', () => {
+      const ordinary = checkView(verified({ verifiedAt: PROVED })).status.line;
+      expect(checkView(back).status.line).not.toBe(ordinary);
+    });
   });
 
   it('names the provider in the line that goes at the foot of the page', () => {
@@ -114,6 +143,11 @@ describe('checkView', () => {
       expect(lost.status).toBe('verified');
       expect(checkView(lost).settled).toBe(false);
       expect(checkView(lost).needsAttention).toBe(true);
+    });
+
+    // The record came back, the row moved, and there is nothing left to ask.
+    it('is settled once an at risk claim has recovered', () => {
+      expect(checkView(verified({ recovered: true })).settled).toBe(true);
     });
 
     // A check that proved control and a write that did not land. Asking again is what fixes it.

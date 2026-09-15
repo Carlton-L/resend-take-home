@@ -18,6 +18,8 @@ export type Claim = {
   issuedAt: Date;
   expiresAt: Date;
   verifiedAt: Date | null;
+  /** Set on the first check that could not find the record of a claim that had proved itself. */
+  failingSince: Date | null;
 };
 
 /** Postgres unique violation. Both indexes on `claims` are unique, so either can raise it. */
@@ -156,6 +158,11 @@ export type ClaimSummary = {
   status: ClaimStatus;
   verifiedAt: Date | null;
   expiresAt: Date;
+  /**
+   * How long this name has been failing its checks, which is the one thing an at-risk row has to
+   * say that the status word does not. Null on every other status.
+   */
+  failingSince: Date | null;
 };
 
 /**
@@ -181,6 +188,7 @@ export const claimsForOwner = async (ownerId: string): Promise<ClaimSummary[]> =
       status: claims.status,
       verifiedAt: claims.verifiedAt,
       expiresAt: claims.expiresAt,
+      failingSince: claims.failingSince,
     })
     .from(claims)
     .where(eq(claims.ownerId, ownerId))
@@ -218,6 +226,18 @@ export const deleteClaim = async (id: string, ownerId: string): Promise<boolean>
 export type VerifyOutcome = 'verified' | 'held_by_another' | 'unavailable';
 
 /**
+ * Whether a conditional write moved the row. `unchanged` means the status it was conditional on
+ * was no longer the one this check read, which a reload and a second tab both produce.
+ */
+export type MoveOutcome<Moved extends string> = Moved | 'unchanged' | 'unavailable';
+
+/**
+ * Every way a check can leave the row, as one value, so the pure function that decides what the
+ * screen says reads one argument rather than three.
+ */
+export type ClaimWrite = VerifyOutcome | MoveOutcome<'at_risk'> | MoveOutcome<'recovered'>;
+
+/**
  * Records that a check found the record.
  *
  * Conditional on the row still being pending, so it is idempotent: a reload runs the check again
@@ -240,5 +260,59 @@ export const markVerified = async (
     return 'verified';
   } catch (error) {
     return isUniqueViolation(error) ? 'held_by_another' : 'unavailable';
+  }
+};
+
+/**
+ * Records that a check could not find the record of a name this account holds.
+ *
+ * Conditional on the row still being `verified` inside the statement, which makes it idempotent
+ * and keeps `failing_since` at the first failure rather than moving it forward on every check
+ * after it. A reload writes nothing the second time.
+ *
+ * Only the failures that prove the record is gone reach this. `shouldMarkAtRisk` is the rule, and
+ * it is a pure function with tests, because which failures are allowed to move a held name is the
+ * decision in this state and not an implementation detail of the write.
+ *
+ * `verified` and `at_risk` are both in the owned-name index, so this cannot collide with another
+ * account: the row never leaves the index it already sits in.
+ */
+export const markAtRisk = async (
+  id: string,
+  ownerId: string,
+  at: Date,
+): Promise<MoveOutcome<'at_risk'>> => {
+  try {
+    const rows = await getDb()
+      .update(claims)
+      .set({ status: 'at_risk', failingSince: at })
+      .where(and(eq(claims.id, id), eq(claims.ownerId, ownerId), eq(claims.status, 'verified')))
+      .returning({ id: claims.id });
+    return rows.length > 0 ? 'at_risk' : 'unchanged';
+  } catch {
+    return 'unavailable';
+  }
+};
+
+/**
+ * Records that the record of an at-risk name is answering again.
+ *
+ * `verified_at` is deliberately untouched. The account has held this name since it first proved
+ * it, and the record coming back is not a second proof of ownership. Clearing `failing_since` is
+ * the whole of the state change.
+ */
+export const markRecovered = async (
+  id: string,
+  ownerId: string,
+): Promise<MoveOutcome<'recovered'>> => {
+  try {
+    const rows = await getDb()
+      .update(claims)
+      .set({ status: 'verified', failingSince: null })
+      .where(and(eq(claims.id, id), eq(claims.ownerId, ownerId), eq(claims.status, 'at_risk')))
+      .returning({ id: claims.id });
+    return rows.length > 0 ? 'recovered' : 'unchanged';
+  } catch {
+    return 'unavailable';
   }
 };

@@ -69,6 +69,7 @@ const everyString: string[] = [
   claimCopy.record.copy,
   claimCopy.record.copied,
   claimCopy.record.expiry(WHEN),
+  claimCopy.record.heldExpiry(WHEN),
   claimCopy.record.existing,
   claimCopy.record.reissued,
   claimCopy.record.challenger(NAME),
@@ -114,6 +115,8 @@ const everyString: string[] = [
   claimCopy.status.provedButHeld.line,
   claimCopy.status.proved('ns1.example.com', WHEN),
   claimCopy.status.stillHeld,
+  claimCopy.status.recovered('ns1.example.com'),
+  claimCopy.status.atRisk.since(WHEN),
   ...Object.values(claimCopy.check.provedButHeld),
   ...CLAIM_STATUSES.flatMap((status) => {
     const message = describeStatus(status, new Date('2026-09-14T18:42:07Z'));
@@ -274,7 +277,10 @@ describe('describeClaimRow', () => {
   const RUN_OUT = new Date('2026-09-10T12:00:00Z');
 
   it.each(CLAIM_STATUSES)('%s has a label and a line', (status) => {
-    const message = describeClaimRow({ status, verifiedAt: null, expiresAt: LIVE }, NOW);
+    const message = describeClaimRow(
+      { status, verifiedAt: null, expiresAt: LIVE, failingSince: null },
+      NOW,
+    );
     expect(message.label.length).toBeGreaterThan(0);
     expect(message.line.length).toBeGreaterThan(0);
   });
@@ -283,7 +289,7 @@ describe('describeClaimRow', () => {
   // the only screen that will ever say it, since the record screen gets it from the check.
   it('reads a pending claim whose token has run out as expired', () => {
     const message = describeClaimRow(
-      { status: 'pending', verifiedAt: null, expiresAt: RUN_OUT },
+      { status: 'pending', verifiedAt: null, expiresAt: RUN_OUT, failingSince: null },
       NOW,
     );
     expect(message.label).toBe(claimCopy.status.expired.label);
@@ -295,7 +301,12 @@ describe('describeClaimRow', () => {
   it('leaves a claim that already holds its name alone, however old its token is', () => {
     for (const status of ['verified', 'at_risk', 'contested'] as const) {
       const message = describeClaimRow(
-        { status, verifiedAt: new Date('2026-09-11T09:00:00Z'), expiresAt: RUN_OUT },
+        {
+          status,
+          verifiedAt: new Date('2026-09-11T09:00:00Z'),
+          expiresAt: RUN_OUT,
+          failingSince: null,
+        },
         NOW,
       );
       expect(message.label).not.toBe(claimCopy.status.expired.label);
@@ -315,7 +326,72 @@ describe('describeClaimRow', () => {
     ['contested', RUN_OUT, 'attention'],
     ['revoked', RUN_OUT, 'neutral'],
   ] as const)('%s expiring %s asks for %s', (status, expiresAt, tone) => {
-    expect(describeClaimRow({ status, verifiedAt: null, expiresAt }, NOW).tone).toBe(tone);
+    expect(
+      describeClaimRow({ status, verifiedAt: null, expiresAt, failingSince: null }, NOW).tone,
+    ).toBe(tone);
+  });
+
+  /**
+   * The one detail a row carries. How long a name has been failing is what the status word leaves
+   * out, and it is the number the grace window will count from once there is a schedule to run it.
+   */
+  it('says how long an at risk name has been failing', () => {
+    const failingSince = new Date('2026-09-12T08:31:00Z');
+    const message = describeClaimRow(
+      {
+        status: 'at_risk',
+        verifiedAt: new Date('2026-09-01T09:00:00Z'),
+        expiresAt: LIVE,
+        failingSince,
+      },
+      NOW,
+    );
+    expect(message.detail).toBe(claimCopy.status.atRisk.since(formatWhen(failingSince)));
+    expect(message.detail).toContain('12 September 2026');
+    // The same UTC suffix as every other date here. Without it a reader a couple of hours either
+    // side of midnight takes the date as local and lands a day out.
+    expect(message.detail).toContain('UTC');
+  });
+
+  // The column is null on every other status, and on an at-risk row written before it existed.
+  it.each(CLAIM_STATUSES)('%s carries no detail without a date to put in it', (status) => {
+    const message = describeClaimRow(
+      { status, verifiedAt: null, expiresAt: LIVE, failingSince: null },
+      NOW,
+    );
+    expect(message.detail).toBeNull();
+  });
+
+  it('carries no detail on a status that is not at risk', () => {
+    const message = describeClaimRow(
+      {
+        status: 'verified',
+        verifiedAt: new Date('2026-09-01T09:00:00Z'),
+        expiresAt: LIVE,
+        failingSince: new Date('2026-09-12T08:31:00Z'),
+      },
+      NOW,
+    );
+    expect(message.detail).toBeNull();
+  });
+});
+
+/**
+ * Verifying does not clear `expires_at`, so a name held for longer than the token's seven days
+ * carries an expiry in the past, and that date is in the record value being compared against the
+ * panel. The check no longer stops on it, which is what made this line reachable.
+ */
+describe('the record expiry line', () => {
+  it('says something different once the claim holds the name', () => {
+    expect(claimCopy.record.heldExpiry(WHEN)).not.toBe(claimCopy.record.expiry(WHEN));
+  });
+
+  it('does not tell the holder of a name that the token is still good', () => {
+    expect(claimCopy.record.heldExpiry(WHEN).toLowerCase()).not.toContain('is good until');
+  });
+
+  it('carries the date, since that is what is sitting in the record value', () => {
+    expect(claimCopy.record.heldExpiry(WHEN)).toContain(WHEN);
   });
 });
 

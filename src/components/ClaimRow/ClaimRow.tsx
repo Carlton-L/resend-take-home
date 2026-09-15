@@ -28,7 +28,16 @@ const ClaimRow: React.FC<ClaimRowProps> = ({ claim }) => {
         <span className='min-w-0 break-all font-medium font-mono text-neutral-900 text-sm'>
           {claim.name}
         </span>
-        <StatusPill label={message.label} tone={message.tone} />
+        {/*
+          The detail sits after the pill so it reads on from it, in both the layout and a screen
+          reader: the name, then At risk, then since when. Only an at-risk row has one.
+        */}
+        <span className='flex shrink-0 items-center gap-2'>
+          <StatusPill label={message.label} tone={message.tone} />
+          {message.detail !== null && (
+            <span className='text-neutral-500 text-xs'>{message.detail}</span>
+          )}
+        </span>
       </Link>
     </li>
   );
