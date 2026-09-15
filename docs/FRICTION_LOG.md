@@ -313,6 +313,9 @@ the same thing on a held claim and there is a test asserting the words do not mo
 The state is still not written by anything. A held claim failing a check reads as `at_risk` and is
 stored as `verified`, which is the same gap the RFC records, now with the right words on it.
 
+Closed in #13. The check writes the state, and the words did not have to change again, because the
+reading side was built against whether the claim holds its name rather than against the enum value.
+
 ### The check chain opened and I could not tell that I had opened it
 
 Refreshed a pending claim and saw the five rows with the failure open. Refreshed again and saw one
@@ -424,3 +427,57 @@ it moves to a zone whose panel publishes quickly.
 Not changed: the product should not start hedging about this. The check reports what the nameservers
 answer, which is what every other consumer of that zone sees too. A screen that said "your panel may
 disagree" on every successful check would be noise on the one outcome that is never in doubt.
+
+## 2026-09-15, the check endpoint on the deployment. Two entries.
+
+### The first check after a quiet spell takes several seconds
+
+Opened a claim on `verified.test`, which touches no network at all, and the check took several
+seconds to answer. Reloaded straight afterwards and it came back in about a second.
+
+Accepted. Cold start on the serverless function, and none of it is DNS: that name is answered by the
+fake resolver in the same process. Nothing about the check can be made faster, since the time is
+spent before our code runs.
+
+Two things follow. The screen already covers it, because the record renders from the row and only
+the chain waits, which is the reason the record screen was built to render before its first check.
+And the deployment gets warmed before the video is recorded, so the first thing on screen is not the
+slowest check in the session.
+
+### An at risk name could not say how long it had been at risk
+
+Nothing stored when a held claim first failed, so the domain list could say a name was at risk and
+nothing could say since when. On a list that is the first screen a reviewer opens, that is the
+difference between a name that broke this morning and one that broke in March.
+
+Resolved in #13. `failing_since` is stamped by the check that moves the claim and the list row
+carries the date after the pill.
+
+## 2026-09-15, at risk gets a writer, local dev and a real domain. Two entries.
+
+### carlton.dev went at risk on its own, the same day the state got a writer
+
+Opened the domain list during testing and found `carlton.dev` reading At risk since 13:11 UTC. Nothing
+in the test seeds touched it. The TXT record had been deleted from the Squarespace panel the day
+before and never put back, the zone has published since, and a check run while testing something else
+asked the nameservers and got nothing.
+
+Not a friction. The state the RFC described as one the product could model and never enter was entered
+by a real domain, through the ordinary path, on the first day anything could write it. The entry is
+here because it is the best evidence in this file that the model matches the world: a person deletes a
+record for an unrelated reason, forgets, and the product is what tells them.
+
+It is also the demo. A `.test` name cannot reach this state, because a demo script is fixed per name
+and a name that fails can never verify first.
+
+### The status flashes the row's state before the check corrects it
+
+Reloading a recovered claim shows At risk for an instant, then Verified.
+
+Accepted, and it is the design. The page renders the claim's own row first, which is what it can say
+with no waiting, and the check replaces it when it answers. At that first moment the row really does
+say at risk. The alternative is a shell that says nothing until the check lands, which is the
+behaviour that once put CLAIMING above a name the account already held.
+
+It reads as a flicker only against the fake resolver, which answers in about a millisecond. A real
+zone takes long enough that the same sequence reads as an update.

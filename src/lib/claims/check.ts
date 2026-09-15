@@ -4,12 +4,20 @@ import {
   type ClaimAfterCheck,
   claimAfterCheck,
   evaluateClaim,
-  isExpired,
+  shouldMarkAtRisk,
+  shouldMarkRecovered,
   shouldMarkVerified,
+  tokenHasRunOut,
 } from '@/lib/claims/evaluate';
 import { formatRecordValue, recordFullName } from '@/lib/claims/record';
 import type { CheckResult } from '@/lib/claims/state';
-import { type Claim, markVerified } from '@/lib/claims/store';
+import {
+  type Claim,
+  type ClaimWrite,
+  markAtRisk,
+  markRecovered,
+  markVerified,
+} from '@/lib/claims/store';
 import { createFakeResolver } from '@/lib/dns/fakeResolver';
 import { createNodeResolver } from '@/lib/dns/nodeResolver';
 import { isTestName, scriptFor, testNamespaceEnabled } from '@/lib/dns/testNames';
@@ -30,9 +38,12 @@ export type Check = {
  * cannot be used to verify a domain someone else owns.
  */
 export const checkClaim = async (claim: Claim, now: Date = new Date()): Promise<Check> => {
-  // An expired claim cannot be proved by anything in DNS, so asking would spend a query on a
-  // question already answered by the row.
-  if (isExpired(claim, now)) {
+  // A claim still trying to prove itself, whose token has run out, cannot be proved by anything in
+  // DNS, so asking would spend a query on a question already answered by the row. A claim that
+  // holds its name is past this: verifying does not clear `expires_at`, so every name held longer
+  // than the token's seven days carries an expiry in the past and would otherwise stop here
+  // instead of checking whether its record is still there.
+  if (tokenHasRunOut(claim, now)) {
     return {
       trace: null,
       result: { status: 'failed', reason: { code: 'token_expired', expiredAt: claim.expiresAt } },
@@ -74,9 +85,32 @@ export type ClaimOutcome = Check & ClaimAfterCheck;
 export const runCheck = async (claim: Claim, now: Date = new Date()): Promise<ClaimOutcome> => {
   const { trace, result } = await checkClaim(claim, now);
 
-  const write = shouldMarkVerified(claim, result)
-    ? await markVerified(claim.id, claim.ownerId, now)
-    : null;
+  return { trace, result, ...claimAfterCheck(claim, await recordCheck(claim, result, now), now) };
+};
 
-  return { trace, result, ...claimAfterCheck(claim, write, now) };
+/**
+ * The one write this check earns, or none.
+ *
+ * Three transitions, each decided by a pure rule and each conditional on the same status inside
+ * its own statement. They cannot both apply: the rules read the status the check started from and
+ * no two of them accept the same one.
+ *
+ * A claim that stays where it is writes nothing. Most checks are that, and a check is an
+ * observation rather than something the person asked to happen.
+ */
+const recordCheck = async (
+  claim: Claim,
+  result: CheckResult,
+  now: Date,
+): Promise<ClaimWrite | null> => {
+  if (shouldMarkVerified(claim, result)) {
+    return markVerified(claim.id, claim.ownerId, now);
+  }
+  if (shouldMarkAtRisk(claim, result)) {
+    return markAtRisk(claim.id, claim.ownerId, now);
+  }
+  if (shouldMarkRecovered(claim, result)) {
+    return markRecovered(claim.id, claim.ownerId);
+  }
+  return null;
 };

@@ -122,14 +122,20 @@ type FailureReason =
 type ClaimState =
   | { status: 'pending'; issuedAt: Date; expiresAt: Date; lastFailure: FailureReason | null }
   | { status: 'verified'; verifiedAt: Date; lastCheckedAt: Date; nextCheckAt: Date }
-  | { status: 'at_risk'; verifiedAt: Date; failingSince: Date; graceEndsAt: Date; reason: FailureReason }
+  | { status: 'at_risk'; verifiedAt: Date; failingSince: Date }
   | { status: 'revoked'; verifiedAt: Date; revokedAt: Date; reason: FailureReason }
   | { status: 'contested'; verifiedAt: Date; challengerProvedAt: Date; decisionDueAt: Date };
 ```
 
+`at_risk` carries no reason and no `graceEndsAt`. The reason is recomputed by the next check and
+rendered from that, so storing it would be a second source of truth for something nothing reads in
+between. `graceEndsAt` belongs to the grace window, which needs the cron. `revoked` and `contested`
+are designed and have no writer.
+
 ### Data
 
-`claims`, with a unique index on the normalized name covering verified, at risk and contested rows.
+`claims`, with one nullable `failing_since` and a unique index on the normalized name covering
+verified, at risk and contested rows.
 One owner per name, any number of pending attempts, which is what step 8 needs. A contested row is
 still the incumbent's, so leaving it out would free the name for a third account for the length of
 the contest.
@@ -258,8 +264,9 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   check. The worst case for a trace is the deadline times the number of steps, so blocking on it is
   not a rounding error.
 - The check runs from the browser against an endpoint rather than in the page body. One cause sat
-  under three problems: it could not be rate limited, a prefetched list row spent a trace and a
-  write on a cursor passing over it, and the only way to ask again was the browser's reload button.
+  under three problems: it could not be rate limited, the list's rows carried `prefetch={false}`
+  against a hover spending a trace and a write, and the only way to ask again was the browser's
+  reload button.
   Cost: a browser with JavaScript off sees the record and no check. Accepted, because the record is
   what the user came for and proving control is a round trip either way. The claim form still posts
   a plain form and still works without it.
@@ -389,10 +396,47 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   are said next to the button that asks now, which is the one place either can be acted on. The
   relative time is honest again because the client re-renders it, and it is coarse, since a second
   by second count is motion on a page where nothing is happening.
-- The list's rows prefetch again, and the comment explaining why they did not is deleted with the
-  prop. A prefetched record screen now costs a render and two reads.
+- The list's rows prefetch again and the comment goes with the prop. The reason recorded for that
+  prop was wrong. Measured on the deployment, 2026-09-15: loading `/domains` with `prefetch={false}`
+  removed produces no request to `/claim/<id>` of any kind, and Next does not prefetch in `next dev`
+  either, so it was never observable while the prop was being written. A prefetched record screen
+  would cost a render and two reads, and nothing prefetches it.
 - A pending claim whose token has run out reads as expired on the list. The row is still pending in
   the database, and the list is the one screen that no check will correct.
+- A held claim whose check cannot find its record moves to `at_risk` and stamps `failing_since`.
+  Three of the five states were reachable only by editing the database by hand.
+- Only failures where the nameservers answered write it. `record_not_found`, `no_txt_at_name`,
+  `appended_zone_suspected` and `value_mismatch` each mean the zone was read and this claim's record
+  was not in it. `nameservers_unreachable` and `zone_not_found` mean a view of DNS that failed, which
+  from one vantage point is the weakest signal this product has, and a two second deadline should not
+  take a name off an account. The rule is a pure function with a test, since it is the decision this
+  state turns on.
+- Nothing is stored about why a check failed. `failing_since` is a plain `timestamptz` and needs no
+  codec, no versioning and no unknown-variant guard, which is the whole of the analysis that keeps
+  `last_failure` unbuilt.
+- The write is conditional on the status inside the statement, like every other write here, so a
+  reload changes nothing and `failing_since` stays at the first failure rather than being pushed
+  forward by every check after it.
+- A record that answers again takes the claim back to `verified` and clears `failing_since`.
+  `verified_at` does not move. The account has held the name since it first proved it, and a record
+  coming back is not a second proof of ownership.
+- The check that recovers a claim says so. Going quietly back to Verified leaves the person who has
+  just fixed their zone reading a screen that says nothing about what they did, which is the same
+  ambiguity as a chain that disappears.
+- The list row says how long a name has been failing, and no other row carries a date. The status
+  word says what is true and the date says how long it has been true, which is the part a person
+  weighs and the number the grace window will count from. The full timestamp with its UTC suffix,
+  like every date in the product, since a bare date is read locally and lands a day out either side
+  of midnight.
+- The record card says something different about the token expiry once the claim holds the name.
+  Verifying does not clear `expires_at`, so a name held for longer than seven days carries an expiry
+  in the past, and that date is sitting in the record value being compared against the panel. Until
+  the fix above this was unreachable, because the check stopped on the expiry and the whole screen
+  said the claim had expired.
+- A claim that holds its name is never answered from its token expiry. Verifying does not clear
+  `expires_at`, so every name held for longer than seven days carries an expiry in the past, and
+  reading it without the status first stopped the check before it asked DNS anything. That made the
+  writer above switch itself off a week after each claim was proved.
 
 ## Open
 
@@ -413,18 +457,27 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   period. Atlassian and Google both keep the incumbent until a person acts.
 - The claim limit counts rows rather than attempts, so releasing a claim frees quota. The sign in
   limiter counts attempts in a table of their own and does not have this.
-- Nothing re-checks a verified claim, so `at_risk` is a state the product can model and never enter.
-  Vercel Hobby allows a cron no more often than once a day, and fires it within an hour of the time
-  given, so a daily job is a defensible cadence for a held name and useless for showing drift in a
-  demo. It needs a paid plan or a protected manual trigger.
-- The grace window and the status change email both sit behind that cron, so neither is built.
+- Nothing re-checks a held name on a schedule. `at_risk` is written by a check someone is watching,
+  which is the record screen and nowhere else, so a name losing its record while nobody has it open
+  goes unnoticed until somebody opens it. Vercel Hobby allows a cron no more often than once a day,
+  and fires it within an hour of the time given, so a daily job is a defensible cadence for a held
+  name and useless for showing drift in a demo. It needs a paid plan or a protected manual trigger.
+- The grace window and the status change email both sit behind that cron, so neither is built and
+  `at_risk` has no exit to `revoked`.
+- `revoked` and `contested` still have no writer.
+- The clock starts on one failed check. `failing_since` is stamped by the first check that proves
+  the record is gone, so a zone edit that briefly serves the name without the record is enough to
+  start it. That self-corrects today, since the next check recovers the claim and clears the column.
+  The grace window cannot be built on it: a countdown and an email started by one flaky answer are a
+  different cost from a pill that changes colour for five seconds. Starting the clock on consecutive
+  failures needs stored check history, which is the `checks` table that has no reader yet.
 
 ## States
 
 | Reason | Title | Next action | Test |
 | --- | --- | --- | --- |
-| `record_not_found` | No record there yet | Add the record above. | `record-not-found.test` |
-| `record_not_found`, on a claim that holds the name | The record is no longer answering | Put the record above back in your DNS panel. | Verified claim, record removed |
+| `record_not_found` | No record there yet | Add the record below. | `record-not-found.test` |
+| `record_not_found`, on a claim that holds the name | The record is no longer answering | Put the record below back in your DNS panel. | Verified claim, record removed |
 | `no_txt_at_name` | The name exists with no TXT record on it | Check what your panel already has on that one name, since only this TXT record should be on it. | `no-txt-at-name.test` |
 | `cname_at_name` | | | |
 | `value_mismatch` | A TXT record is there with a different value | Replace the value with the one above, copied whole. | `value-mismatch.test` |
@@ -436,3 +489,8 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 
 `cname_at_name` needs a CNAME query, which is a new method on the resolver interface, for one
 message. `dnssec_broken` needs the DoH leg, which is dropped. Both stay empty.
+
+A claim that holds its name moves to At risk on the four reasons where the nameservers answered:
+`record_not_found`, `no_txt_at_name`, `appended_zone_suspected` and `value_mismatch`. The other
+three leave it where it is. At risk has no exit to `revoked`, since that transition is the grace
+window and the grace window needs the cron above.

@@ -37,6 +37,7 @@ const outcome = (over: Partial<ClaimOutcome> = {}): ClaimOutcome => ({
   status: 'verified' as ClaimStatus,
   verifiedAt: NOW,
   provedButHeld: false,
+  recovered: false,
   ...over,
 });
 
@@ -230,6 +231,14 @@ describe('stepsFor', () => {
       const pending = outcome({ ...lost, status: 'pending', verifiedAt: null });
       expect(states(pending)).toEqual(['done', 'done', 'wait', 'idle', 'idle']);
       expect(needsAttention(stepsFor(pending))).toBe(false);
+    });
+
+    // The state this reads as is now the state the row is in, and it still holds the name, so
+    // nothing about the chain moves when the check that follows it reads `at_risk` instead.
+    it('reads the same once the row has been moved to at risk', () => {
+      const written = outcome({ ...lost, status: 'at_risk' });
+      expect(states(written)).toEqual(states(lost));
+      expect(needsAttention(stepsFor(written))).toBe(true);
     });
   });
 });

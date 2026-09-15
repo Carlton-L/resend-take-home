@@ -1,13 +1,15 @@
 // src/lib/claims/evaluate.ts
 
 import { formatRecordValue, parseRecordValue } from '@/lib/claims/record';
-import type { CheckResult, ClaimStatus } from '@/lib/claims/state';
-import type { VerifyOutcome } from '@/lib/claims/store';
+import type { CheckResult, ClaimStatus, FailureReason } from '@/lib/claims/state';
+import { holdsTheName } from '@/lib/claims/state';
+import type { ClaimWrite } from '@/lib/claims/store';
 import type { Trace } from '@/lib/dns/types';
 
 export type ClaimForCheck = {
   token: string;
   expiresAt: Date;
+  status: ClaimStatus;
 };
 
 /**
@@ -28,12 +30,29 @@ export type ClaimForCheck = {
 export const isExpired = (claim: { expiresAt: Date }, now: Date = new Date()): boolean =>
   claim.expiresAt.getTime() <= now.getTime();
 
+/**
+ * Whether this claim's token running out is the answer to the check.
+ *
+ * Only for a claim still trying to prove itself. Verifying does not clear `expires_at`, so every
+ * name held for longer than the token's seven days carries an expiry in the past. Reading that
+ * without the status first reported "This claim has expired" on names the account holds and
+ * stopped the check before it ever asked DNS anything, which left a held claim that lost its
+ * record unable to reach `at_risk` after its first week.
+ *
+ * The same trap `describeClaimRow` guards on the domain list, in the one other place that reads
+ * expiry off a row.
+ */
+export const tokenHasRunOut = (
+  claim: { expiresAt: Date; status: ClaimStatus },
+  now: Date = new Date(),
+): boolean => !holdsTheName(claim.status) && isExpired(claim, now);
+
 export const evaluateClaim = (
   trace: Trace,
   claim: ClaimForCheck,
   now: Date = new Date(),
 ): CheckResult => {
-  if (isExpired(claim, now)) {
+  if (tokenHasRunOut(claim, now)) {
     return { status: 'failed', reason: { code: 'token_expired', expiredAt: claim.expiresAt } };
   }
 
@@ -104,12 +123,67 @@ export const evaluateClaim = (
 export const shouldMarkVerified = (claim: { status: ClaimStatus }, result: CheckResult): boolean =>
   result.status === 'verified' && claim.status === 'pending';
 
+/**
+ * Whether this failure proves the record is gone, rather than proving nothing.
+ *
+ * Only the reasons where the nameservers answered and had nothing, or had the wrong value. A
+ * timeout is the weakest signal this product has from one vantage point, and a zone that cannot be
+ * reached says nothing at all about what is in it, so neither moves a name the account holds.
+ *
+ * Exhaustive, so a reason added to the union has to be sorted into one side of this before the
+ * build passes.
+ */
+export const provesRecordGone = (reason: FailureReason): boolean => {
+  switch (reason.code) {
+    // The nameservers answered. The name has nothing at it, has something other than a TXT record,
+    // has the record one label further down, or has a TXT record holding a different value. In
+    // every one of them the zone was read and this claim's record was not in it.
+    case 'record_not_found':
+    case 'no_txt_at_name':
+    case 'appended_zone_suspected':
+    case 'value_mismatch':
+      return true;
+
+    // Nothing answered, or nothing was found to ask. Both are a view of DNS that failed rather
+    // than a zone that changed, and flipping a held name on either would be the overconfidence a
+    // single vantage point already costs this product once.
+    case 'nameservers_unreachable':
+    case 'zone_not_found':
+      return false;
+
+    // Decided from the row before any query, and unreachable on a claim that holds its name.
+    case 'token_expired':
+      return false;
+
+    default: {
+      const exhaustive: never = reason;
+      return exhaustive;
+    }
+  }
+};
+
+/**
+ * Whether this check should move a held claim to `at_risk`.
+ *
+ * `verified` only. `contested` is held too, and it carries a challenge this product cannot resolve
+ * yet, so a check has no business moving it. `at_risk` is already there and the stamp stays at the
+ * first failure rather than being pushed forward by every check after it.
+ */
+export const shouldMarkAtRisk = (claim: { status: ClaimStatus }, result: CheckResult): boolean =>
+  claim.status === 'verified' && result.status === 'failed' && provesRecordGone(result.reason);
+
+/** Whether this check should take a claim back out of `at_risk`. The record is answering again. */
+export const shouldMarkRecovered = (claim: { status: ClaimStatus }, result: CheckResult): boolean =>
+  claim.status === 'at_risk' && result.status === 'verified';
+
 /** What the screen should say about a claim once this check has been through the database. */
 export type ClaimAfterCheck = {
   status: ClaimStatus;
   verifiedAt: Date | null;
   /** Control was proved and another account holds the name. */
   provedButHeld: boolean;
+  /** This check is the one that found the record again and took the claim back out of `at_risk`. */
+  recovered: boolean;
 };
 
 /**
@@ -127,16 +201,38 @@ export type ClaimAfterCheck = {
 export const claimAfterCheck = (
   claim: { status: ClaimStatus; verifiedAt: Date | null },
   /** Null when no write was attempted. */
-  write: VerifyOutcome | null,
+  write: ClaimWrite | null,
   at: Date,
 ): ClaimAfterCheck => {
   if (write === 'verified') {
-    return { status: 'verified', verifiedAt: at, provedButHeld: false };
+    return { status: 'verified', verifiedAt: at, provedButHeld: false, recovered: false };
+  }
+
+  if (write === 'at_risk') {
+    return {
+      status: 'at_risk',
+      verifiedAt: claim.verifiedAt,
+      provedButHeld: false,
+      recovered: false,
+    };
+  }
+
+  // Recovery keeps the date the name was proved. `at` is when the record came back, and stamping
+  // it here would report a name held since March as proved a moment ago, on the status line and in
+  // the last step of the chain.
+  if (write === 'recovered') {
+    return {
+      status: 'verified',
+      verifiedAt: claim.verifiedAt,
+      provedButHeld: false,
+      recovered: true,
+    };
   }
 
   return {
     status: claim.status,
     verifiedAt: claim.verifiedAt,
     provedButHeld: write === 'held_by_another',
+    recovered: false,
   };
 };

@@ -4,9 +4,14 @@ import {
   claimAfterCheck,
   evaluateClaim,
   isExpired,
+  provesRecordGone,
+  shouldMarkAtRisk,
+  shouldMarkRecovered,
   shouldMarkVerified,
+  tokenHasRunOut,
 } from '@/lib/claims/evaluate';
 import { formatRecordValue, recordFullName } from '@/lib/claims/record';
+import type { CheckResult, FailureReason } from '@/lib/claims/state';
 import { createFakeResolver } from '@/lib/dns/fakeResolver';
 import { scriptFor } from '@/lib/dns/testNames';
 import { traceName } from '@/lib/dns/trace';
@@ -17,6 +22,7 @@ const TIMEOUT_MS = 40;
 const CLAIM = {
   token: 'MZXW6YTBOIMZXW6YTBOIMZXW6YTBOIQ7',
   expiresAt: new Date('2099-01-01T00:00:00Z'),
+  status: 'pending' as const,
 };
 
 const NOW = new Date('2026-09-13T12:00:00Z');
@@ -116,7 +122,7 @@ describe('evaluateClaim', () => {
   // The record value is written by whoever controls the zone. Reading expiry from it would let
   // anyone keep a dead claim alive by publishing a later date.
   it('expires from the claim row even when DNS holds a matching record', async () => {
-    const expired = { token: CLAIM.token, expiresAt: new Date('2026-09-01T00:00:00Z') };
+    const expired = { ...CLAIM, expiresAt: new Date('2026-09-01T00:00:00Z') };
     const result = evaluateClaim(await traceFor('verified.test'), expired, NOW);
     expect(result).toEqual({
       status: 'failed',
@@ -126,6 +132,37 @@ describe('evaluateClaim', () => {
 
   it('treats the moment of expiry as expired', () => {
     expect(isExpired({ expiresAt: NOW }, NOW)).toBe(true);
+  });
+
+  /**
+   * Verifying does not clear `expires_at`, so every name held for longer than the token's seven
+   * days carries an expiry in the past. Reading it without the status first stopped the check
+   * before it asked DNS anything, which left a held claim that lost its record reporting an
+   * expired token and unable to reach `at_risk` after its first week.
+   */
+  it('goes on checking a name the account holds, however old its token is', async () => {
+    const stale = {
+      ...CLAIM,
+      expiresAt: new Date('2026-09-01T00:00:00Z'),
+      status: 'verified' as const,
+    };
+    const result = evaluateClaim(await traceFor('verified.test'), stale, NOW);
+    expect(result.status).toBe('verified');
+  });
+});
+
+describe('tokenHasRunOut', () => {
+  const RAN_OUT = new Date('2026-09-01T00:00:00Z');
+
+  it('is the answer for a claim still trying to prove itself', () => {
+    expect(tokenHasRunOut({ expiresAt: RAN_OUT, status: 'pending' }, NOW)).toBe(true);
+    expect(tokenHasRunOut({ expiresAt: RAN_OUT, status: 'revoked' }, NOW)).toBe(true);
+  });
+
+  it('is never the answer for a claim that holds its name', () => {
+    for (const status of ['verified', 'at_risk', 'contested'] as const) {
+      expect(tokenHasRunOut({ expiresAt: RAN_OUT, status }, NOW)).toBe(false);
+    }
   });
 });
 
@@ -151,6 +188,112 @@ describe('shouldMarkVerified', () => {
   });
 });
 
+/**
+ * Which failures are allowed to move a name the account holds. The decision in this slice, so it
+ * is a pure function with a test rather than a condition inside a write.
+ */
+describe('provesRecordGone', () => {
+  // The nameservers answered and this claim's record was not in what they returned.
+  const GONE: FailureReason[] = [
+    { code: 'record_not_found', queriedName: 'x', nameservers: [], negativeTtlSeconds: null },
+    { code: 'no_txt_at_name', queriedName: 'x' },
+    { code: 'appended_zone_suspected', queriedName: 'x', foundAt: 'x.example.com' },
+    { code: 'value_mismatch', expected: 'a', found: ['b'] },
+  ];
+
+  // A view of DNS that failed rather than a zone that changed. From one vantage point a timeout is
+  // the weakest signal this product has. `token_expired` is decided from the row before any query.
+  const PROVES_NOTHING: FailureReason[] = [
+    { code: 'nameservers_unreachable', attempted: ['ns1.example.com'], timeoutMs: 2000 },
+    { code: 'zone_not_found', walked: ['example.com'] },
+    { code: 'token_expired', expiredAt: new Date('2026-09-01T00:00:00Z') },
+  ];
+
+  it.each(GONE)('$code proves the record is gone', (reason) => {
+    expect(provesRecordGone(reason)).toBe(true);
+  });
+
+  it.each(PROVES_NOTHING)('$code proves nothing about the record', (reason) => {
+    expect(provesRecordGone(reason)).toBe(false);
+  });
+
+  /**
+   * The type checker forces this to name every code, and the assertion below forces every code to
+   * be in one of the two lists. A reason added to the union fails the build here and then fails
+   * this test until somebody decides whether it should take a name off an account.
+   */
+  const EVERY_CODE: Record<FailureReason['code'], true> = {
+    record_not_found: true,
+    no_txt_at_name: true,
+    appended_zone_suspected: true,
+    value_mismatch: true,
+    token_expired: true,
+    nameservers_unreachable: true,
+    zone_not_found: true,
+  };
+
+  it('sorts every reason in the union into one side or the other', () => {
+    const sorted = [...GONE, ...PROVES_NOTHING].map((reason) => reason.code);
+    expect(new Set(sorted)).toEqual(new Set(Object.keys(EVERY_CODE)));
+  });
+});
+
+describe('shouldMarkAtRisk', () => {
+  const gone: CheckResult = {
+    status: 'failed',
+    reason: {
+      code: 'record_not_found',
+      queriedName: 'x',
+      nameservers: [],
+      negativeTtlSeconds: null,
+    },
+  };
+  const silent: CheckResult = {
+    status: 'failed',
+    reason: { code: 'nameservers_unreachable', attempted: ['ns1.example.com'], timeoutMs: 2000 },
+  };
+  const found: CheckResult = { status: 'verified', record: 'r', answeredBy: 'ns1.example.com' };
+
+  it('moves a verified claim whose record is gone', () => {
+    expect(shouldMarkAtRisk({ status: 'verified' }, gone)).toBe(true);
+  });
+
+  it('leaves a verified claim alone when the nameservers said nothing', () => {
+    expect(shouldMarkAtRisk({ status: 'verified' }, silent)).toBe(false);
+  });
+
+  it('leaves a verified claim alone when the check found the record', () => {
+    expect(shouldMarkAtRisk({ status: 'verified' }, found)).toBe(false);
+  });
+
+  /**
+   * `contested` holds its name too, and it carries a challenge nothing can resolve until transfers
+   * exist, so a check has no business moving it. `at_risk` is already there, and the stamp belongs
+   * to the first failure rather than to every check after it.
+   */
+  it.each(['pending', 'at_risk', 'contested', 'revoked'] as const)(
+    'has nothing to write about a %s claim',
+    (status) => {
+      expect(shouldMarkAtRisk({ status }, gone)).toBe(false);
+    },
+  );
+});
+
+describe('shouldMarkRecovered', () => {
+  const found: CheckResult = { status: 'verified', record: 'r', answeredBy: 'ns1.example.com' };
+
+  it('takes an at risk claim back when the record answers again', () => {
+    expect(shouldMarkRecovered({ status: 'at_risk' }, found)).toBe(true);
+  });
+
+  it.each(['pending', 'verified', 'contested', 'revoked'] as const)(
+    'has nothing to write about a %s claim',
+    (status) => {
+      expect(shouldMarkRecovered({ status }, found)).toBe(false);
+    },
+  );
+});
+
 describe('claimAfterCheck', () => {
   const PENDING = { status: 'pending', verifiedAt: null } as const;
   const AT = new Date('2026-09-14T12:00:00Z');
@@ -160,6 +303,7 @@ describe('claimAfterCheck', () => {
       status: 'verified',
       verifiedAt: AT,
       provedButHeld: false,
+      recovered: false,
     });
   });
 
@@ -168,6 +312,7 @@ describe('claimAfterCheck', () => {
       status: 'pending',
       verifiedAt: null,
       provedButHeld: false,
+      recovered: false,
     });
   });
 
@@ -178,6 +323,7 @@ describe('claimAfterCheck', () => {
       status: 'pending',
       verifiedAt: null,
       provedButHeld: true,
+      recovered: false,
     });
   });
 
@@ -185,6 +331,40 @@ describe('claimAfterCheck', () => {
   // screen should not claim it did.
   it('does not promote a claim whose write failed', () => {
     expect(claimAfterCheck(PENDING, 'unavailable', AT).status).toBe('pending');
+  });
+
+  /**
+   * The name has been held since it was first proved. Stamping `at` here would report a name held
+   * since March as proved a moment ago, on the status line and in the last step of the chain.
+   */
+  it('recovers without moving the date the name was proved', () => {
+    const earlier = new Date('2026-09-01T09:00:00Z');
+    const risk = { status: 'at_risk', verifiedAt: earlier } as const;
+    expect(claimAfterCheck(risk, 'recovered', AT)).toEqual({
+      status: 'verified',
+      verifiedAt: earlier,
+      provedButHeld: false,
+      recovered: true,
+    });
+  });
+
+  it('moves a held claim to at risk and leaves its date alone', () => {
+    const earlier = new Date('2026-09-01T09:00:00Z');
+    const held = { status: 'verified', verifiedAt: earlier } as const;
+    expect(claimAfterCheck(held, 'at_risk', AT)).toEqual({
+      status: 'at_risk',
+      verifiedAt: earlier,
+      provedButHeld: false,
+      recovered: false,
+    });
+  });
+
+  // The statement is conditional on the status the check read, so a second tab or a reload can
+  // leave it matching nothing. The row is where it was, which is what the screen says.
+  it('leaves the claim where it was when the write moved no row', () => {
+    const held = { status: 'verified', verifiedAt: AT } as const;
+    expect(claimAfterCheck(held, 'unchanged', AT).status).toBe('verified');
+    expect(claimAfterCheck(held, 'unchanged', AT).recovered).toBe(false);
   });
 
   it('keeps the date a held claim already carries', () => {

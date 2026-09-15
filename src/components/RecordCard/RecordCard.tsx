@@ -42,8 +42,15 @@ const RecordCard: React.FC<RecordCardProps> = ({
   const body = (
     <>
       <RecordRow host={host} fullName={fullName} value={value} />
+      {/*
+        A held claim's token expiry is always in the past once the name has been held for longer
+        than the token's seven days, because verifying does not clear it, and that date is sitting
+        in the record value directly above. Said where it is read rather than left to be worked out.
+      */}
       <p className='mt-5 border-neutral-200 border-t pt-4 text-neutral-600 text-sm leading-relaxed'>
-        {claimCopy.record.expiry(formatWhen(expiresAt))}
+        {held
+          ? claimCopy.record.heldExpiry(formatWhen(expiresAt))
+          : claimCopy.record.expiry(formatWhen(expiresAt))}
       </p>
     </>
   );

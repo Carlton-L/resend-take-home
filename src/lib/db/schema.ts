@@ -55,6 +55,15 @@ export const claims = pgTable(
     issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    /**
+     * When the first check that could not find this claim's record ran, on a claim that had
+     * already proved itself. Null on every other claim, and cleared when the record comes back.
+     *
+     * A plain timestamp rather than a stored failure reason. The reason a check failed is
+     * recomputed by the next check and rendered from that, so storing it would be a second source
+     * of truth for something nothing reads in between.
+     */
+    failingSince: timestamp('failing_since', { withTimezone: true }),
   },
   (table) => [
     /**

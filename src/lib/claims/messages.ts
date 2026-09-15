@@ -82,6 +82,17 @@ export const claimCopy = {
     atRisk: {
       label: 'At risk',
       line: 'The record stopped answering. This account still holds the name for now.',
+      /**
+       * The list's only detail line. It sits after the pill and reads on from it, so it carries a
+       * date and no second copy of the word the pill has already said.
+       *
+       * The full timestamp with its UTC suffix, like every other date in the product. A date on
+       * its own would be read locally and lands a day out either side of midnight.
+       *
+       * No reason in it. Nothing is stored about why a check failed, and the date is the part a
+       * row can be sure of.
+       */
+      since: (day: string) => `since ${day}`,
     },
     contested: {
       label: 'Contested',
@@ -107,6 +118,15 @@ export const claimCopy = {
     proved: (nameserver: string, when: string) =>
       `${nameserver} returned the record at ${when}. Held by this account.`,
     stillHeld: 'The record stopped answering. This account still holds the name for now.',
+    /**
+     * Said on the one check that finds the record of an at-risk name again.
+     *
+     * The state going quietly back to Verified would leave the person who fixed their zone
+     * watching a screen that says nothing about what they just did, which is the same ambiguity
+     * the chain never disappearing is there to avoid.
+     */
+    recovered: (nameserver: string) =>
+      `${nameserver} is answering with the record again. This name is no longer at risk.`,
   },
 
   record: {
@@ -134,6 +154,13 @@ export const claimCopy = {
     copied: 'Copied',
     expiry: (when: string) =>
       `The token is good until ${when}. A claim that has not been proved by then needs a new one.`,
+    /**
+     * The same date on a claim that already holds its name. Verifying does not clear `expires_at`,
+     * so every name held for longer than the token's seven days carries an expiry in the past, and
+     * that date is visible in the record value being compared against the panel.
+     */
+    heldExpiry: (when: string) =>
+      `The date in the record value is ${when}, which is when the token would have run out. This name was proved before then, so it no longer applies.`,
     existing: 'This account already had a claim on this name, so here it is.',
     reissued:
       'The token on this claim had expired, so a new one has been issued. The value below has changed and the old record no longer matches.',
@@ -334,7 +361,18 @@ export type ClaimRow = {
   status: ClaimStatus;
   verifiedAt: Date | null;
   expiresAt: Date;
+  failingSince: Date | null;
 };
+
+/**
+ * A row's message, plus the one detail a row carries beside the pill.
+ *
+ * `detail` is filled for `at_risk` and nothing else. How long a name has been failing is the thing
+ * the status word leaves out and the thing a person weighs, and it is the number the grace window
+ * will count from once there is a schedule to run it. Every other state either has nothing a date
+ * would add or has it on the record screen, where it can be acted on.
+ */
+export type ClaimRowMessage = StatusMessage & { detail: string | null };
 
 /**
  * What a row in the domain list says about a claim.
@@ -350,16 +388,25 @@ export type ClaimRow = {
  * is the same rule that sorts the check steps, applied to what a row on its own can know. A pending
  * claim inside its window is waiting on them adding a record, so it stays quiet.
  */
-export const describeClaimRow = (claim: ClaimRow, now: Date = new Date()): StatusMessage => {
+export const describeClaimRow = (claim: ClaimRow, now: Date = new Date()): ClaimRowMessage => {
   if (claim.status === 'pending' && isExpired(claim, now)) {
     return {
       label: claimCopy.status.expired.label,
       line: claimCopy.status.expired.line,
       tone: 'attention',
+      detail: null,
     };
   }
 
-  return describeStatus(claim.status, claim.verifiedAt);
+  const message = describeStatus(claim.status, claim.verifiedAt);
+
+  // The column is null on every other status, and it is null on an at-risk row written before this
+  // column existed, so the detail is dropped rather than guessed at.
+  if (claim.status === 'at_risk' && claim.failingSince !== null) {
+    return { ...message, detail: claimCopy.status.atRisk.since(formatWhen(claim.failingSince)) };
+  }
+
+  return { ...message, detail: null };
 };
 
 /** The status block once the check has spoken. `extra` is a second line, or nothing. */
@@ -381,8 +428,20 @@ export const describeClaim = (outcome: {
   status: ClaimStatus;
   verifiedAt: Date | null;
   provedButHeld: boolean;
+  recovered: boolean;
 }): ClaimMessage => {
-  const { result, status, verifiedAt, provedButHeld } = outcome;
+  const { result, recovered, status, verifiedAt, provedButHeld } = outcome;
+
+  // Ahead of the verified branch below, which would say the name was proved a moment ago. It was
+  // proved whenever it was first proved, and what changed here is the record answering again.
+  if (recovered && result.status === 'verified') {
+    return {
+      label: claimCopy.status.verified.label,
+      line: claimCopy.status.recovered(result.answeredBy),
+      extra: claimCopy.check.keepRecord,
+      tone: 'good',
+    };
+  }
 
   if (provedButHeld) {
     return {
