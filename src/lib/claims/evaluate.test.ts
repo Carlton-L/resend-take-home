@@ -4,7 +4,10 @@ import {
   claimAfterCheck,
   evaluateClaim,
   isExpired,
+  needsUserAction,
   provesRecordGone,
+  shouldClearAction,
+  shouldFlagAction,
   shouldMarkAtRisk,
   shouldMarkRecovered,
   shouldMarkVerified,
@@ -279,6 +282,77 @@ describe('shouldMarkAtRisk', () => {
   );
 });
 
+const mismatch: CheckResult = {
+  status: 'failed',
+  reason: { code: 'value_mismatch', expected: 'want', found: ['other'] },
+};
+const waiting: CheckResult = {
+  status: 'failed',
+  reason: { code: 'record_not_found', queriedName: 'x', nameservers: [], negativeTtlSeconds: null },
+};
+const proved: CheckResult = { status: 'verified', record: 'r', answeredBy: 'ns1.example.com' };
+const WRONG_REASONS: FailureReason[] = [
+  { code: 'no_txt_at_name', queriedName: 'x' },
+  { code: 'appended_zone_suspected', queriedName: 'x', foundAt: 'x.x' },
+  { code: 'value_mismatch', expected: 'want', found: ['other'] },
+];
+const NOT_WRONG_REASONS: FailureReason[] = [
+  { code: 'record_not_found', queriedName: 'x', nameservers: [], negativeTtlSeconds: null },
+  { code: 'nameservers_unreachable', attempted: ['ns1'], timeoutMs: 2000 },
+  { code: 'zone_not_found', walked: ['x'] },
+  { code: 'token_expired', expiredAt: new Date() },
+];
+
+describe('needsUserAction', () => {
+  it('is true only when a wrong record is at the name', () => {
+    for (const reason of WRONG_REASONS) {
+      expect(needsUserAction(reason)).toBe(true);
+    }
+  });
+  it('is false for nothing there, an unreachable zone, a missing delegation and an expired token', () => {
+    for (const reason of NOT_WRONG_REASONS) {
+      expect(needsUserAction(reason)).toBe(false);
+    }
+  });
+});
+
+describe('shouldFlagAction', () => {
+  it('flags a pending claim with a wrong record when the flag is not already set', () => {
+    expect(shouldFlagAction({ status: 'pending', actionNeededSince: null }, mismatch)).toBe(true);
+  });
+  it('does not flag again when the flag is already set, so the stamp stays at the first failure', () => {
+    expect(shouldFlagAction({ status: 'pending', actionNeededSince: new Date() }, mismatch)).toBe(
+      false,
+    );
+  });
+  it('does not flag a waiting failure or a verified claim', () => {
+    expect(shouldFlagAction({ status: 'pending', actionNeededSince: null }, waiting)).toBe(false);
+    expect(shouldFlagAction({ status: 'pending', actionNeededSince: null }, proved)).toBe(false);
+  });
+  it('does not flag a claim that is not pending', () => {
+    expect(shouldFlagAction({ status: 'verified', actionNeededSince: null }, mismatch)).toBe(false);
+  });
+});
+
+describe('shouldClearAction', () => {
+  it('clears a flagged pending claim once the wrong record is gone', () => {
+    expect(shouldClearAction({ status: 'pending', actionNeededSince: new Date() }, waiting)).toBe(
+      true,
+    );
+    expect(shouldClearAction({ status: 'pending', actionNeededSince: new Date() }, proved)).toBe(
+      true,
+    );
+  });
+  it('keeps the flag while a wrong record is still there', () => {
+    expect(shouldClearAction({ status: 'pending', actionNeededSince: new Date() }, mismatch)).toBe(
+      false,
+    );
+  });
+  it('does nothing when there was no flag to clear', () => {
+    expect(shouldClearAction({ status: 'pending', actionNeededSince: null }, waiting)).toBe(false);
+  });
+});
+
 describe('shouldMarkRecovered', () => {
   const found: CheckResult = { status: 'verified', record: 'r', answeredBy: 'ns1.example.com' };
 
@@ -297,40 +371,51 @@ describe('shouldMarkRecovered', () => {
 describe('claimAfterCheck', () => {
   const PENDING = { status: 'pending', verifiedAt: null } as const;
   const AT = new Date('2026-09-14T12:00:00Z');
+  const WAITING: CheckResult = {
+    status: 'failed',
+    reason: { code: 'nameservers_unreachable', attempted: ['ns1.example.com'], timeoutMs: 2000 },
+  };
+  const WRONG: CheckResult = {
+    status: 'failed',
+    reason: { code: 'value_mismatch', expected: 'domainclaim-token=A expiry=Z', found: ['other'] },
+  };
 
   it('moves the claim only when the write moved the row', () => {
-    expect(claimAfterCheck(PENDING, 'verified', AT)).toEqual({
+    expect(claimAfterCheck(PENDING, 'verified', AT, WAITING)).toEqual({
       status: 'verified',
       verifiedAt: AT,
       provedButHeld: false,
       recovered: false,
+      actionNeeded: false,
     });
   });
 
   it('leaves the claim where it was when no write was attempted', () => {
-    expect(claimAfterCheck(PENDING, null, AT)).toEqual({
+    expect(claimAfterCheck(PENDING, null, AT, WAITING)).toEqual({
       status: 'pending',
       verifiedAt: null,
       provedButHeld: false,
       recovered: false,
+      actionNeeded: false,
     });
   });
 
   // The update can hit the partial unique index, which means another account verified the same
   // name between this claim being created and this check landing.
   it('reports control proved against a name another account holds', () => {
-    expect(claimAfterCheck(PENDING, 'held_by_another', AT)).toEqual({
+    expect(claimAfterCheck(PENDING, 'held_by_another', AT, WAITING)).toEqual({
       status: 'pending',
       verifiedAt: null,
       provedButHeld: true,
       recovered: false,
+      actionNeeded: false,
     });
   });
 
   // The check saying verified is an observation. A failed write means the row did not move, so the
   // screen should not claim it did.
   it('does not promote a claim whose write failed', () => {
-    expect(claimAfterCheck(PENDING, 'unavailable', AT).status).toBe('pending');
+    expect(claimAfterCheck(PENDING, 'unavailable', AT, WAITING).status).toBe('pending');
   });
 
   /**
@@ -340,22 +425,24 @@ describe('claimAfterCheck', () => {
   it('recovers without moving the date the name was proved', () => {
     const earlier = new Date('2026-09-01T09:00:00Z');
     const risk = { status: 'at_risk', verifiedAt: earlier } as const;
-    expect(claimAfterCheck(risk, 'recovered', AT)).toEqual({
+    expect(claimAfterCheck(risk, 'recovered', AT, WAITING)).toEqual({
       status: 'verified',
       verifiedAt: earlier,
       provedButHeld: false,
       recovered: true,
+      actionNeeded: false,
     });
   });
 
   it('moves a held claim to at risk and leaves its date alone', () => {
     const earlier = new Date('2026-09-01T09:00:00Z');
     const held = { status: 'verified', verifiedAt: earlier } as const;
-    expect(claimAfterCheck(held, 'at_risk', AT)).toEqual({
+    expect(claimAfterCheck(held, 'at_risk', AT, WAITING)).toEqual({
       status: 'at_risk',
       verifiedAt: earlier,
       provedButHeld: false,
       recovered: false,
+      actionNeeded: false,
     });
   });
 
@@ -363,13 +450,23 @@ describe('claimAfterCheck', () => {
   // leave it matching nothing. The row is where it was, which is what the screen says.
   it('leaves the claim where it was when the write moved no row', () => {
     const held = { status: 'verified', verifiedAt: AT } as const;
-    expect(claimAfterCheck(held, 'unchanged', AT).status).toBe('verified');
-    expect(claimAfterCheck(held, 'unchanged', AT).recovered).toBe(false);
+    expect(claimAfterCheck(held, 'unchanged', AT, WAITING).status).toBe('verified');
+    expect(claimAfterCheck(held, 'unchanged', AT, WAITING).recovered).toBe(false);
   });
 
   it('keeps the date a held claim already carries', () => {
     const earlier = new Date('2026-09-01T09:00:00Z');
     const held = { status: 'verified', verifiedAt: earlier } as const;
-    expect(claimAfterCheck(held, null, AT).verifiedAt).toBe(earlier);
+    expect(claimAfterCheck(held, null, AT, WAITING).verifiedAt).toBe(earlier);
+  });
+  // A pending claim whose check finds a wrong record is the person's move. The pill reads it from
+  // the live result, so it is right even under a reload where the flag is already stored.
+  it('reports action needed when a pending check finds a wrong record', () => {
+    const after = claimAfterCheck(PENDING, 'action_needed', AT, WRONG);
+    expect(after.status).toBe('pending');
+    expect(after.actionNeeded).toBe(true);
+  });
+  it('does not report action needed while a pending claim is only waiting', () => {
+    expect(claimAfterCheck(PENDING, null, AT, WAITING).actionNeeded).toBe(false);
   });
 });

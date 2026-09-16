@@ -4,6 +4,8 @@ import {
   type ClaimAfterCheck,
   claimAfterCheck,
   evaluateClaim,
+  shouldClearAction,
+  shouldFlagAction,
   shouldMarkAtRisk,
   shouldMarkRecovered,
   shouldMarkVerified,
@@ -14,6 +16,8 @@ import type { CheckResult } from '@/lib/claims/state';
 import {
   type Claim,
   type ClaimWrite,
+  clearActionNeeded,
+  flagActionNeeded,
   markAtRisk,
   markRecovered,
   markVerified,
@@ -84,8 +88,9 @@ export type ClaimOutcome = Check & ClaimAfterCheck;
  */
 export const runCheck = async (claim: Claim, now: Date = new Date()): Promise<ClaimOutcome> => {
   const { trace, result } = await checkClaim(claim, now);
+  const write = await recordCheck(claim, result, now);
 
-  return { trace, result, ...claimAfterCheck(claim, await recordCheck(claim, result, now), now) };
+  return { trace, result, ...claimAfterCheck(claim, write, now, result) };
 };
 
 /**
@@ -104,13 +109,30 @@ const recordCheck = async (
   now: Date,
 ): Promise<ClaimWrite | null> => {
   if (shouldMarkVerified(claim, result)) {
-    return markVerified(claim.id, claim.ownerId, now);
+    const outcome = await markVerified(claim.id, claim.ownerId, now);
+    // A successful verify clears the flag inside its own statement. A verify that hit the unique
+    // index proved control against a name another account holds, so the row stayed pending and its
+    // statement rolled back; the flag, if it was set, is now stale and gets its own clear. Rare
+    // path, and only when the flag was actually set.
+    if (outcome === 'held_by_another' && claim.actionNeededSince !== null) {
+      await clearActionNeeded(claim.id, claim.ownerId);
+    }
+    return outcome;
   }
   if (shouldMarkAtRisk(claim, result)) {
     return markAtRisk(claim.id, claim.ownerId, now);
   }
   if (shouldMarkRecovered(claim, result)) {
     return markRecovered(claim.id, claim.ownerId);
+  }
+  // Pending only, and mutually exclusive with the three above: a pending claim either verifies
+  // (handled first, and that write clears the flag) or stays pending, where it is flagged when a
+  // wrong record is found and un-flagged when one is not.
+  if (shouldFlagAction(claim, result)) {
+    return flagActionNeeded(claim.id, claim.ownerId, now);
+  }
+  if (shouldClearAction(claim, result)) {
+    return clearActionNeeded(claim.id, claim.ownerId);
   }
   return null;
 };

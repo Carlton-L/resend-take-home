@@ -149,6 +149,12 @@ export const claimCopy = {
       line: (when: string | null) =>
         when === null ? 'Verified for this account.' : `Verified for this account since ${when}.`,
     },
+    actionNeeded: {
+      label: 'Action needed',
+      line: 'A record at this name does not match this claim.',
+      /** The list detail, after the pill, like the at-risk one. */
+      since: (day: string) => `since ${day}`,
+    },
     atRisk: {
       label: 'At risk',
       line: 'The TXT record is no longer found. The claim stays verified until the record is restored or the claim is released.',
@@ -440,6 +446,7 @@ export type ClaimRow = {
   verifiedAt: Date | null;
   expiresAt: Date;
   failingSince: Date | null;
+  actionNeededSince: Date | null;
 };
 
 /**
@@ -473,6 +480,18 @@ export const describeClaimRow = (claim: ClaimRow, now: Date = new Date()): Claim
       line: claimCopy.status.expired.line,
       tone: 'attention',
       detail: null,
+    };
+  }
+
+  // A pending claim whose last check found a wrong record. Expired takes precedence above, because
+  // an expired claim needs a new token before its record matters. The person's move, so it carries
+  // the attention tone, the same rule the record screen and the check steps use.
+  if (claim.status === 'pending' && claim.actionNeededSince !== null) {
+    return {
+      label: claimCopy.status.actionNeeded.label,
+      line: claimCopy.status.actionNeeded.line,
+      tone: 'attention',
+      detail: claimCopy.status.actionNeeded.since(formatWhen(claim.actionNeededSince)),
     };
   }
 
@@ -511,8 +530,9 @@ export const describeClaim = (outcome: {
   verifiedAt: Date | null;
   provedButHeld: boolean;
   recovered: boolean;
+  actionNeeded: boolean;
 }): ClaimMessage => {
-  const { result, recovered, status, verifiedAt, provedButHeld } = outcome;
+  const { result, recovered, status, verifiedAt, provedButHeld, actionNeeded } = outcome;
 
   // Ahead of the verified branch below, which would say the name was proved a moment ago. It was
   // proved whenever it was first proved, and what changed here is the record answering again.
@@ -553,7 +573,20 @@ export const describeClaim = (outcome: {
     return { ...row, line: claimCopy.status.stillHeld, extra: null, tone: 'attention' };
   }
 
-  return { ...row, line: describeFailure(result.reason).title, extra: null, tone: 'attention' };
+  // A pending failure splits by whose move is next, the same rule the list and the steps use. A
+  // wrong record is the person's move and reads as attention; a name still waiting on its record
+  // stays neutral, so the pill agrees with the waiting ring in the chain below rather than
+  // colouring every unfinished claim as a problem.
+  if (actionNeeded) {
+    return {
+      label: claimCopy.status.actionNeeded.label,
+      line: describeFailure(result.reason).title,
+      extra: null,
+      tone: 'attention',
+    };
+  }
+
+  return { ...row, line: describeFailure(result.reason).title, extra: null };
 };
 
 /**

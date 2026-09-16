@@ -573,3 +573,36 @@ answer.
 Resolved. `signedInEmail` reads through the cached `signedInUser`, so the header and the page share
 one call. Found by reading the code during the theme pass rather than by using the product, which
 is the kind of cost a visual pass is the moment to catch.
+
+## 2026-09-16, the status pass. A pending claim that needs a fix looked passive.
+
+### A pending claim with a wrong record read as neutral on the list
+
+Claiming loresprite.com surfaced it. A TXT record was at the name carrying an old token, so the
+check on the record screen showed value_mismatch, "needs a change", the person's move. The domain
+list showed the same claim as a neutral "Pending", which reads as passively waiting. Two screens,
+two tones, for the same claim.
+
+The cause was a real gap, not a rendering slip. The list runs no check, so it can only show what
+the row stores: status, expiry, verified date, failing-since. A pending claim covers two different
+situations the row could not tell apart, waiting on a record that has not been added yet, and a
+wrong record already there that the person must fix. The first is time's move and neutral, the
+second is the person's move and should read as attention, but the list had no stored fact to
+separate them.
+
+Why it was neutral in the first place: the list is deliberately check-free, one query for any
+number of names, and pending was treated as "waiting on the first action", which is right for a
+fresh claim. The list already split pending once, into neutral Pending and attention Expired,
+because expiry is derivable from the stored expiry date with no check. The needs-a-change cases are
+not derivable without a check, so they were left on the record screen.
+
+Resolved. `at_risk` was already the precedent: a check-derived, actionable state persisted
+(`failing_since`) so the list can show it without re-checking. Extended that to the pending case
+with an `action_needed_since` column, set when a check finds a wrong record at the name (a TXT with
+the wrong value, a record of another type, or the record one label down) and cleared the moment a
+check no longer does. `record_not_found` is excluded, since nothing at the name is the normal
+waiting state, and so are an unreachable zone and a missing delegation, which are waiting or
+ambiguous. The list reads an attention "Action needed" chip from the flag, the record pill derives
+the same live from the check, and the attention notice and needs-attention-first sort pick it up
+with no extra work. A pending failure now reads by whose move is next everywhere: the list, the
+record pill and the check steps agree.
