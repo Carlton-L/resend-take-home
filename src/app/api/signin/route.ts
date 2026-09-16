@@ -7,6 +7,7 @@ import { recordSendAttempt } from '@/lib/auth/rateLimit';
 import { supabaseAdminClient } from '@/lib/auth/supabase/admin';
 import { sendMail } from '@/lib/email/send';
 import { buildSignInEmail } from '@/lib/email/signInEmail';
+import { isSameOrigin } from '@/lib/http/sameOrigin';
 
 /** Holds the secret key and reaches Postgres. Neither is available on Edge. */
 export const runtime = 'nodejs';
@@ -29,6 +30,16 @@ const requestSchema = z.object({
 const sent = () => Response.json({ status: 'sent' });
 
 export const POST = async (request: Request) => {
+  // Before the body is read, so a refused request costs nothing and counts nothing. This route
+  // sends mail and creates an account for the address it is given, which makes it state-changing
+  // like the three claim routes, and a page on another site should not be able to drive it.
+  if (!isSameOrigin(request)) {
+    return new Response('This request did not come from a page on this site.', {
+      status: 403,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    });
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = requestSchema.safeParse(body);
 

@@ -198,7 +198,8 @@ Read these first:
   and the screen states the first as fact. A DoH second opinion is the way to express doubt and is
   not built.
 - Trust floor never traded: magic link redeemed on POST, rate limits on sends and checks,
-  public-suffix and special-use refusal, no probing of non-global nameserver addresses.
+  public-suffix and special-use refusal, no probing of non-global nameserver addresses, and a
+  same-origin check on every state-changing post.
 - Dark only, one `@theme` block, a pale primary so signal green means live, held, current or
   focused and nothing else.
 - Scope is held to how the product looks and behaves; the grace window, the schedule, transfers and
@@ -276,6 +277,10 @@ Read these first:
 - The confirmation page names the account being signed in to, and that address is signed, so a
   link cannot display one address while carrying a token for another.
 - Sign in sends are limited per address, per IP and globally, counted in Postgres.
+- Every state-changing post refuses a request whose Origin is not the host it arrived on: claim,
+  check, release, and sign in. Sign in was the one without it. It sends mail and creates an
+  account for the address it is given, so a page on another site could have driven it, bounded
+  only by the limits. The cookie is SameSite=Lax already; this is the second mechanism.
 - A tripped limit returns the same screen as a successful send and sends nothing, so the endpoint
   cannot be used to find out who has an account.
 - Sending identity is carlton.dev, already verified with Resend. No sending subdomain. Reputation
