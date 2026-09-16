@@ -118,7 +118,9 @@ Not built yet:
   until somebody opens it
 - The grace window and the notification email, which both sit behind that schedule, so At risk has
   no exit to Revoked
-- Transfers for a contested name. `contested` and `revoked` are modelled and nothing writes them
+- Transfers for a contested name, when a second account proves control of a name someone else
+  holds. `contested` and `revoked` are modelled and nothing writes them. Designed in
+  [docs/TRANSFERS.md](docs/TRANSFERS.md)
 - A second opinion over DNS-over-HTTPS. It separates a CNAME at the name and broken DNSSEC from the
   failures above, and shows how far behind public resolvers are while they catch up. Its larger job
   is doubt, for the reason in the section above
@@ -168,6 +170,8 @@ because it runs before anything is written.
 ## Documents
 
 - [docs/RFC.md](docs/RFC.md). Decisions, reasoning, open questions.
+- [docs/TRANSFERS.md](docs/TRANSFERS.md). A feature RFC for moving a held name between accounts,
+  with a prototype under `docs/prototypes/`. Designed, not built.
 - [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md). Every confusion hit using this against a real
   domain, each resolved, deferred or accepted.
 - [docs/POLISH_BACKLOG.md](docs/POLISH_BACKLOG.md). Ideas held back on purpose, with what each costs

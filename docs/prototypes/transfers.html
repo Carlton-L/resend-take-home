@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transfers — design reference</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{--pg:#141413;--pg-text:#e9e7e1;--pg-muted:#9a978f;--pg-line:#2c2b28;--pg-card:#1c1c1a;--pg-accent:#3ddc84}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg);color:var(--pg-text);font:15px/1.55 Inter,-apple-system,sans-serif;padding:24px 16px 72px}
+.wrap{max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:34px}
+h1{font-size:21px;font-weight:600;letter-spacing:-.015em;margin:0}
+.lead{color:var(--pg-muted);margin:8px 0 0;max-width:76ch}
+.tag{display:inline-block;font:500 11px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--pg-muted);border:1px solid var(--pg-line);border-radius:5px;padding:5px 8px;margin-top:14px}
+h2{font-size:14px;font-weight:600;margin:0 0 4px}
+.sub{color:var(--pg-muted);font-size:13px;margin:0 0 12px}
+.note{font-size:13px;color:var(--pg-muted);max-width:80ch;margin:10px 0 0}
+.note b{color:var(--pg-text)}
+.vp{border:1px solid var(--pg-line);border-radius:8px;overflow:hidden}
+/* app surface, from the running app's dark tokens */
+.app{--bg:#0a0a0b;--surface:#101013;--surface-2:#161619;--line:#232326;--line-2:#3a3a3e;--fg:#e6e6e2;--fg-2:#b3b3ad;--fg-3:#8f8f8a;--signal:#3dff88;--att-g:#f0c93a;--att-bg:#2a2410;--att-line:#8a7410;--good-bg:#123c24;--good-line:#2a8a52;--wrong-fg:#ff7a5c;--wrong-bg:#2c1410;--wrong-line:#6a2a1c;
+ background:var(--bg);color:var(--fg);font-family:Inter,sans-serif;padding:22px 24px}
+.app .mono{font-family:"IBM Plex Mono",monospace}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid;padding:2px 10px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.neutral{border-color:var(--line-2);color:var(--fg-2)}
+.pill.good{border-color:var(--good-line);background:var(--good-bg);color:var(--signal)}
+.pill.att{border-color:var(--att-line);background:var(--att-bg);color:var(--att-g)}
+.list{border-radius:12px;border:1px solid var(--line);background:var(--surface);overflow:hidden}
+.list .row{display:flex;align-items:center;gap:16px;padding:14px 16px;border-top:1px solid var(--line)}
+.list .row:first-child{border-top:0}
+.list .nm{font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:14px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list .dt{font-size:12px;color:var(--fg-3);white-space:nowrap}
+.list .dots{color:var(--fg-3);font-size:18px}
+.notice{border-radius:12px;border:1px solid var(--att-line);background:var(--att-bg);color:#f1e6b5;padding:13px 16px;font-size:14px;display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:14px}
+.notice .body{max-width:60ch}
+.notice b{color:#fff}
+.notice button{font:inherit;font-size:13px;font-weight:500;color:#f1e6b5;background:transparent;border:1px solid var(--att-line);border-radius:7px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.rh{display:flex;flex-direction:column;gap:6px;margin:2px 0 16px}
+.rh .name{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:500}
+.rh .sub{color:var(--fg-2);font-size:14px}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13.5px;color:var(--fg-2)}
+.btn{font:inherit;font-size:14px;font-weight:600;border-radius:8px;padding:9px 14px;cursor:pointer;border:1px solid}
+.btn.primary{background:#e9e7e1;color:#0a0a0b;border-color:#e9e7e1}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line-2)}
+.actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+/* email */
+.mail{background:#0a0a0b;padding:22px;border-radius:12px;border:1px solid var(--line)}
+.mail .env{font-size:12px;color:var(--fg-3);font-family:"IBM Plex Mono",monospace;margin-bottom:14px;display:flex;flex-direction:column;gap:2px}
+.mail .sheet{background:#121214;border:1px solid var(--line);border-radius:10px;padding:22px 22px 24px;max-width:560px}
+.mail .wm{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:13px;letter-spacing:.02em;color:var(--fg);margin-bottom:18px}
+.mail h3{font-size:17px;font-weight:600;margin:0 0 12px;color:var(--fg)}
+.mail p{font-size:14px;line-height:1.6;color:var(--fg-2);margin:0 0 12px}
+.mail p strong{color:var(--fg)}
+.mail .when{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--att-g)}
+.mail a.cta{display:inline-block;margin-top:6px;background:#e9e7e1;color:#0a0a0b;text-decoration:none;font-weight:600;font-size:14px;border-radius:8px;padding:10px 16px}
+.mail .fine{font-size:12px;color:var(--fg-3);margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+/* lifecycle */
+.flow{display:flex;flex-direction:column;gap:14px}
+.flow .track{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.node{border:1px solid var(--line-2);border-radius:8px;padding:8px 12px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--fg-2);background:var(--surface)}
+.node.good{border-color:var(--good-line);color:var(--signal);background:var(--good-bg)}
+.node.att{border-color:var(--att-line);color:var(--att-g);background:var(--att-bg)}
+.node.gone{border-color:var(--wrong-line);color:var(--wrong-fg);background:var(--wrong-bg)}
+.arrow{color:var(--fg-3);font-size:13px;font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+.legend{font-size:12.5px;color:var(--fg-3);margin-top:4px}
+table.map{border-collapse:collapse;width:100%;font-size:13px;margin-top:2px}
+table.map th,table.map td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.map th{color:var(--fg-3);font-weight:500}
+table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2);white-space:nowrap}
+</style></head>
+<body><div class="wrap">
+
+<div>
+  <h1>Transfers — design reference</h1>
+  <p class="lead">The screens for moving a held name from one account to another, using the app's own
+  tokens. This is a reference for <span class="mono">docs/TRANSFERS.md</span>, not a build. Nothing here
+  ships; the state and the fields exist, the writer does not. The flow drawn below is the leading
+  direction in the spec rather than a settled decision, and who decides at the close of a contest is
+  still open. The two directions it was weighed against are listed first.</p>
+  <span class="tag">Designed · not built · leading direction</span>
+</div>
+
+<section>
+  <h2>Directions considered</h2>
+  <p class="sub">Three ways to resolve a second account proving control. The screens after this draw the third; the other two are in the spec's decisions.</p>
+  <div class="vp"><div class="app">
+    <table class="map">
+      <tr><th>Direction</th><th>What it does</th><th>Why not, or why</th></tr>
+      <tr><td>Instant move</td><td>Proving control moves the name at once.</td><td>Matches that control moved, and gives the holder no window to answer before the name leaves.</td></tr>
+      <tr><td>Holder approves</td><td>The name moves only when the holder says yes.</td><td>Reads as safe, and deadlocks a sold or abandoned name on an account that will never answer.</td></tr>
+      <tr><td>Notice period&nbsp;(drawn here)</td><td>Proving control opens a contest; the holder is alerted and has a window to reassert; silence moves the name.</td><td>Leading direction: it alerts the holder and still resolves when they are gone. Who decides at the window's close stays open.</td></tr>
+    </table>
+  </div></div>
+  <p class="note">The screens below are a sketch of the notice-period direction, not a commitment to build it. If the decision lands on instant move or holder-approval instead, the alert and the email carry over and the reassert step is what changes.</p>
+</section>
+
+<section>
+  <h2>1 · The challenger, during a contest</h2>
+  <p class="sub">A second account proved control of a name someone else holds. The proof opens a contest rather than handing the name over.</p>
+  <div class="vp"><div class="app">
+    <div class="chip-row"><span class="pill att">Held · decision due</span></div>
+    <div class="rh"><span class="name">loresprite.com</span><span class="sub">You proved control. The account that holds this name has until the date below to answer.</span></div>
+    <div class="card"><span class="mono" style="color:var(--signal)">✓ 5 of 5 answered</span> · your record is live at <span class="mono">_domainclaim-challenge.loresprite.com</span><br><span style="color:var(--fg-3)">Decision due 20 September 2026 at 14:02 UTC. If the holder does not reassert control by then, the name moves to you.</span></div>
+  </div></div>
+  <p class="note"><b>What it says and does not say.</b> The name is not called theirs while the window is open, because it is not. The screen shows the proof landed and states the date the contest closes. The account being challenged is never named on either side.</p>
+</section>
+
+<section>
+  <h2>2 · The incumbent's list, with the notice</h2>
+  <p class="sub">A persistent notice, in the attention tone, that stays until the contest ends. It cannot be dismissed.</p>
+  <div class="vp"><div class="app">
+    <div class="notice"><span class="body"><b>Someone proved control of loresprite.com and has requested it.</b> If this was not you, reassert control by <b>20 September 2026, 14:02 UTC</b> or the name will move.</span><button>Reassert</button></div>
+    <div class="list">
+      <div class="row"><span class="nm">loresprite.com</span><span class="pill att">Contested</span><span class="dt">since 16 September 2026 at 14:02 UTC</span><span class="dots">···</span></div>
+      <div class="row"><span class="nm">carlton.dev</span><span class="pill good">Verified</span><span class="dots" style="margin-left:auto">···</span></div>
+      <div class="row"><span class="nm">futurity.science</span><span class="pill good">Verified</span><span class="dots" style="margin-left:auto">···</span></div>
+    </div>
+  </div></div>
+  <p class="note"><b>What changed.</b> The held row moves <span class="mono">verified → contested</span> and carries the date the window closes. Contested is a holding state, so the name stays reserved to this account until the contest ends. The notice repeats the record screen's one action so a long list cannot bury it.</p>
+</section>
+
+<section>
+  <h2>3 · The email that decides</h2>
+  <p class="sub">The channel that survives losing the zone. An incumbent who never opens the app, or who has lost DNS control, is still reached here.</p>
+  <div class="vp"><div class="app" style="padding:20px">
+    <div class="mail">
+      <div class="env"><span>From&nbsp; DomainClaim &lt;notify@carlton.dev&gt;</span><span>To&nbsp;&nbsp;&nbsp;&nbsp; you@loresprite.com</span><span>Subj&nbsp; Someone proved control of loresprite.com</span></div>
+      <div class="sheet">
+        <div class="wm">DomainClaim</div>
+        <h3>Control of loresprite.com was proved from another account</h3>
+        <p>You currently hold <strong>loresprite.com</strong>. A short time ago, another account added a valid record to its DNS and proved control of the same name.</p>
+        <p>If you sold or handed off this domain, you can ignore this, and the name will move on <span class="when">20 September 2026, 14:02 UTC</span>.</p>
+        <p>If this was not you, reassert control before that time to keep the name. You keep it by confirming your own record still answers.</p>
+        <a class="cta" href="#">Review this claim</a>
+        <p class="fine">You are receiving this because your account holds this domain. This is the one time the app will email you out of turn about it.</p>
+      </div>
+    </div>
+  </div></div>
+  <p class="note"><b>Why email carries it.</b> The in-app notice reaches an incumbent who opens the app; the email reaches one who does not, and survives them losing the zone, which the app session does not. It gives the date and the action and does not name the challenging account. Same sender and path as the status-change email in the main RFC.</p>
+</section>
+
+<section>
+  <h2>4 · The incumbent reasserts, or approves</h2>
+  <p class="sub">Two ways to end the contest from the holder's side. Doing nothing is the third, and it moves the name when the window closes.</p>
+  <div class="vp"><div class="app">
+    <div class="chip-row"><span class="pill att">Contested</span></div>
+    <div class="rh"><span class="name">loresprite.com</span><span class="sub">Another account proved control. You hold the name until 20 September 2026, 14:02 UTC.</span></div>
+    <div class="card">Reasserting checks that your own record still answers. If it does, the name stays with you and the contest closes. If your record is gone, you no longer control this zone, and reasserting cannot bring the name back.</div>
+    <div class="actions"><button class="btn primary">Reassert control</button><button class="btn ghost">Approve the transfer</button></div>
+  </div></div>
+  <p class="note"><b>What each does.</b> <b>Reassert</b> runs the same proof the claim was built on: an incumbent who still controls the zone holds the name by doing nothing to their DNS, one who has lost it cannot, which is the correct outcome. <b>Approve</b> is the handover made explicit, for a seller who wants it done rather than waited out.</p>
+</section>
+
+<section>
+  <h2>5 · The lifecycle</h2>
+  <p class="sub">Where the contest sits in a held name's states, and the three ways out.</p>
+  <div class="vp"><div class="app">
+    <div class="flow">
+      <div class="track">
+        <span class="node good">verified</span>
+        <span class="arrow">— challenger proves control →</span>
+        <span class="node att">contested</span>
+      </div>
+      <div class="track" style="padding-left:8px">
+        <span class="arrow">from contested:</span>
+        <span class="node good">verified</span><span class="arrow">reassert, or record still answers</span>
+      </div>
+      <div class="track" style="padding-left:8px">
+        <span class="arrow">&nbsp;</span>
+        <span class="node gone">revoked</span><span class="arrow">approve, or window closes → name moves to challenger (→ verified)</span>
+      </div>
+    </div>
+    <table class="map">
+      <tr><th>Ends by</th><th>Incumbent's zone</th><th>Outcome</th></tr>
+      <tr><td>reassert</td><td>still controlled</td><td>stays with the incumbent, challenge declined</td></tr>
+      <tr><td>approve</td><td>handed off</td><td>moves to the challenger at once</td></tr>
+      <tr><td>window closes</td><td>lost, or abandoned</td><td>moves to the challenger, no deadlock</td></tr>
+    </table>
+    <p class="legend">The move is one statement in a transaction: the incumbent's row leaves the holding set for <span class="mono">revoked</span>, the challenger's pending row enters it as <span class="mono">verified</span>, so the unique index is never violated mid-move. Closing the window needs the same scheduled job the grace window needs, which is why neither is built.</p>
+  </div></div>
+</section>
+
+</div></body></html>
