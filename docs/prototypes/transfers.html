@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Transfers — design reference</title>
+<title>Transfers, design reference</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
 <style>
 :root{--pg:#141413;--pg-text:#e9e7e1;--pg-muted:#9a978f;--pg-line:#2c2b28;--pg-card:#1c1c1a;--pg-accent:#3ddc84}
@@ -71,18 +71,18 @@ table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2)
 <body><div class="wrap">
 
 <div>
-  <h1>Transfers — design reference</h1>
+  <h1>Transfers, design reference</h1>
   <p class="lead">The screens for moving a held name from one account to another, using the app's own
-  tokens. This is a reference for <span class="mono">docs/TRANSFERS.md</span>, not a build. Nothing here
-  ships; the state and the fields exist, the writer does not. The flow drawn below is the leading
-  direction in the spec rather than a settled decision, and who decides at the close of a contest is
-  still open. The two directions it was weighed against are listed first.</p>
+  tokens. This is a reference for <span class="mono">docs/TRANSFERS.md</span>. Nothing here ships. The
+  state and the fields exist, and nothing writes them yet. The flow below is the direction I'm leaning
+  towards. Who decides when a contest closes is still open. The two other directions are listed
+  first.</p>
   <span class="tag">Designed · not built · leading direction</span>
 </div>
 
 <section>
   <h2>Directions considered</h2>
-  <p class="sub">Three ways to resolve a second account proving control. The screens after this draw the third; the other two are in the spec's decisions.</p>
+  <p class="sub">Three ways to handle a second account proving control. The screens draw the third. The other two are in the spec's decisions.</p>
   <div class="vp"><div class="app">
     <table class="map">
       <tr><th>Direction</th><th>What it does</th><th>Why not, or why</th></tr>
@@ -91,23 +91,23 @@ table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2)
       <tr><td>Notice period&nbsp;(drawn here)</td><td>Proving control opens a contest; the holder is alerted and has a window to reassert; silence moves the name.</td><td>Leading direction: it alerts the holder and still resolves when they are gone. Who decides at the window's close stays open.</td></tr>
     </table>
   </div></div>
-  <p class="note">The screens below are a sketch of the notice-period direction, not a commitment to build it. If the decision lands on instant move or holder-approval instead, the alert and the email carry over and the reassert step is what changes.</p>
+  <p class="note">The screens below sketch the notice-period direction. If the decision lands on instant move or holder approval instead, the alert and the email carry over and only the reassert step changes.</p>
 </section>
 
 <section>
   <h2>1 · The challenger, during a contest</h2>
-  <p class="sub">A second account proved control of a name someone else holds. The proof opens a contest rather than handing the name over.</p>
+  <p class="sub">A second account proved control of a name someone else holds. The proof opens a contest instead of handing the name over.</p>
   <div class="vp"><div class="app">
     <div class="chip-row"><span class="pill att">Held · decision due</span></div>
     <div class="rh"><span class="name">loresprite.com</span><span class="sub">You proved control. The account that holds this name has until the date below to answer.</span></div>
     <div class="card"><span class="mono" style="color:var(--signal)">✓ 5 of 5 answered</span> · your record is live at <span class="mono">_domainclaim-challenge.loresprite.com</span><br><span style="color:var(--fg-3)">Decision due 20 September 2026 at 14:02 UTC. If the holder does not reassert control by then, the name moves to you.</span></div>
   </div></div>
-  <p class="note"><b>What it says and does not say.</b> The name is not called theirs while the window is open, because it is not. The screen shows the proof landed and states the date the contest closes. The account being challenged is never named on either side.</p>
+  <p class="note"><b>What it says and what it leaves out.</b> The name isn't called theirs while the window is open, because it isn't yet. The screen shows that the proof landed and the date the contest closes. Neither side sees who the other account is.</p>
 </section>
 
 <section>
   <h2>2 · The incumbent's list, with the notice</h2>
-  <p class="sub">A persistent notice, in the attention tone, that stays until the contest ends. It cannot be dismissed.</p>
+  <p class="sub">A persistent notice in the attention tone. It stays until the contest ends and can't be dismissed.</p>
   <div class="vp"><div class="app">
     <div class="notice"><span class="body"><b>Someone proved control of loresprite.com and has requested it.</b> If this was not you, reassert control by <b>20 September 2026, 14:02 UTC</b> or the name will move.</span><button type="button">Reassert</button></div>
     <div class="list">
@@ -116,12 +116,12 @@ table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2)
       <div class="row"><span class="nm">futurity.science</span><span class="pill good">Verified</span><span class="dots" style="margin-left:auto">···</span></div>
     </div>
   </div></div>
-  <p class="note"><b>What changed.</b> The held row moves <span class="mono">verified → contested</span> and carries the date the window closes. Contested is a holding state, so the name stays reserved to this account until the contest ends. The notice repeats the record screen's one action so a long list cannot bury it.</p>
+  <p class="note"><b>What changed.</b> The held row moves <span class="mono">verified → contested</span> and shows the date the window closes. Contested is a holding state, so the name stays reserved to this account until the contest ends. The notice repeats the record screen's one action so a long list can't bury it.</p>
 </section>
 
 <section>
   <h2>3 · The email that decides</h2>
-  <p class="sub">The channel that survives losing the zone. An incumbent who never opens the app, or who has lost DNS control, is still reached here.</p>
+  <p class="sub">The channel that survives losing the zone. An incumbent who never opens the app, or who has lost DNS control, still gets this.</p>
   <div class="vp"><div class="app" style="padding:20px">
     <div class="mail">
       <div class="env"><span>From&nbsp; DomainClaim &lt;notify@carlton.dev&gt;</span><span>To&nbsp;&nbsp;&nbsp;&nbsp; you@loresprite.com</span><span>Subj&nbsp; Someone proved control of loresprite.com</span></div>
@@ -136,7 +136,7 @@ table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2)
       </div>
     </div>
   </div></div>
-  <p class="note"><b>Why email carries it.</b> The in-app notice reaches an incumbent who opens the app; the email reaches one who does not, and survives them losing the zone, which the app session does not. It gives the date and the action and does not name the challenging account. Same sender and path as the status-change email in the main RFC.</p>
+  <p class="note"><b>Why email carries it.</b> The in-app notice only reaches someone who opens the app. The email reaches someone who doesn't, and it still works after they've lost the zone, which the app session won't. It gives the date and the action, and doesn't name the challenging account. Same sender and path as the status change email in the main RFC.</p>
 </section>
 
 <section>
@@ -148,12 +148,12 @@ table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2)
     <div class="card">Reasserting checks that your own record still answers. If it does, the name stays with you and the contest closes. If your record is gone, you no longer control this zone, and reasserting cannot bring the name back.</div>
     <div class="actions"><button type="button" class="btn primary">Reassert control</button><button type="button" class="btn ghost">Approve the transfer</button></div>
   </div></div>
-  <p class="note"><b>What each does.</b> <b>Reassert</b> runs the same proof the claim was built on: an incumbent who still controls the zone holds the name by doing nothing to their DNS, one who has lost it cannot, which is the correct outcome. <b>Approve</b> is the handover made explicit, for a seller who wants it done rather than waited out.</p>
+  <p class="note"><b>What each does.</b> <b>Reassert</b> runs the same proof the claim was built on. An incumbent who still controls the zone keeps the name without touching their DNS. One who has lost it can't, which is the right outcome. <b>Approve</b> makes the handover explicit, for a seller who wants it done now instead of waiting it out.</p>
 </section>
 
 <section>
   <h2>5 · The lifecycle</h2>
-  <p class="sub">Where the contest sits in a held name's states, and the three ways out.</p>
+  <p class="sub">Where the contest sits among a held name's states, and the three ways out.</p>
   <div class="vp"><div class="app">
     <div class="flow">
       <div class="track">
@@ -176,7 +176,7 @@ table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2)
       <tr><td>approve</td><td>handed off</td><td>moves to the challenger at once</td></tr>
       <tr><td>window closes</td><td>lost, or abandoned</td><td>moves to the challenger, no deadlock</td></tr>
     </table>
-    <p class="legend">The move is one statement in a transaction: the incumbent's row leaves the holding set for <span class="mono">revoked</span>, the challenger's pending row enters it as <span class="mono">verified</span>, so the unique index is never violated mid-move. Closing the window needs the same scheduled job the grace window needs, which is why neither is built.</p>
+    <p class="legend">The move is one statement in a transaction. The incumbent's row leaves the holding set as <span class="mono">revoked</span> and the challenger's pending row enters it as <span class="mono">verified</span>, so the unique index is never violated mid-move. Closing the window needs the same scheduled job the grace window needs, which is why neither is built.</p>
   </div></div>
 </section>
 

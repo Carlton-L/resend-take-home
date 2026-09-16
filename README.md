@@ -106,6 +106,7 @@ Built:
 - The check, run on arrival and again on a cadence, against real DNS, reported as its five steps
 - Check now, at a rate limited endpoint
 - At risk when a held name loses its record, and recovery when it comes back
+- Action needed, on the list and the record screen, for a claim whose next move is the person's
 - Seven of nine failure reasons, each with one action and the remediation in the step that produced it
 - The list of an account's claims, including the ones not proved yet, with filter, sort, and a
   notice for names that need attention
