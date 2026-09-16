@@ -141,6 +141,7 @@ const everyString: string[] = [
   }),
   ...Object.values(appCopy.notFound),
   ...Object.values(appCopy.unexpected),
+  ...Object.values(appCopy.claimFailed),
   claimCopy.release.trigger,
   claimCopy.release.title,
   claimCopy.release.description(NAME),

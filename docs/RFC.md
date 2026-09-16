@@ -408,6 +408,8 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   group, and a notice above the list counts the rows that need the person with a button that
   filters to them. A long list under any sort can put those rows below the fold; the sentence
   cannot be scrolled past.
+- The claim route has its own error boundary. A throw reading the claim keeps the way back to
+  the list and retries the segment; the root boundary speaks for the whole app.
 - Each demo name says what it is scripted to do. A name whose outcome has to be guessed from its
   spelling is a demo that cannot be checked.
 - Releasing a claim deletes the row. A released state would qualify every later query for nothing.
