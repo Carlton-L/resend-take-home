@@ -64,6 +64,18 @@ export const claims = pgTable(
      * of truth for something nothing reads in between.
      */
     failingSince: timestamp('failing_since', { withTimezone: true }),
+    /**
+     * When the first check that found a wrong record ran, on a claim still trying to prove itself.
+     * A pending claim whose nameservers answered with a record that is not this claim's, which is
+     * the person's move rather than time's, so the list can show it needs attention without running
+     * a check of its own. Null on a fresh pending claim that is only waiting, and cleared the moment
+     * a check finds the wrong record gone.
+     *
+     * A plain timestamp, and only the "a wrong record is there" reasons set it. Nothing missing at
+     * the name, an unreachable zone or an expired token does, because those are either waiting or
+     * already shown by the row without a stored flag.
+     */
+    actionNeededSince: timestamp('action_needed_since', { withTimezone: true }),
   },
   (table) => [
     /**

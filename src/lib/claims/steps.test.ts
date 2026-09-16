@@ -38,6 +38,7 @@ const outcome = (over: Partial<ClaimOutcome> = {}): ClaimOutcome => ({
   verifiedAt: NOW,
   provedButHeld: false,
   recovered: false,
+  actionNeeded: false,
   ...over,
 });
 

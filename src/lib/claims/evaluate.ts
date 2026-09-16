@@ -176,6 +176,68 @@ export const shouldMarkAtRisk = (claim: { status: ClaimStatus }, result: CheckRe
 export const shouldMarkRecovered = (claim: { status: ClaimStatus }, result: CheckResult): boolean =>
   claim.status === 'at_risk' && result.status === 'verified';
 
+/**
+ * Whether this failure means a wrong record is at the name, which is the person's move.
+ *
+ * A tighter set than `provesRecordGone`. The nameservers answered and returned a record that is
+ * not this claim's: a TXT with a different value, a record of another type, or the record one
+ * label further down. `record_not_found` is excluded, because nothing at the name is the normal
+ * waiting state of a claim whose record has not been added yet, not a mistake to fix. An
+ * unreachable zone and a zone with no nameservers are waiting or ambiguous, and an expired token
+ * is already shown on the list as `Expired`, so none of them set the flag.
+ *
+ * Exhaustive, so a reason added to the union has to be sorted here before the build passes.
+ */
+export const needsUserAction = (reason: FailureReason): boolean => {
+  switch (reason.code) {
+    case 'no_txt_at_name':
+    case 'appended_zone_suspected':
+    case 'value_mismatch':
+      return true;
+    case 'record_not_found':
+    case 'nameservers_unreachable':
+    case 'zone_not_found':
+    case 'token_expired':
+      return false;
+    default: {
+      const exhaustive: never = reason;
+      return exhaustive;
+    }
+  }
+};
+
+/**
+ * Whether this check should stamp a pending claim as needing the person's attention.
+ *
+ * Pending only: a verified claim losing its record is `at_risk`, a different state. Conditional on
+ * the flag being unset so a second check finding the same thing writes nothing, which keeps the
+ * stamp at the first failure and makes the write a no-op under a reload.
+ */
+export const shouldFlagAction = (
+  claim: { status: ClaimStatus; actionNeededSince: Date | null },
+  result: CheckResult,
+): boolean =>
+  claim.status === 'pending' &&
+  claim.actionNeededSince === null &&
+  result.status === 'failed' &&
+  needsUserAction(result.reason);
+
+/**
+ * Whether this check should take the flag back off a pending claim.
+ *
+ * The flag is set, the claim is still pending, and this check no longer finds a wrong record: the
+ * person removed it, or it was replaced with the right one and the next check will verify. A
+ * claim that verifies is handled by `markVerified`, which clears the flag as it moves the row, so
+ * this only fires when the claim stays pending and drops back to waiting.
+ */
+export const shouldClearAction = (
+  claim: { status: ClaimStatus; actionNeededSince: Date | null },
+  result: CheckResult,
+): boolean =>
+  claim.status === 'pending' &&
+  claim.actionNeededSince !== null &&
+  !(result.status === 'failed' && needsUserAction(result.reason));
+
 /** What the screen should say about a claim once this check has been through the database. */
 export type ClaimAfterCheck = {
   status: ClaimStatus;
@@ -184,6 +246,8 @@ export type ClaimAfterCheck = {
   provedButHeld: boolean;
   /** This check is the one that found the record again and took the claim back out of `at_risk`. */
   recovered: boolean;
+  /** A pending claim with a wrong record at the name. The person's move, shown on the record pill. */
+  actionNeeded: boolean;
 };
 
 /**
@@ -203,9 +267,16 @@ export const claimAfterCheck = (
   /** Null when no write was attempted. */
   write: ClaimWrite | null,
   at: Date,
+  result: CheckResult,
 ): ClaimAfterCheck => {
   if (write === 'verified') {
-    return { status: 'verified', verifiedAt: at, provedButHeld: false, recovered: false };
+    return {
+      status: 'verified',
+      verifiedAt: at,
+      provedButHeld: false,
+      recovered: false,
+      actionNeeded: false,
+    };
   }
 
   if (write === 'at_risk') {
@@ -214,6 +285,7 @@ export const claimAfterCheck = (
       verifiedAt: claim.verifiedAt,
       provedButHeld: false,
       recovered: false,
+      actionNeeded: false,
     };
   }
 
@@ -226,13 +298,19 @@ export const claimAfterCheck = (
       verifiedAt: claim.verifiedAt,
       provedButHeld: false,
       recovered: true,
+      actionNeeded: false,
     };
   }
 
+  // The claim stays pending here. The pill reads Action needed from the live result rather than
+  // the stored flag, so it is right even under a reload where the flag is already set and no write
+  // happened, and the record screen never disagrees with its own check.
   return {
     status: claim.status,
     verifiedAt: claim.verifiedAt,
     provedButHeld: write === 'held_by_another',
     recovered: false,
+    actionNeeded:
+      claim.status === 'pending' && result.status === 'failed' && needsUserAction(result.reason),
   };
 };

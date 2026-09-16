@@ -449,6 +449,14 @@ Read these first:
   cannot be scrolled past.
 - The claim route has its own error boundary. A throw reading the claim keeps the way back to
   the list and retries the segment; the root boundary speaks for the whole app.
+- A pending claim carries an attention `Action needed` state when a check finds a wrong record at
+  its name, stored in `action_needed_since` and shown on the list, which runs no check of its own.
+  The list already split pending into neutral `Pending` and attention `Expired` because expiry is
+  derivable from the row; a wrong record is not, so it is persisted the way `at_risk` is. Set on a
+  TXT with the wrong value, a record of another type, or the record one label down; not on nothing
+  at the name (the waiting state), an unreachable zone, or a missing delegation. Cleared when a
+  check no longer finds the wrong record, and by verifying. The record pill derives the same state
+  live from the check, so a pending failure reads by whose move is next on every screen.
 - Each demo name says what it is scripted to do. A name whose outcome has to be guessed from its
   spelling is a demo that cannot be checked.
 - Releasing a claim deletes the row. A released state would qualify every later query for nothing.

@@ -1,5 +1,5 @@
 // src/lib/claims/store.ts
-import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { CLAIM_LIMIT, TOKEN_TTL_MS } from '@/lib/claims/config';
 import { isExpired } from '@/lib/claims/evaluate';
 import type { ClaimStatus } from '@/lib/claims/state';
@@ -20,6 +20,8 @@ export type Claim = {
   verifiedAt: Date | null;
   /** Set on the first check that could not find the record of a claim that had proved itself. */
   failingSince: Date | null;
+  /** Set on the first check that found a wrong record while the claim was still pending. */
+  actionNeededSince: Date | null;
 };
 
 /** Postgres unique violation. Both indexes on `claims` are unique, so either can raise it. */
@@ -195,6 +197,8 @@ export type ClaimSummary = {
    * say that the status word does not. Null on every other status.
    */
   failingSince: Date | null;
+  /** Set while a pending claim has a wrong record at its name. Null otherwise. */
+  actionNeededSince: Date | null;
 };
 
 /**
@@ -221,6 +225,7 @@ export const claimsForOwner = async (ownerId: string): Promise<ClaimSummary[]> =
       verifiedAt: claims.verifiedAt,
       expiresAt: claims.expiresAt,
       failingSince: claims.failingSince,
+      actionNeededSince: claims.actionNeededSince,
     })
     .from(claims)
     .where(eq(claims.ownerId, ownerId))
@@ -267,7 +272,12 @@ export type MoveOutcome<Moved extends string> = Moved | 'unchanged' | 'unavailab
  * Every way a check can leave the row, as one value, so the pure function that decides what the
  * screen says reads one argument rather than three.
  */
-export type ClaimWrite = VerifyOutcome | MoveOutcome<'at_risk'> | MoveOutcome<'recovered'>;
+export type ClaimWrite =
+  | VerifyOutcome
+  | MoveOutcome<'at_risk'>
+  | MoveOutcome<'recovered'>
+  | MoveOutcome<'action_needed'>
+  | MoveOutcome<'action_cleared'>;
 
 /**
  * Records that a check found the record.
@@ -287,7 +297,7 @@ export const markVerified = async (
   try {
     await getDb()
       .update(claims)
-      .set({ status: 'verified', verifiedAt: at })
+      .set({ status: 'verified', verifiedAt: at, actionNeededSince: null })
       .where(and(eq(claims.id, id), eq(claims.ownerId, ownerId), eq(claims.status, 'pending')));
     return 'verified';
   } catch (error) {
@@ -344,6 +354,63 @@ export const markRecovered = async (
       .where(and(eq(claims.id, id), eq(claims.ownerId, ownerId), eq(claims.status, 'at_risk')))
       .returning({ id: claims.id });
     return rows.length > 0 ? 'recovered' : 'unchanged';
+  } catch {
+    return 'unavailable';
+  }
+};
+
+/**
+ * Stamp a pending claim as needing the person's attention. Conditional on the claim still being
+ * pending and the flag still unset, so a second check that finds the same wrong record writes
+ * nothing and the stamp stays at the first failure. The unset guard also lives in `shouldFlagAction`;
+ * having it here too keeps the write a no-op under a reload.
+ */
+export const flagActionNeeded = async (
+  id: string,
+  ownerId: string,
+  at: Date,
+): Promise<MoveOutcome<'action_needed'>> => {
+  try {
+    const rows = await getDb()
+      .update(claims)
+      .set({ actionNeededSince: at })
+      .where(
+        and(
+          eq(claims.id, id),
+          eq(claims.ownerId, ownerId),
+          eq(claims.status, 'pending'),
+          isNull(claims.actionNeededSince),
+        ),
+      )
+      .returning({ id: claims.id });
+    return rows.length > 0 ? 'action_needed' : 'unchanged';
+  } catch {
+    return 'unavailable';
+  }
+};
+
+/**
+ * Take the flag back off a pending claim once a check no longer finds a wrong record. Conditional
+ * on the flag being set, so it is a no-op when there was nothing to clear.
+ */
+export const clearActionNeeded = async (
+  id: string,
+  ownerId: string,
+): Promise<MoveOutcome<'action_cleared'>> => {
+  try {
+    const rows = await getDb()
+      .update(claims)
+      .set({ actionNeededSince: null })
+      .where(
+        and(
+          eq(claims.id, id),
+          eq(claims.ownerId, ownerId),
+          eq(claims.status, 'pending'),
+          isNotNull(claims.actionNeededSince),
+        ),
+      )
+      .returning({ id: claims.id });
+    return rows.length > 0 ? 'action_cleared' : 'unchanged';
   } catch {
     return 'unavailable';
   }

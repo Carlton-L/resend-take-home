@@ -134,6 +134,9 @@ const everyString: string[] = [
   claimCopy.status.stillHeld,
   claimCopy.status.recovered('ns1.example.com'),
   claimCopy.status.atRisk.since(WHEN),
+  claimCopy.status.actionNeeded.label,
+  claimCopy.status.actionNeeded.line,
+  claimCopy.status.actionNeeded.since(WHEN),
   ...Object.values(claimCopy.check.provedButHeld),
   ...CLAIM_STATUSES.flatMap((status) => {
     const message = describeStatus(status, new Date('2026-09-14T18:42:07Z'));
@@ -304,7 +307,7 @@ describe('describeClaimRow', () => {
 
   it.each(CLAIM_STATUSES)('%s has a label and a line', (status) => {
     const message = describeClaimRow(
-      { status, verifiedAt: null, expiresAt: LIVE, failingSince: null },
+      { status, verifiedAt: null, expiresAt: LIVE, failingSince: null, actionNeededSince: null },
       NOW,
     );
     expect(message.label.length).toBeGreaterThan(0);
@@ -315,7 +318,13 @@ describe('describeClaimRow', () => {
   // the only screen that will ever say it, since the record screen gets it from the check.
   it('reads a pending claim whose token has run out as expired', () => {
     const message = describeClaimRow(
-      { status: 'pending', verifiedAt: null, expiresAt: RUN_OUT, failingSince: null },
+      {
+        status: 'pending',
+        verifiedAt: null,
+        expiresAt: RUN_OUT,
+        failingSince: null,
+        actionNeededSince: null,
+      },
       NOW,
     );
     expect(message.label).toBe(claimCopy.status.expired.label);
@@ -332,6 +341,7 @@ describe('describeClaimRow', () => {
           verifiedAt: new Date('2026-09-11T09:00:00Z'),
           expiresAt: RUN_OUT,
           failingSince: null,
+          actionNeededSince: null,
         },
         NOW,
       );
@@ -353,8 +363,62 @@ describe('describeClaimRow', () => {
     ['revoked', RUN_OUT, 'neutral'],
   ] as const)('%s expiring %s asks for %s', (status, expiresAt, tone) => {
     expect(
-      describeClaimRow({ status, verifiedAt: null, expiresAt, failingSince: null }, NOW).tone,
+      describeClaimRow(
+        { status, verifiedAt: null, expiresAt, failingSince: null, actionNeededSince: null },
+        NOW,
+      ).tone,
     ).toBe(tone);
+  });
+
+  // A pending claim whose last check found a wrong record is the person's move, so the row reads
+  // as attention with a since detail, the same shape as at risk.
+  it('reads a pending claim with a wrong record as action needed', () => {
+    const since = new Date('2026-09-16T02:00:00Z');
+    const message = describeClaimRow(
+      {
+        status: 'pending',
+        verifiedAt: null,
+        expiresAt: LIVE,
+        failingSince: null,
+        actionNeededSince: since,
+      },
+      NOW,
+    );
+    expect(message.label).toBe(claimCopy.status.actionNeeded.label);
+    expect(message.tone).toBe('attention');
+    expect(message.detail).toBe(claimCopy.status.actionNeeded.since(formatWhen(since)));
+  });
+
+  // Expiry wins: an expired claim needs a new token before the record it points at matters, so a
+  // flag set on it does not change the word.
+  it('reads an expired claim as expired even with the action flag set', () => {
+    const message = describeClaimRow(
+      {
+        status: 'pending',
+        verifiedAt: null,
+        expiresAt: RUN_OUT,
+        failingSince: null,
+        actionNeededSince: new Date('2026-09-16T02:00:00Z'),
+      },
+      NOW,
+    );
+    expect(message.label).toBe(claimCopy.status.expired.label);
+  });
+
+  // A fresh pending claim with no flag stays neutral, which is the waiting case the list is quiet
+  // about on purpose.
+  it('leaves a fresh pending claim neutral when no wrong record was found', () => {
+    const message = describeClaimRow(
+      {
+        status: 'pending',
+        verifiedAt: null,
+        expiresAt: LIVE,
+        failingSince: null,
+        actionNeededSince: null,
+      },
+      NOW,
+    );
+    expect(message.tone).toBe('neutral');
   });
 
   /**
@@ -369,6 +433,7 @@ describe('describeClaimRow', () => {
         verifiedAt: new Date('2026-09-01T09:00:00Z'),
         expiresAt: LIVE,
         failingSince,
+        actionNeededSince: null,
       },
       NOW,
     );
@@ -382,7 +447,7 @@ describe('describeClaimRow', () => {
   // The column is null on every other status, and on an at-risk row written before it existed.
   it.each(CLAIM_STATUSES)('%s carries no detail without a date to put in it', (status) => {
     const message = describeClaimRow(
-      { status, verifiedAt: null, expiresAt: LIVE, failingSince: null },
+      { status, verifiedAt: null, expiresAt: LIVE, failingSince: null, actionNeededSince: null },
       NOW,
     );
     expect(message.detail).toBeNull();
@@ -395,6 +460,7 @@ describe('describeClaimRow', () => {
         verifiedAt: new Date('2026-09-01T09:00:00Z'),
         expiresAt: LIVE,
         failingSince: new Date('2026-09-12T08:31:00Z'),
+        actionNeededSince: null,
       },
       NOW,
     );
