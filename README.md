@@ -11,7 +11,7 @@ a schedule, for the reason in the RFC.
 Live at [domainclaim-pi.vercel.app](https://domainclaim-pi.vercel.app). Take-home for Resend.
 Decisions are in [docs/RFC.md](docs/RFC.md).
 
-![The record screen for a pending claim on loresprite.com: the check shown as five steps, stopped at Match the token because a TXT record with a different value is present, showing what was found, the value to use, and one next action, with a notice that another account currently holds the name](docs/images/check-failing.png)
+![The record screen for loresprite.com in the Action needed state: the check shown as five steps, stopped at Match the token because a TXT record with a different value is present, showing what was found, the value to use, and one next action, with a notice that another account currently holds the name and that adding the record proves control of the DNS without transferring it](docs/images/check-failing.png)
 
 ## Try it
 
