@@ -571,16 +571,16 @@ Read these first:
 
 | Reason | Title | Next action | Test |
 | --- | --- | --- | --- |
-| `record_not_found` | No record there yet | Add the record below. | `record-not-found.test` |
-| `record_not_found`, on a claim that holds the name | The record is no longer answering | Put the record below back in your DNS panel. | Verified claim, record removed |
-| `no_txt_at_name` | The name exists with no TXT record on it | Check what your panel already has on that one name, since only this TXT record should be on it. | `no-txt-at-name.test` |
+| `record_not_found` | No record found yet | Add the record below. | `record-not-found.test` |
+| `record_not_found`, on a claim that holds the name | The record is missing | Add the record below back to your DNS panel. | Verified claim, record removed |
+| `no_txt_at_name` | The name exists but has no TXT record | Check the existing records at this exact name in your DNS panel and add the TXT record beside them. | `no-txt-at-name.test` |
 | `cname_at_name` | | | |
-| `value_mismatch` | A TXT record is there with a different value | Replace the value with the one above, copied whole. | `value-mismatch.test` |
-| `appended_zone_suspected` | Your DNS panel added the domain to the name | Delete that record and add it again using the short name below. | `appended-zone.test` |
-| `token_expired` | This claim has expired | Release this claim and start a new one, which issues a fresh token. | Claim row, no query |
+| `value_mismatch` | The TXT record has a different value | Replace the value in your DNS panel with the one below. | `value-mismatch.test` |
+| `appended_zone_suspected` | The record was saved with the domain appended twice | Delete that record and add it again with the short name below. | `appended-zone.test` |
+| `token_expired` | This claim has expired | Release this claim and create a new one to get a new token. | Claim row, no query |
 | `dnssec_broken` | | | |
-| `nameservers_unreachable` | Still waiting on your nameservers | If this does not clear, check the nameservers set for the domain at your registrar. | `nameservers-unreachable.test` |
-| `zone_not_found` | No nameservers found for this domain | Set nameservers for the domain at your registrar. | `zone-not-found.test` |
+| `nameservers_unreachable` | Nameservers did not respond | If this persists for more than a few minutes, check the nameservers set for the domain at your registrar. | `nameservers-unreachable.test` |
+| `zone_not_found` | No nameservers found for this domain | Check the nameservers set for the domain at your registrar, and allow a few minutes if they were set recently. | `zone-not-found.test` |
 
 `cname_at_name` needs a CNAME query, which is a new method on the resolver interface, for one
 message. `dnssec_broken` needs the DoH leg, which is dropped. Both stay empty.
