@@ -9,8 +9,13 @@ Open list says which. Transfers have their own feature RFC in
 
 User: one person who controls their own DNS.
 
-This document is long. The Decisions list below opens with the ten a reviewer is most likely to ask
-about; the rest are there for completeness.
+This document is long. The Decisions section opens with the ten a reviewer is most likely to ask
+about; the rest are there for completeness. The States table at the end is the one-page view of
+every failure, its message and its demo name.
+
+Contents: [Background](#background) · [Proposal](#proposal) ·
+[Technical details](#technical-details) · [Decisions](#decisions) · [Open](#open) ·
+[States](#states)
 
 ## Background
 
@@ -177,7 +182,7 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 
 ## Decisions
 
-Read these first:
+### The ten a reviewer will ask about
 
 - Checks go straight to the zone's authoritative nameservers. Those do not cache, so the answer
   that decides has no cache window on our side and is found as soon as the provider publishes it,
@@ -203,7 +208,9 @@ Read these first:
 - Dark only, one `@theme` block, a pale primary so signal green means live, held, current or
   focused and nothing else.
 - Scope is held to how the product looks and behaves; the grace window, the schedule, transfers and
-  the DoH leg are each deferred with a dated reason.
+  the DoH leg are each deferred with a reason in Open.
+
+### The rest
 
 - TXT only. A second method is scope creep and proves less.
 - One vantage point. Let's Encrypt validates from several to resist localized hijack. Vercel is one
