@@ -156,7 +156,7 @@ Node 24.x. Needs a Supabase project and a Resend API key. Every variable is docu
 CI runs `pnpm verify` on every pull request, with no secrets, because nothing reads an environment
 variable at module scope.
 
-425 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the
+439 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the
 comparison against a claim, the state each check leaves the claim in, the step list and every
 user-facing string. The DNS layer sits behind an
 interface with a scripted fake, so no test touches the network.

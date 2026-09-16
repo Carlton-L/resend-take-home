@@ -606,3 +606,22 @@ ambiguous. The list reads an attention "Action needed" chip from the flag, the r
 the same live from the check, and the attention notice and needs-attention-first sort pick it up
 with no extra work. A pending failure now reads by whose move is next everywhere: the list, the
 record pill and the check steps agree.
+
+## 2026-09-16, recording the At risk transition on the deployment
+
+### Refresh on the list looked like it did nothing
+
+Deleted the carlton.dev record in the Squarespace panel, went to the domain list and pressed
+Refresh. The row still said Verified. It only moved to At risk when I opened the claim and its check
+ran. The button had done what it does, re-read the rows, and nothing had changed the rows.
+
+The cause is the decision in the RFC: the list runs no check, so a row is only as fresh as the last
+check on that claim's own screen. Refresh reflects a release made elsewhere or a claim a record
+screen verified since the page loaded. It cannot reflect a DNS change nobody has checked for. The
+gap underneath is the scheduled re-check in the Open list, which is what would make the list move
+on its own.
+
+Resolved for the control, accepted for the gap. One line under the buttons says what Refresh does
+and where a claim is checked, so the expectation is set before the press. The decision stands:
+checking every row from the list would spend each claim's rate limit on a page that cannot act on
+the answer. The schedule stays in Open, with Vercel Hobby's daily cron as the reason.

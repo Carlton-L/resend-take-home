@@ -55,6 +55,7 @@ const everyString: string[] = [
   claimCopy.list.intro,
   claimCopy.list.claim,
   claimCopy.list.refresh,
+  claimCopy.list.refreshNote,
   claimCopy.list.filter.label,
   claimCopy.list.filter.all,
   claimCopy.list.filter.none('Pending'),

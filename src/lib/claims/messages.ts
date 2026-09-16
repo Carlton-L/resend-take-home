@@ -109,6 +109,12 @@ export const claimCopy = {
     /** Re-reads the list. It says refresh whatever it reads, since that is what a person expects. */
     refresh: 'Refresh',
     refreshing: 'Refreshing',
+    /**
+     * Under the control, so what Refresh does is said before it is pressed. Found 2026-09-16:
+     * after deleting a record, Refresh left the row where it was, because the list reflects the
+     * last check and no check had run. Without this line the button reads as broken.
+     */
+    refreshNote: 'Reloads the list. A claim is checked on its own screen.',
     /** The chips above the list. Each one is the word on a pill, so they need no copy of their own. */
     filter: {
       label: 'Filter by status',
