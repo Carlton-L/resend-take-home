@@ -177,9 +177,11 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 
 Read these first:
 
-- Checks go straight to the zone's authoritative nameservers. Nothing propagates, so the answer
-  that decides caches nothing, and a saved record is found in seconds rather than in "up to 48
-  hours".
+- Checks go straight to the zone's authoritative nameservers. Those do not cache, so the answer
+  that decides has no cache window on our side and is found as soon as the provider publishes it,
+  rather than after "up to 48 hours". Two lags remain and neither is ours: the provider's own
+  panel-to-nameserver delay, and the negative cache a public resolver adds, which the failure
+  names.
 - The check is five steps sorted by whose move is next, never a spinner. A step that has not passed
   is not a step that has gone wrong.
 - Three tones and one meaning each: attention is the person's move, neutral is waiting, good is
@@ -243,6 +245,12 @@ Read these first:
 - DNS failures are return values. Every one of them is something the timeline renders with a
   message and a next action, so they are results rather than exceptions. Collecting per-server
   outcomes into an array needs values too. Same convention as the input errors.
+- The decisive TXT query forces the authoritative nameserver with `setServers`. That holds only
+  where UDP/53 reaches the nameserver, which the deployment's network allows and a laptop's often
+  does not: some local networks transparently redirect port 53 to their own resolver, silently
+  turning a direct query into a cached one. This is why the product runs server-side and why real
+  domains are verified on the deployment, and it explains the two-hour dev-versus-deployment
+  disagreement recorded on 2026-09-14.
 - Deadline 2s, one try, on every question rather than only the TXT one. A healthy authoritative
   answer measured at 92ms. Every server is asked at once so the others are the retry, and the
   number mostly caps how long one dead nameserver can tax a zone that works. Worst case for a

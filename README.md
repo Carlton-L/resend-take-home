@@ -50,8 +50,13 @@ only on a real domain.
 ## How it works
 
 - Checks go straight to the zone's authoritative nameservers over UDP/53. Those do not cache, so a
-  record shows up as soon as it is saved. Public resolvers lag by the zone's negative cache window,
-  and the failure says by how much.
+  record shows up as soon as your DNS provider publishes it to them, with no cache window on our
+  side. Two lags remain and neither is ours: your provider's own delay writing the record from its
+  panel to its nameservers, which varies by provider, and the negative cache window a public
+  resolver adds on top, which the failure names.
+- The direct query only holds on a network that lets UDP/53 reach the nameserver. Some local
+  networks transparently redirect port 53 to their own resolver, which silently turns a direct
+  query into a cached one, so real domains are verified on the deployment rather than a laptop.
 - It walks up from the record's name to find the zone. A delegated subdomain has its own
   nameservers, and the parent's would be wrong.
 - Every nameserver is asked at once and one answer is enough. A server still running when the answer

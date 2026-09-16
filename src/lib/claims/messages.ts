@@ -669,7 +669,7 @@ export const describeFailure = (
       return {
         title: 'No record found yet',
         record: { label: 'Looked for', values: [reason.queriedName] },
-        description: `The nameservers answered with no record at this name. Checks query them directly and repeat automatically, so a saved record is found within seconds.${cacheNote}`,
+        description: `The nameservers answered with no record at this name. Checks query them directly and repeat automatically, so a record is found as soon as your DNS provider publishes it, without the wait a public resolver adds.${cacheNote}`,
         copyable: null,
         action: 'Add the record below.',
       };
