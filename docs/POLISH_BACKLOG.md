@@ -80,15 +80,6 @@ learns the real zone a moment later, so the page holds the answer and does not u
 Cost: passing the zone from the check back into the record card, which means the card can no longer
 render before the check. Buys: a correct short host on a delegated subdomain, which is rare.
 
-## No error boundary on the claim route
-
-Raised 2026-09-13. The check streams into the page after the shell has been sent. Nothing in it
-throws today, because every DNS failure is a return value and the two writes catch, but a throw
-would leave a page that stops rather than a page that says something.
-
-Cost: an `error.tsx` for the segment, which has to be a client component. Buys: a failure that
-reads as a failure.
-
 ## One end to end test, and the Playwright dependency
 
 Raised 2026-09-13. `@playwright/test` is in `devDependencies` with no config and no specs. It stays
@@ -139,12 +130,3 @@ screen, and the chain never appears or disappears, so holding it would leave an 
 the first click. A claim opened from the list has no paste to wait for. The cadence already covers
 the gap, 5s, 15s, 30s, 60s and then per minute, and Check now restarts it after a paste. If asked
 why the first check runs at once: it sets the baseline the later checks are read against.
-
-## Arrow keys on the row menu
-
-Raised 2026-09-15. The list's row menu is a popover holding a link and a button. Escape, outside
-click and focus return come from the browser. Arrow keys do not, and nothing claims the menu role,
-so none are promised. A real menu role needs the arrow keys and a hand rolled roving tabindex.
-
-Cost: forty lines and a test. Buys: the keystrokes a screen reader user expects from something
-announced as a menu, which this is not, yet.
