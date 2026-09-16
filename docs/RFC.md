@@ -3,8 +3,9 @@
 Claim a domain, prove you control it, see every step, recover when it fails. Ownership is persistent
 state: the product keeps checking after a name verifies, moves it to at risk when its record stops
 answering, and clears it when the record returns. A scheduled re-check while nobody is watching, a
-grace window with a revocation, and transfers between accounts are designed here and not built. The
-Out of scope and Open lists say which is which.
+grace window with a revocation, and transfers between accounts are designed and not built. The
+Out of scope and Open lists say which is which. Transfers have their own feature RFC in
+[TRANSFERS.md](TRANSFERS.md), with a prototype under `prototypes/`.
 
 User: one person who controls their own DNS.
 
@@ -62,7 +63,8 @@ about; the rest are there for completeness.
 6. Verified. Show `verified_at`, `last_checked_at`, `next_check_at`.
 7. Domain list. Each row carries the claim's own status, read from the row. Scheduled re-checks.
    Email on status change.
-8. Second user proves control, incumbent notified, gate decides. Step 2 is the incumbent's side.
+8. Second user proves control, the incumbent is notified, and a decision window resolves the
+   contest. Step 2 is the incumbent's side. Designed in [TRANSFERS.md](TRANSFERS.md), not built.
 
 No Verify button. The product runs the check. "Check now" means the user has added the record and
 does not want to wait for the next one.
@@ -152,7 +154,7 @@ pruned by the statement that counts them.
 `checks` and `transfers` are designed here and not built. `checks` held the full trace of every
 check for a history nothing renders, and the timeline turned out not to need it: the steps are
 derived from a check that has just run and sent as the screen reads them. `transfers` belongs to
-step 8, which is dropped.
+step 8, designed in [TRANSFERS.md](TRANSFERS.md) and not built.
 
 `sign_in_attempts`, one row per sign in email sent. Address and source address are stored as keyed
 hashes, so the table counts without becoming a list of who tried to sign in. `check_attempts` stores
@@ -285,8 +287,6 @@ Read these first:
   button carries that name and no extra screen is added.
 - A name another account has verified can still be claimed. Uniqueness covers verified, at risk and
   contested rows, so one owner and any number of pending attempts.
-- The incumbent is notified when a challenger proves control, never when one is created. Creating a
-  claim costs nothing but typing a name.
 - The `.test` flag reaches the claim form. A signed-in reviewer can then reach every failure state
   without owning a domain, which is what the anonymous claim was for.
 - A check returns as soon as a server has the records, and waits for every server otherwise. A
@@ -546,16 +546,11 @@ Read these first:
 - Orgs where the user is not the person who controls the DNS. Out of scope now, revisit later.
 - `example.com` and `app.example.com` held by different accounts. The model allows it, and the zone
   access analysis says it is not an escalation. Refuse, warn, or leave it?
-- Ask Resend: `grace_period` and `recent_owner_activity` are named in their docs and never defined.
 - Claim the apex and `www` in one action? Needs multi-claim, which does not exist.
 - IPv6-only nameservers. Addresses come from A records only, so such a zone reports unreachable.
 - Bounce and complaint handling for mail sent to addresses that never asked for it.
-- Two challengers proving control of one name at the same time. `contested` carries one
-  `challengerProvedAt` and one `decisionDueAt`, so the state models one challenger.
-- A proved challenge is not recorded anywhere today. The challenger sees it and the incumbent is
-  told nothing, because notification and the decision both belong to step 8.
-- Whether the incumbent decides, a timer decides, or proving control simply wins after a notice
-  period. Atlassian and Google both keep the incumbent until a person acts.
+- The open questions for transfers, who decides at the end, the window length, two challengers at
+  once, and the undefined Resend fields, are in [TRANSFERS.md](TRANSFERS.md).
 - The claim limit counts rows rather than attempts, so releasing a claim frees quota. The sign in
   limiter counts attempts in a table of their own and does not have this.
 - Nothing re-checks a held name on a schedule. `at_risk` is written by a check someone is watching,
@@ -565,7 +560,6 @@ Read these first:
   name and useless for showing drift in a demo. It needs a paid plan or a protected manual trigger.
 - The grace window and the status change email both sit behind that cron, so neither is built and
   `at_risk` has no exit to `revoked`.
-- `revoked` and `contested` still have no writer.
 - The clock starts on one failed check. `failing_since` is stamped by the first check that proves
   the record is gone, so a zone edit that briefly serves the name without the record is enough to
   start it. That self-corrects today, since the next check recovers the claim and clears the column.
