@@ -157,7 +157,12 @@ const DomainList: React.FC<DomainListProps> = ({ claims }) => {
         </label>
       </div>
 
-      <div className='overflow-hidden rounded-lg border border-line bg-surface'>
+      {/*
+        No overflow clip here: a row's menu is positioned absolutely and would be cut off at the
+        bottom edge of the list. The corner rounding the clip used to give the hover background is
+        done on the first and last row instead, one pixel inside the border.
+      */}
+      <div className='rounded-lg border border-line bg-surface'>
         {shown.length === 0 ? (
           <p className='p-8 text-fg-2 text-sm'>{copy.filter.none(active ?? '')}</p>
         ) : (

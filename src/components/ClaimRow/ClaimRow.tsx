@@ -22,7 +22,7 @@ const ClaimRow: React.FC<ClaimRowProps> = ({ claim }) => {
   const message = describeClaimRow(claim);
 
   return (
-    <li className='flex items-center gap-1 pr-2 transition-colors hover:bg-surface-2'>
+    <li className='flex items-center gap-1 pr-2 transition-colors first:rounded-t-[7px] last:rounded-b-[7px] hover:bg-surface-2'>
       <Link
         href={claimPath(claim.id)}
         className='flex min-w-0 flex-1 items-center gap-x-4 px-4 py-3.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-signal'

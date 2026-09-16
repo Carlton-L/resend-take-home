@@ -55,7 +55,7 @@ const DomainsPage: React.FC = async () => {
           <p className='text-fg-2 leading-relaxed'>{copy.intro}</p>
         </div>
         {claims.length > 0 && (
-          <div className='flex flex-col gap-1.5 sm:items-end'>
+          <div className='flex flex-col items-start gap-1.5'>
             <div className='flex flex-wrap items-center gap-2'>
               <Link href={CLAIM_PATH} className={ACTION_CLASS}>
                 {copy.claim}
