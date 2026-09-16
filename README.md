@@ -9,7 +9,8 @@ answering moves to At risk on the next check, and back when the record returns. 
 a schedule, for the reason in the RFC.
 
 Live at [domainclaim-pi.vercel.app](https://domainclaim-pi.vercel.app). Take-home for Resend.
-Decisions are in [docs/RFC.md](docs/RFC.md).
+Decisions are in [docs/RFC.md](docs/RFC.md). A five minute walkthrough of the product and the
+process is on [Loom](https://www.loom.com/share/bf1c008566fd44dba68fd82532dc9c5d).
 
 ![The record screen for loresprite.com in the Action needed state: the check shown as five steps, stopped at Match the token because a TXT record with a different value is present, showing what was found, the value to use, and one next action, with a notice that another account currently holds the name and that adding the record proves control of the DNS without transferring it](docs/images/check-failing.png)
 
@@ -154,7 +155,7 @@ Node 24.x. Needs a Supabase project and a Resend API key. Every variable is docu
 
 ## Tests
 
-CI runs `pnpm verify` on every pull request, with no secrets, because nothing reads an environment
+CI runs `pnpm verify` on every pull request and push to main, with no secrets, because nothing reads an environment
 variable at module scope.
 
 439 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the

@@ -10,7 +10,7 @@ changed, or why it refused. Nine entries.
 
 ### Pasting an email address claimed the provider's domain
 
-Typed `carlton@protonmail.com`. The screen returned `protonmail.com` as the name to claim, with one
+Typed `carlton@example.com`. The screen returned `example.com` as the name to claim, with one
 line saying the sign in details before the `@` had been removed.
 
 Resolved in #2. This is the silent rewrite the product is built to argue against, and the most
@@ -60,7 +60,7 @@ per-label checks could be collected, and a list that looked complete while being
 worse than one error. Reporting several at once also breaks the rule that every failure names
 exactly one next action, and every DNS failure in the product is singular by nature. The mitigation
 is the entry above: showing the whole name with the section marked means a second problem is visible
-even though only one is named. Reasoning recorded in `docs/RFC.md` and `spec.md`.
+even though only one is named. Reasoning recorded in `docs/RFC.md`.
 
 ### The suggested repair assumes the likelier mistake
 
@@ -250,7 +250,7 @@ is now fixed" out loud needs `last_failure`, which is deferred, and this needs n
 ## 2026-09-14, using the deployed app
 
 First pass as a person rather than as the developer. Signed in as myself, laptop, against the
-production deployment and a real domain on Namecheap. Ten entries.
+production deployment and a real domain on Namecheap. Eleven entries.
 
 ### Every click looked like nothing had happened
 
@@ -275,7 +275,7 @@ both places and the answers were not: at 18:59:50 UTC, from my machine, `dig` ag
 same second. Production verified at 19:16 UTC. The address we query is the right one, and a
 trailing dot changes nothing, so this is not our zone walk and not the search list. Something
 between my machine and that nameserver answers our queries differently from `dig`, and the
-mechanism is recorded as open in `spec.md`.
+mechanism is an open question.
 
 The product finding is the part that survives, and it is the strongest argument in this log for the
 one thing the RFC dropped. A check from one vantage point cannot tell "your record is not there"
@@ -407,7 +407,7 @@ gone and the screen said verified.
 Accepted, and the product is right. Measured with `dig` against each authoritative server in turn:
 
 ```
-a1: "domainclaim-token=VD466EZ3NQWKH5PBGMSU2CX7VYUF2B4X expiry=2026-09-20T21:42:50Z"
+a1: "domainclaim-token=VD46…2B4X expiry=2026-09-20T21:42:50Z"
 b1: same
 c1: same
 d1: same
@@ -453,7 +453,7 @@ difference between a name that broke this morning and one that broke in March.
 Resolved in #13. `failing_since` is stamped by the check that moves the claim and the list row
 carries the date after the pill.
 
-## 2026-09-15, at risk gets a writer, local dev and a real domain. Two entries.
+## 2026-09-15, at risk gets a writer, local dev and a real domain. Three entries.
 
 ### carlton.dev went at risk on its own, the same day the state got a writer
 

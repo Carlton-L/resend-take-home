@@ -1,6 +1,5 @@
 allowBuilds:
   '@biomejs/biome': true
-  '@playwright/test': true
   esbuild: true
   sharp: false
   unrs-resolver: false

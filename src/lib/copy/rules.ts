@@ -1,8 +1,9 @@
 // src/lib/copy/rules.ts
 
 /**
- * The mechanically checkable half of the copy rules in CLAUDE.md. The rest, no "X, not Y"
- * constructions and no aphorism openers, needs a reader.
+ * The mechanically checkable half of the copy rules: no dashes as punctuation, no filler words,
+ * no exclamation marks. The rest, no "X, not Y" constructions and no aphorism openers, needs a
+ * reader.
  *
  * Every module that produces user-facing strings asserts against this list, so the rules live in
  * one place and a new screen inherits them.

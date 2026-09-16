@@ -265,7 +265,6 @@ export const claimCopy = {
   steps: {
     heading: 'What the check did',
     answered: (n: number) => `${n} of 5 answered`,
-    more: 'what the check did',
     notReached: 'not reached',
     /** Read out after the label. The glyph says this to a sighted reader and to nobody else. */
     state: {
@@ -674,7 +673,7 @@ export type FailureContext = {
 };
 
 /**
- * Six of the nine reasons in the RFC. The three that need the DoH leg to be told apart from these
+ * Seven of the nine reasons in the RFC. The two that need the DoH leg to be told apart from these
  * arrive with it, and this switch is exhaustive so adding one to the union breaks the build until
  * it has a message.
  *

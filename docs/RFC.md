@@ -4,7 +4,7 @@ Claim a domain, prove you control it, see every step, recover when it fails. Own
 state: the product keeps checking after a name verifies, moves it to at risk when its record stops
 answering, and clears it when the record returns. A scheduled re-check while nobody is watching, a
 grace window with a revocation, and transfers between accounts are designed and not built. The
-Out of scope and Open lists say which is which. Transfers have their own feature RFC in
+Open list says which. Transfers have their own feature RFC in
 [TRANSFERS.md](TRANSFERS.md), with a prototype under `prototypes/`.
 
 User: one person who controls their own DNS.
@@ -61,16 +61,16 @@ about; the rest are there for completeness.
    from the previous answer. Stops at 15 minutes or token expiry, and says it stopped. "Check now"
    for a user who has just added the record, which also starts the cadence over. Both rate limited.
 6. Verified. Show `verified_at`, `last_checked_at`, `next_check_at`.
-7. Domain list. Each row carries the claim's own status, read from the row. Scheduled re-checks.
-   Email on status change.
+7. Domain list. Each row carries the claim's own status, read from the row. Scheduled re-checks
+   and email on status change, both designed and not built, see Open.
 8. Second user proves control, the incumbent is notified, and a decision window resolves the
    contest. Step 2 is the incumbent's side. Designed in [TRANSFERS.md](TRANSFERS.md), not built.
 
 No Verify button. The product runs the check. "Check now" means the user has added the record and
 does not want to wait for the next one.
 
-The authoritative answer decides. DoH is a second opinion. While a negative cache entry is alive the
-two disagree. The timeline shows both answers and the remaining window as a real number.
+The authoritative answer decides. A DoH second opinion, designed and not built, would show where
+public resolvers still disagree and the remaining negative cache window as a real number.
 
 ### Subdomains
 
@@ -93,11 +93,11 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
 - Value: `domainclaim-token=<token> expiry=<ISO date>`
 - Token: 160 bits from `crypto.randomBytes(20)`, base32
 - Token valid for 7 days. The expiry is in the record value and stated on the record screen
-- TTL shown as 300. Any value works
+- TTL shown as an instruction to leave the panel's default. Any value works
 - Walk up from the name to find the zone, since a subdomain can be delegated
-- Query authoritative servers in parallel, DoH as a second opinion
+- Query authoritative servers in parallel. DoH second opinion designed, not built
 - No stored `checking` state. A check is about 250ms. `nameservers_unreachable` costs about 4s, so
-  the screen derives `checking` from the in-flight request and shows each server as it lands
+  the screen derives `checking` from the in-flight request
 - Public suffix and parse failures are validation errors, not states
 - Route Handlers, not Server Actions. Node runtime, never Edge
 - Checks run from the browser against `POST /api/claims/[id]/check`, which answers with the five
@@ -228,7 +228,7 @@ Read these first:
 - Unrecognised suffixes refused at input. The Public Suffix List has an implicit `*` rule, so
   `192.0.2.carlton` otherwise parses as a subdomain of `2.carlton`. Test is `isIcann ||
   isPrivate`. Cost: the list ships inside `tldts`, so a brand new gTLD is refused until the
-  package is updated. Accepted, refresh path in `spec.md`.
+  package is updated. Accepted, the refresh path is bumping `tldts`.
 - Special-use names refused by name: `localhost`, `test`, `invalid`, `example` (RFC 6761),
   `onion` (RFC 7686), `local` (RFC 6762). None resolve in public DNS, so there is no zone.
 - A bare `user@host` is an email address, not URL credentials. Credentials in the wild carry a
@@ -377,7 +377,8 @@ Read these first:
   resolver interface, for one message.
 - Token valid for 7 days. Long enough for a weekend and for someone else holding the registrar
   login. A pending claim reserves no name, so a long window costs nothing. `token_expired` is
-  reachable through `.test`, so the real number does not have to be short to be shown.
+  decided from the row, so it is shown by editing `expires_at` and the real number does not have to
+  be short.
 - TTL is an instruction rather than a value to copy. Squarespace offers TTL as a dropdown
   defaulting to 4 hrs, measured 2026-09-13, so 300 cannot be typed there. Leaving the default alone
   is true on every panel. The record TTL does not affect the answer that decides either: the TXT
@@ -467,8 +468,8 @@ Read these first:
 - Releasing a claim deletes the row. A released state would qualify every later query for nothing.
   The confirmation names the record to remove, since a released claim otherwise leaves a live TXT
   record in the zone that nothing will mention again.
-- `checks` lands with the timeline. Nothing on the record screen reads a stored check, and a table
-  shaped before its reader exists gets reshaped when the reader arrives.
+- `checks` is not built. The timeline landed without it, since the steps are derived from the check
+  that just ran, and a table shaped before its reader exists gets reshaped when the reader arrives.
 - One pending claim per account per name, enforced by a second partial unique index. Claiming a
   name this account already has goes to the claim it already has. Without this, claiming twice
   mints a second token and the record the user already added is silently the wrong one.
@@ -528,21 +529,20 @@ Read these first:
   weighs and the number the grace window will count from. The full timestamp with its UTC suffix,
   like every date in the product, since a bare date is read locally and lands a day out either side
   of midnight.
-- The record card says something different about the token expiry once the claim holds the name.
-  Verifying does not clear `expires_at`, so a name held for longer than seven days carries an expiry
-  in the past, and that date is sitting in the record value being compared against the panel. Until
-  the fix above this was unreachable, because the check stopped on the expiry and the whole screen
-  said the claim had expired.
 - A claim that holds its name is never answered from its token expiry. Verifying does not clear
   `expires_at`, so every name held for longer than seven days carries an expiry in the past, and
   reading it without the status first stopped the check before it asked DNS anything. That made the
   writer above switch itself off a week after each claim was proved.
+- The record card says something different about the token expiry once the claim holds the name.
+  That date is sitting in the record value being compared against the panel. Until the fix above
+  this was unreachable, because the check stopped on the expiry and the whole screen said the claim
+  had expired.
 - `@playwright/test` removed. It was declared for one end-to-end run, sign in, claim a demo name,
   read the record, release, that the remaining sessions never reached. A dependency the repo
   carries and never uses is a question a reviewer should not have to ask. The unit layer covers
   normalization, the DNS trace, the comparison, the state machine, the step list and every string;
-  the whole flow is exercised by hand through the demo names and shown in the video. The database
-  layer's gap is named in the README.
+  the whole flow is exercised by hand through the demo names and shown in the video linked from the
+  README. The database layer's gap is named in the README.
 
 ## Open
 
@@ -588,7 +588,7 @@ Read these first:
 | `zone_not_found` | No nameservers found for this domain | Check the nameservers set for the domain at your registrar, and allow a few minutes if they were set recently. | `zone-not-found.test` |
 
 `cname_at_name` needs a CNAME query, which is a new method on the resolver interface, for one
-message. `dnssec_broken` needs the DoH leg, which is dropped. Both stay empty.
+message. `dnssec_broken` needs the DoH leg, which is not built. Both stay empty.
 
 A claim that holds its name moves to At risk on the four reasons where the nameservers answered:
 `record_not_found`, `no_txt_at_name`, `appended_zone_suspected` and `value_mismatch`. The other

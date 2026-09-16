@@ -260,7 +260,7 @@ export const deleteClaim = async (id: string, ownerId: string): Promise<boolean>
   return rows.length > 0;
 };
 
-export type VerifyOutcome = 'verified' | 'held_by_another' | 'unavailable';
+export type VerifyOutcome = 'verified' | 'unchanged' | 'held_by_another' | 'unavailable';
 
 /**
  * Whether a conditional write moved the row. `unchanged` means the status it was conditional on
@@ -295,11 +295,12 @@ export const markVerified = async (
   at: Date,
 ): Promise<VerifyOutcome> => {
   try {
-    await getDb()
+    const rows = await getDb()
       .update(claims)
       .set({ status: 'verified', verifiedAt: at, actionNeededSince: null })
-      .where(and(eq(claims.id, id), eq(claims.ownerId, ownerId), eq(claims.status, 'pending')));
-    return 'verified';
+      .where(and(eq(claims.id, id), eq(claims.ownerId, ownerId), eq(claims.status, 'pending')))
+      .returning({ id: claims.id });
+    return rows.length > 0 ? 'verified' : 'unchanged';
   } catch (error) {
     return isUniqueViolation(error) ? 'held_by_another' : 'unavailable';
   }

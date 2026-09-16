@@ -74,15 +74,15 @@ table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2)
   <h1>Transfers, design reference</h1>
   <p class="lead">The screens for moving a held name from one account to another, using the app's own
   tokens. This is a reference for <span class="mono">docs/TRANSFERS.md</span>. Nothing here ships. The
-  state and the fields exist, and nothing writes them yet. The flow below is the direction I'm leaning
-  towards. Who decides when a contest closes is still open. The two other directions are listed
+  status exists, and nothing writes it yet. The flow below is the leading direction. Who decides when
+  a contest closes is listed as open in TRANSFERS.md. The two other directions are listed
   first.</p>
   <span class="tag">Designed · not built · leading direction</span>
 </div>
 
 <section>
   <h2>Directions considered</h2>
-  <p class="sub">Three ways to handle a second account proving control. The screens draw the third. The other two are in the spec's decisions.</p>
+  <p class="sub">Three ways to handle a second account proving control. The screens draw the third. The other two are in the RFC's decisions.</p>
   <div class="vp"><div class="app">
     <table class="map">
       <tr><th>Direction</th><th>What it does</th><th>Why not, or why</th></tr>
@@ -113,7 +113,7 @@ table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2)
     <div class="list">
       <div class="row"><span class="nm">loresprite.com</span><span class="pill att">Contested</span><span class="dt">since 16 September 2026 at 14:02 UTC</span><span class="dots">···</span></div>
       <div class="row"><span class="nm">carlton.dev</span><span class="pill good">Verified</span><span class="dots" style="margin-left:auto">···</span></div>
-      <div class="row"><span class="nm">futurity.science</span><span class="pill good">Verified</span><span class="dots" style="margin-left:auto">···</span></div>
+      <div class="row"><span class="nm">northwind.example</span><span class="pill good">Verified</span><span class="dots" style="margin-left:auto">···</span></div>
     </div>
   </div></div>
   <p class="note"><b>What changed.</b> The held row moves <span class="mono">verified → contested</span> and shows the date the window closes. Contested is a holding state, so the name stays reserved to this account until the contest ends. The notice repeats the record screen's one action so a long list can't bury it.</p>
@@ -124,7 +124,7 @@ table.map td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--fg-2)
   <p class="sub">The channel that survives losing the zone. An incumbent who never opens the app, or who has lost DNS control, still gets this.</p>
   <div class="vp"><div class="app" style="padding:20px">
     <div class="mail">
-      <div class="env"><span>From&nbsp; DomainClaim &lt;notify@carlton.dev&gt;</span><span>To&nbsp;&nbsp;&nbsp;&nbsp; you@loresprite.com</span><span>Subj&nbsp; Someone proved control of loresprite.com</span></div>
+      <div class="env"><span>From&nbsp; DomainClaim &lt;domainclaim@carlton.dev&gt;</span><span>To&nbsp;&nbsp;&nbsp;&nbsp; you@loresprite.com</span><span>Subj&nbsp; Someone proved control of loresprite.com</span></div>
       <div class="sheet">
         <div class="wm">DomainClaim</div>
         <h3>Control of loresprite.com was proved from another account</h3>

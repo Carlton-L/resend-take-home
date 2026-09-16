@@ -61,10 +61,15 @@ const withDeadline = <T>(work: Promise<T>, timeoutMs: number): Promise<T | typeo
     );
   });
 
-/** Failures we never got an answer through, as opposed to an answer we did not like. */
+/**
+ * Failures we never got an answer through, as opposed to an answer we did not like. A refusal or a
+ * server failure counts here: the server was reached, and it said nothing about the record, so it
+ * must not be read as the record being absent.
+ */
 const UNREACHABLE: ReadonlySet<ResolverFailure['code']> = new Set([
   'timed_out',
   'address_not_public',
+  'refused',
 ]);
 
 /**

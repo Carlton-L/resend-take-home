@@ -14,7 +14,6 @@ const toFailure = (error: unknown): ResolverFailure => {
   const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;
   switch (code) {
     case 'ENOTFOUND':
-    case 'NXDOMAIN':
       return { code: 'name_not_found' };
     case 'ENODATA':
       return { code: 'no_data' };
@@ -22,7 +21,11 @@ const toFailure = (error: unknown): ResolverFailure => {
     case 'ETIMEDOUT':
       // The wrapper in trace.ts usually wins the race, so this is the backstop firing.
       return { code: 'timed_out', timeoutMs: -1 };
-    case 'REFUSED':
+    case 'EREFUSED':
+    case 'ESERVFAIL':
+    case 'ECONNREFUSED':
+      // The server was reached and gave no answer about the zone: a lame delegation, a broken
+      // zone, or port 53 closed. None of these says anything about the record.
       return { code: 'refused' };
     default:
       return { code: 'unknown', detail: String(code ?? error) };

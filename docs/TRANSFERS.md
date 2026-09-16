@@ -8,8 +8,9 @@ claim stays pending. Nothing reaches the incumbent and nothing moves. This docum
 happen instead, and why the safe version is a notice period rather than an instant move or an
 approval that needs both parties alive.
 
-Status: design. No writer ships with it. The `contested` state and its `challengerProvedAt` and
-`decisionDueAt` fields already sit in `ClaimState`; the partial unique index already reserves the
+Status: design. No writer ships with it. The `contested` status exists in the enum and the schema,
+its `challengerProvedAt` and `decisionDueAt` fields are designed here and not stored yet; the
+partial unique index already reserves the
 name to one holder across the holding states. This is the reader those were shaped for. It depends
 on the same scheduled job the grace window needs, which is not built either, for the reason in the
 main [RFC](RFC.md).
@@ -126,7 +127,7 @@ a channel the attacker does not control, and never pretend the takeover was orde
 
 ## State and data
 
-The state already exists:
+The status exists. The fields are the design:
 
 ```ts
 type ClaimState =
@@ -192,4 +193,4 @@ is one statement against known rows rather than a lookup by name at the moment i
 The screens this describes are in [prototypes/transfers.html](prototypes/transfers.html): the
 challenger's record screen during a contest, the incumbent's list with the persistent notice, the
 email, the reassert action, and the lifecycle. It uses the app's own tokens and is a design
-reference for the spec, not a build.
+reference for this RFC. Nothing in it is built.
