@@ -11,7 +11,7 @@ a schedule, for the reason in the RFC.
 Live at [domainclaim-pi.vercel.app](https://domainclaim-pi.vercel.app). Take-home for Resend.
 Decisions are in [docs/RFC.md](docs/RFC.md).
 
-![The record screen on a pending claim: the check shown as five steps, stopped at the TXT record, with what it looked for, why the answer differs and the one next action](docs/images/check-failing.png)
+![The record screen for a pending claim on loresprite.com: the check shown as five steps, stopped at Match the token because a TXT record with a different value is present, showing what was found, the value to use, and one next action, with a notice that another account currently holds the name](docs/images/check-failing.png)
 
 ## Try it
 
@@ -87,7 +87,9 @@ only on a real domain.
   thing that can express doubt, which is what the second opinion below is for.
 - The list of an account's claims runs no check. A row's state is the claim's own, read from the
   database, so opening the list costs one query however many names are in it. A check belongs on the
-  screen someone opened to act on the answer.
+  screen someone opened to act on the answer. The list sorts names that need the person to the top,
+  says so in a line above itself, and filters by status, so the one at risk name in a long list is
+  never below the fold.
 
 ## Scope
 
@@ -100,8 +102,9 @@ Built:
 - Check now, at a rate limited endpoint
 - At risk when a held name loses its record, and recovery when it comes back
 - Seven of nine failure reasons, each with one action and the remediation in the step that produced it
-- The list of an account's claims, including the ones not proved yet
-- Releasing a claim
+- The list of an account's claims, including the ones not proved yet, with filter, sort, and a
+  notice for names that need attention
+- Releasing a claim, from the record screen or the list
 
 Not built yet:
 
@@ -146,7 +149,7 @@ Node 24.x. Needs a Supabase project and a Resend API key. Every variable is docu
 CI runs `pnpm verify` on every pull request, with no secrets, because nothing reads an environment
 variable at module scope.
 
-370 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the
+425 unit tests, concentrated in the pure layers: input normalization, the DNS trace, the
 comparison against a claim, the state each check leaves the claim in, the step list and every
 user-facing string. The DNS layer sits behind an
 interface with a scripted fake, so no test touches the network.

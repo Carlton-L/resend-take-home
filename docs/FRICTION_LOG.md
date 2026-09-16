@@ -549,3 +549,27 @@ Resolved. Both span the page and the paragraphs inside are capped instead. The R
 ### The first check runs before the record has been seen
 
 Accepted, in the polish backlog with the reasoning.
+
+### The account menu opened but would not close
+
+The header account menu and the row menu were built on the `popover` attribute, shown with a
+`popover-open` Tailwind variant. That variant does not exist, so it compiled to nothing, and the
+panel, which also carried a `flex` display, stayed on screen: an author `display` beats the
+browser's own rule that hides a closed popover. Clicking away and clicking the button again did
+nothing.
+
+Resolved. A hand-built dropdown hook, `useMenu`, since there is no component library. It closes on
+a click outside, on Escape and on focus leaving both the trigger and the panel, returns focus to
+the trigger, and drives the row menu's arrow keys. Plain listeners, so it behaves the same on
+Firefox, Chrome and Safari.
+
+### Every render asked Supabase who was signed in twice
+
+The header names the signed in account and the page under it reads the same session. `signedInEmail`
+and `signedInUser` were cached separately, so a page that used both spent two auth round trips per
+render, on top of the one the proxy makes before rendering starts. Three network calls for one
+answer.
+
+Resolved. `signedInEmail` reads through the cached `signedInUser`, so the header and the page share
+one call. Found by reading the code during the theme pass rather than by using the product, which
+is the kind of cost a visual pass is the moment to catch.

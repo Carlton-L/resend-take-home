@@ -80,16 +80,6 @@ learns the real zone a moment later, so the page holds the answer and does not u
 Cost: passing the zone from the check back into the record card, which means the card can no longer
 render before the check. Buys: a correct short host on a delegated subdomain, which is rare.
 
-## One end to end test, and the Playwright dependency
-
-Raised 2026-09-13. `@playwright/test` is in `devDependencies` with no config and no specs. It stays
-rather than being removed, because the polish phase commits to one end to end run: sign in, claim a
-demo name, read the record screen, release it. Until that exists it is a dependency the repo
-declares and does not use.
-
-Cost: a config, one spec, and a CI step that installs a browser. Buys: the one check that covers
-the whole flow rather than a layer of it.
-
 ## A second Enter claims the name
 
 Raised 2026-09-14, using it. Enter in the domain field validates. Enter again does nothing, because

@@ -1,9 +1,15 @@
 # DomainClaim
 
 Claim a domain, prove you control it, see every step, recover when it fails. Ownership is persistent
-state: re-checked on a schedule, revocable, transferable between accounts.
+state: the product keeps checking after a name verifies, moves it to at risk when its record stops
+answering, and clears it when the record returns. A scheduled re-check while nobody is watching, a
+grace window with a revocation, and transfers between accounts are designed here and not built. The
+Out of scope and Open lists say which is which.
 
 User: one person who controls their own DNS.
+
+This document is long. The Decisions list below opens with the ten a reviewer is most likely to ask
+about; the rest are there for completeness.
 
 ## Background
 
@@ -168,6 +174,31 @@ A global switch would be a hole. Anyone who found it could verify any domain. `.
 real claim, so the fake resolver cannot be reached by a name that could be.
 
 ## Decisions
+
+Read these first:
+
+- Checks go straight to the zone's authoritative nameservers. Nothing propagates, so the answer
+  that decides caches nothing, and a saved record is found in seconds rather than in "up to 48
+  hours".
+- The check is five steps sorted by whose move is next, never a spinner. A step that has not passed
+  is not a step that has gone wrong.
+- Three tones and one meaning each: attention is the person's move, neutral is waiting, good is
+  held. `StatusPill` and its `TONES` map are the only place a tone becomes a colour.
+- Every failure is a typed value rendered as title, the DNS value at fault, why, and one next
+  action, with the action above the reason.
+- `at_risk` is written by the product itself when a held name loses its record, and clears on its
+  own when the record returns. Ownership is state the product maintains, not a one-time check.
+- One account holds a name at a time, enforced by a partial unique index over the holding states.
+  Any number of accounts may hold a pending attempt, and the first to prove control wins.
+- One vantage point, the weakest part. A failure cannot tell a missing record from a broken view,
+  and the screen states the first as fact. A DoH second opinion is the way to express doubt and is
+  not built.
+- Trust floor never traded: magic link redeemed on POST, rate limits on sends and checks,
+  public-suffix and special-use refusal, no probing of non-global nameserver addresses.
+- Dark only, one `@theme` block, a pale primary so signal green means live, held, current or
+  focused and nothing else.
+- Scope is held to how the product looks and behaves; the grace window, the schedule, transfers and
+  the DoH leg are each deferred with a dated reason.
 
 - TXT only. A second method is scope creep and proves less.
 - One vantage point. Let's Encrypt validates from several to resist localized hijack. Vercel is one
@@ -485,6 +516,12 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   `expires_at`, so every name held for longer than seven days carries an expiry in the past, and
   reading it without the status first stopped the check before it asked DNS anything. That made the
   writer above switch itself off a week after each claim was proved.
+- `@playwright/test` removed. It was declared for one end-to-end run, sign in, claim a demo name,
+  read the record, release, that the remaining sessions never reached. A dependency the repo
+  carries and never uses is a question a reviewer should not have to ask. The unit layer covers
+  normalization, the DNS trace, the comparison, the state machine, the step list and every string;
+  the whole flow is exercised by hand through the demo names and shown in the video. The database
+  layer's gap is named in the README.
 
 ## Open
 
