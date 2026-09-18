@@ -1,6 +1,16 @@
 # Transfers
 
-RFC for moving a held name from one account to another. Designed here, not built.
+Type: new feature. Status: draft, designed and not built. Feature RFC in the same section order as
+the main [RFC](RFC.md) and Resend's template.
+
+Contents: [Purpose](#purpose) · [Background](#background) · [Proposal](#proposal) ·
+[Technical Details](#technical-details) · [Implementation Plan](#implementation-plan) ·
+[Decisions](#decisions) · [Open Questions](#open-questions) · [Prototype](#prototype)
+
+## Purpose
+
+Move a held name from one account to another safely, so a sold, migrated or abandoned domain can
+change hands without a name ever leaving an account silently.
 
 Today the product lets a second account create a claim on a name someone else holds, and lets that
 account prove control of it. When the proof lands, the challenger is told the name is held and their
@@ -15,7 +25,9 @@ name to one holder across the holding states. This is the reader those were shap
 on the same scheduled job the grace window needs, which is not built either, for the reason in the
 main [RFC](RFC.md).
 
-## The problem
+## Background
+
+### The problem
 
 Two accounts can each have a real claim on one name across time. The first proved control once and
 may still hold it. The second controls the zone now and can prove it. Control of DNS is the only
@@ -30,7 +42,7 @@ ground truth the product has, and three different stories leave the same evidenc
 From one vantage point, at one moment, these read alike. The product cannot tell them apart, and a
 design that pretends it can is the thing to avoid.
 
-## What the product can and cannot know
+### What the product can and cannot know
 
 - Proving control means placing a token in the zone, which needs write access to the zone now. So a
   fresh proof is the strongest signal the product has about who holds the name today, and the
@@ -43,7 +55,9 @@ design that pretends it can is the thing to avoid.
 - The one channel that survives losing the zone is the address on the account. An incumbent who has
   lost the zone cannot be reached through it, and can still be reached by email.
 
-## Guarantees
+## Proposal
+
+### Guarantees
 
 The design turns on four, in order of how much they matter.
 
@@ -58,7 +72,7 @@ The design turns on four, in order of how much they matter.
 4. A stale proof never outranks a current one on its own. The incumbent keeps the name through the
    window, and past that the account that can prove control now is the one that holds it.
 
-## The flow
+### The flow
 
 1. A second account holds a pending claim on a held name. Already allowed today: uniqueness covers
    the holding states, so any number of accounts may hold a pending attempt on the same name.
@@ -82,7 +96,7 @@ The design turns on four, in order of how much they matter.
    holding set for `revoked`, the challenger's pending row enters it as `verified` with a fresh
    `verified_at`. The order matters so the unique index is never violated mid-move.
 
-## The three cases, resolved
+### The three cases, resolved
 
 | Case | Incumbent's zone | How it ends | Why it is right |
 | --- | --- | --- | --- |
@@ -93,6 +107,63 @@ The design turns on four, in order of how much they matter.
 The attack case is the uncomfortable one, and the honest reading is that the product cannot save a
 name whose zone has already been taken. What it can do is make sure the owner hears about it through
 a channel the attacker does not control, and never pretend the takeover was orderly.
+
+## Implementation Plan
+
+Four slices, each one pull request, in the order that keeps every intermediate state safe.
+
+1. The `transfers` table and the contest writer: the challenger's proof moves the incumbent's row
+   to `contested` and writes the contest row. Nothing else changes yet, so the only visible effect
+   is the incumbent's pill.
+2. The notices: the email to the incumbent through Resend, the persistent notice on the list and the
+   record screen, and the challenger's own line. Reachable in the demo by seeding a contest.
+3. Reassert and approve: the incumbent's check clears the contest when their token still answers,
+   and the approve action moves the name at once in one transaction.
+4. The window closing: the scheduled job that resolves a contest at `decision_due_at`. Needs the
+   same cron as the grace window, so it lands with a paid plan or a protected manual trigger.
+
+## Technical Details
+
+### State and data
+
+The status exists. The fields are the design:
+
+```ts
+type ClaimState =
+  // ...
+  | { status: 'contested'; verifiedAt: Date; challengerProvedAt: Date; decisionDueAt: Date };
+```
+
+`contested` is a holding state: it sits inside the partial unique index with `verified` and
+`at_risk`, so the name stays reserved to the incumbent for the length of the contest and a third
+account cannot take it out from under both.
+
+One table records the contest, `transfers`, designed here and not built:
+
+- `id`
+- `name`, normalized, the same value the index keys on
+- `incumbent_claim_id`, the row that holds the name
+- `challenger_claim_id`, the pending row that proved control
+- `challenger_proved_at`
+- `decision_due_at`
+- `resolution`, one of `held`, `approved`, `timed_out`, still open while null
+- `resolved_at`
+
+The row is written when the challenger's proof lands, read by the scheduled job that closes the
+window, and by the record and list screens showing the notice. It carries both claim ids so a move
+is one statement against known rows rather than a lookup by name at the moment it matters.
+
+### Notification design
+
+- The email names the domain, says control of it was proved from another account, gives the date the
+  window closes, and links to the record screen where the incumbent can reassert or approve. It does
+  not name the challenging account, which the incumbent has no way to verify and no need to see.
+- The in-app notice sits above the list and at the top of the record screen, in the attention tone,
+  and stays until the contest ends. It carries the same date and the same one action.
+- The challenger's own screen says the name is held and a decision is due, with the same date. It
+  does not claim the name is theirs while the window is open, since it is not.
+- When the contest ends, the side that lost is told plainly: the incumbent that the name has moved,
+  or the challenger that it stayed with its holder.
 
 ## Decisions
 
@@ -125,48 +196,7 @@ a channel the attacker does not control, and never pretend the takeover was orde
   zone. A griefer with brief access is the real risk, answered by the incumbent reasserting, and
   rate limits on contests per name are noted below rather than specified here.
 
-## State and data
-
-The status exists. The fields are the design:
-
-```ts
-type ClaimState =
-  // ...
-  | { status: 'contested'; verifiedAt: Date; challengerProvedAt: Date; decisionDueAt: Date };
-```
-
-`contested` is a holding state: it sits inside the partial unique index with `verified` and
-`at_risk`, so the name stays reserved to the incumbent for the length of the contest and a third
-account cannot take it out from under both.
-
-One table records the contest, `transfers`, designed here and not built:
-
-- `id`
-- `name`, normalized, the same value the index keys on
-- `incumbent_claim_id`, the row that holds the name
-- `challenger_claim_id`, the pending row that proved control
-- `challenger_proved_at`
-- `decision_due_at`
-- `resolution`, one of `held`, `approved`, `timed_out`, still open while null
-- `resolved_at`
-
-The row is written when the challenger's proof lands, read by the scheduled job that closes the
-window, and by the record and list screens showing the notice. It carries both claim ids so a move
-is one statement against known rows rather than a lookup by name at the moment it matters.
-
-## Notification design
-
-- The email names the domain, says control of it was proved from another account, gives the date the
-  window closes, and links to the record screen where the incumbent can reassert or approve. It does
-  not name the challenging account, which the incumbent has no way to verify and no need to see.
-- The in-app notice sits above the list and at the top of the record screen, in the attention tone,
-  and stays until the contest ends. It carries the same date and the same one action.
-- The challenger's own screen says the name is held and a decision is due, with the same date. It
-  does not claim the name is theirs while the window is open, since it is not.
-- When the contest ends, the side that lost is told plainly: the incumbent that the name has moved,
-  or the challenger that it stayed with its holder.
-
-## Open questions
+## Open Questions
 
 - Who decides in the end: the incumbent, a timer, or proving control winning after a notice period.
   This RFC takes the last, since it is the only one that clears the abandoned case. Atlassian and

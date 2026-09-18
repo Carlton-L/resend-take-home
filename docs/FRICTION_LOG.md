@@ -1,7 +1,17 @@
 # Friction log
 
-Every moment of confusion or friction hit while using DomainClaim. Each entry is resolved, accepted
-or deferred. Observations come from using the app, not from reading the code.
+Every moment of confusion or friction hit while using DomainClaim. Observations come from using the
+app against a real domain and the deployed build, not from reading the code.
+
+Each entry has the same shape: a heading in the words a person would use for what went wrong, what
+happened and what was expected, the cause once found, and one of three outcomes. Resolved means the
+product changed. Deferred means it will, with the reason it has not. Accepted means it stays as it
+is, with the reason. Entries are grouped by the session that produced them, dated, and never edited
+after the fact: a wrong first reading stays in with the correction under it.
+
+Fifty entries: thirty-eight resolved, nine accepted, three deferred. Resend's handbook keeps friction
+logs from dogfooding for the same reason this one exists, to turn a feeling that a flow is off into
+a change someone can make.
 
 ## 2026-09-12, claim entry screen, local dev
 

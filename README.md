@@ -14,17 +14,21 @@ process is on [Loom](https://www.loom.com/share/bf1c008566fd44dba68fd82532dc9c5d
 
 ![The record screen for loresprite.com in the Action needed state: the check shown as five steps, stopped at Match the token because a TXT record with a different value is present, showing what was found, the value to use, and one next action, with a notice that another account currently holds the name and that adding the record proves control of the DNS without transferring it](docs/images/check-failing.png)
 
-## Try it
+## Five minutes
 
-Fastest tour: sign in, which lands on an empty list of your claims. Claim `record-not-found.test` to
-see the record and the check that has nothing to find yet, then claim `verified.test` to watch a
-claim prove itself. `appended-zone.test` is the one to look at for how failures are explained.
+1. Sign in with a link sent to your address. No password. Sign in lands on an empty list.
+2. Claim `record-not-found.test`. The record screen shows the record to add and, above it, the check
+   closed on one line: nothing at the name yet, which is waiting and not a fault. Claim
+   `verified.test` and watch the five steps pass. Claim `appended-zone.test` and open the failing
+   step: the four part message, the value found, and one thing to do.
+3. Open the list. The three claims read Pending, Verified and Action needed, needs-attention first,
+   with a notice counting them. Press Refresh and read the line under it: the list reflects the last
+   check, and a claim is checked on its own screen.
+4. Read the ten headline decisions at the top of [Decisions in the RFC](docs/RFC.md#decisions).
 
-Sign in with a link sent to your address. No password.
-
-Claim a real domain, or use a demo name below. Each routes to a scripted resolver, so every outcome
-is reachable without owning a broken domain. `.test` is reserved by RFC 6761 and can never be a real
-claim.
+Every `.test` name routes to a scripted resolver, so each outcome is reachable without owning a
+broken domain. `.test` is reserved by RFC 6761 and can never be a real claim. Claim a real domain
+too; the check goes to your zone's authoritative nameservers.
 
 | Name | What it shows |
 | --- | --- |
@@ -39,63 +43,24 @@ claim.
 | `zone-not-found.test` | No level answers with nameservers |
 | `slow-nameservers.test` | Alive but past the deadline, which reads the same as down |
 
-`slow-nameservers.test` and `nameservers-unreachable.test` render the same screen today. A slow zone
-and a dead one differ in whether they resolve while you watch, which is what the five steps arriving
-one at a time would show, and that is not built. Both names are kept, because the difference is real
-and the screen is what does not show it yet.
+`slow-nameservers.test` and `nameservers-unreachable.test` render the same screen today; the five
+steps arriving one at a time is what would separate them, and that is not built. No demo name
+reaches At risk, since a script is fixed per name; it is reachable only on a real domain.
 
-No demo name reaches At risk. A script is fixed per name, so a name that fails can never verify
-first, and that state needs a claim that proved itself and then lost its record. It is reachable
-only on a real domain.
+## What to read next
 
-## How it works
-
-- Checks go straight to the zone's authoritative nameservers over UDP/53. Those do not cache, so a
-  record shows up as soon as your DNS provider publishes it to them, with no cache window on our
-  side. Two lags remain and neither is ours: your provider's own delay writing the record from its
-  panel to its nameservers, which varies by provider, and the negative cache window a public
-  resolver adds on top, which the failure names.
-- The direct query only holds on a network that lets UDP/53 reach the nameserver. Some local
-  networks transparently redirect port 53 to their own resolver, which silently turns a direct
-  query into a cached one, so real domains are verified on the deployment rather than a laptop.
-- It walks up from the record's name to find the zone. A delegated subdomain has its own
-  nameservers, and the parent's would be wrong.
-- Every nameserver is asked at once and one answer is enough. A server still running when the answer
-  arrives is reported as unfinished.
-- One account holds a name at a time, enforced by a partial unique index over the states that hold
-  it. Several accounts can hold a pending attempt, and the first to prove control wins. Transfers
-  build on that.
-- The token is public. It sits in a TXT record anyone can query, so its only job is being
-  unguessable. 160 bits from `crypto.randomBytes`.
-- No Verify button. A check takes about 250ms, so the product runs it, and keeps running it while
-  the claim is open: 5s, 15s, 30s, 60s, then every minute, stopping after fifteen and saying so.
-  Check now is for the person who has just saved the record and does not want to wait for the next
-  one. Both are rate limited, per claim and per account.
-- A check that disagrees with the row moves the row. A name this account holds whose record has gone
-  becomes At risk, stamped with when it started failing, and a record that answers again clears it
-  and says so. Only the failures where the nameservers answered and the record was not in what came
-  back write that state. A timeout says nothing about what is in a zone, and from one vantage point
-  it should not be allowed to take a name off an account.
-- The check reports itself as five steps, each carrying the answer it got: find the zone, reach the
-  nameservers, find the TXT record, match the token, record the claim. A step that has not passed is
-  not the same as one that has gone wrong, and they are drawn differently: if the next move belongs
-  to the person it is a failure, if it belongs to time it is still waiting.
-- A failed check asks two follow-up questions. Nothing at the name means asking for the name with the
-  zone on the end of it twice, which catches a panel that appended its zone. No TXT at the name means
-  asking for a name nobody could have created, which catches a wildcard zone answering for
-  everything, where a record that was never added otherwise looks like one saved under the wrong
-  type.
-- Failures are typed values, rendered as a title, the DNS value at fault, why, and one next action.
-- One vantage point, which is the weakest part of this. The check runs from one region, so a failure
-  means either the record is missing or our own view of DNS is wrong, and the screen states the
-  first of those as fact. Measured on 2026-09-14: a dev server and the deployment disagreed about a
-  real record for two hours, and the wrong one sounded certain. Two paths disagreeing is the only
-  thing that can express doubt, which is what the second opinion below is for.
-- The list of an account's claims runs no check. A row's state is the claim's own, read from the
-  database, so opening the list costs one query however many names are in it. A check belongs on the
-  screen someone opened to act on the answer. The list sorts names that need the person to the top,
-  says so in a line above itself, and filters by status, so the one at risk name in a long list is
-  never below the fold.
+- [docs/RFC.md](docs/RFC.md): every decision with its reason, the state model, the open questions.
+- [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md): fifty entries from using it against a real domain,
+  which is where most of the product was designed.
+- [docs/TRANSFERS.md](docs/TRANSFERS.md): the feature RFC for moving a name between accounts,
+  designed and not built, with a prototype.
+- [docs/POLISH_BACKLOG.md](docs/POLISH_BACKLOG.md): ideas held back on purpose, with what each costs
+  and buys.
+- Five files, if the code is where you want to start. `src/lib/dns/trace.ts` asks DNS and reports
+  what each server said. `src/lib/claims/evaluate.ts` compares that with the claim and decides what
+  the row should do. `src/lib/claims/steps.ts` turns a check into the five steps.
+  `src/lib/claims/store.ts` holds every write, each conditional on the state it read.
+  `src/lib/dns/testNames.ts` scripts the demo names.
 
 ## Scope
 
@@ -168,13 +133,3 @@ Postgres and has almost no automated tests, and four of the bugs found in review
 covered by a manual pass, and in-process Postgres is queued. The one test it does have is the
 function that decides whether an error is Postgres refusing a duplicate, which needs no database
 because it runs before anything is written.
-
-## Documents
-
-- [docs/RFC.md](docs/RFC.md). Decisions, reasoning, open questions.
-- [docs/TRANSFERS.md](docs/TRANSFERS.md). A feature RFC for moving a held name between accounts,
-  with a prototype under `docs/prototypes/`. Designed, not built.
-- [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md). Every confusion hit using this against a real
-  domain, each resolved, deferred or accepted.
-- [docs/POLISH_BACKLOG.md](docs/POLISH_BACKLOG.md). Ideas held back on purpose, with what each costs
-  and buys.

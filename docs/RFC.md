@@ -1,10 +1,20 @@
 # DomainClaim
 
+Type: new feature. Status: approved, one author. Written 2026-09-12, kept current with the code
+through 2026-09-17. Follows the section order of Resend's RFC template; Decisions stands in for
+General Questions, since a single author answers a question by deciding it.
+
+Contents: [Purpose](#purpose) · [Background](#background) · [Proposal](#proposal) ·
+[Technical Details](#technical-details) · [Implementation Plan](#implementation-plan) ·
+[Decisions](#decisions) · [Open Questions](#open-questions) · [States](#states)
+
+## Purpose
+
 Claim a domain, prove you control it, see every step, recover when it fails. Ownership is persistent
 state: the product keeps checking after a name verifies, moves it to at risk when its record stops
 answering, and clears it when the record returns. A scheduled re-check while nobody is watching, a
 grace window with a revocation, and transfers between accounts are designed and not built. The
-Open list says which. Transfers have their own feature RFC in
+Open Questions list says which. Transfers have their own feature RFC in
 [TRANSFERS.md](TRANSFERS.md), with a prototype under `prototypes/`.
 
 User: one person who controls their own DNS.
@@ -12,10 +22,6 @@ User: one person who controls their own DNS.
 This document is long. The Decisions section opens with the ten a reviewer is most likely to ask
 about; the rest are there for completeness. The States table at the end is the one-page view of
 every failure, its message and its demo name.
-
-Contents: [Background](#background) · [Proposal](#proposal) ·
-[Technical details](#technical-details) · [Decisions](#decisions) · [Open](#open) ·
-[States](#states)
 
 ## Background
 
@@ -90,7 +96,7 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
 - Public API, bulk import
 - Internationalized copy
 
-## Technical details
+## Technical Details
 
 - Magic link from `auth.admin.generateLink`, exchanged by our own callback with `verifyOtp`
 - Auth and notification email from carlton.dev through the Resend SDK
@@ -180,6 +186,27 @@ exist.
 A global switch would be a hole. Anyone who found it could verify any domain. `.test` is never a
 real claim, so the fake resolver cannot be reached by a name that could be.
 
+## Implementation Plan
+
+Three phases, in the order Resend's design process names them, each shipped as the smallest slice
+that could go to production on its own. One pull request per slice, squash merged, deployed from
+`main`, CI on every one.
+
+1. Concept, 12 to 13 September. This document, the state model, the DNS research and its measured
+   facts, a hello world on Vercel. Screens sketched as HTML prototypes before any React.
+2. Implementation, 13 to 16 September. In shipping order: domain input normalization; the claim
+   entry screen; the DNS resolution layer behind an interface with a scripted fake; magic link sign
+   in; CI; issuing a claim and the record screen; the record as a panel row and the check as five
+   steps; the claim input answering as you type; the domain list; the check as an endpoint with
+   Check now and the cadence; at risk written by the check; the unique violation fix; Action needed
+   on pending claims; the sign in origin check.
+3. Polish, 16 to 17 September. The theme pass, the list menu, copy fixes from clicking through every
+   demo name, the README, this document's shape, the video.
+
+Designed and not built, each with its reason in Open Questions: scheduled re-verification, the
+grace window and the status email, transfers ([TRANSFERS.md](TRANSFERS.md)), the DNS-over-HTTPS
+second opinion.
+
 ## Decisions
 
 ### The ten a reviewer will ask about
@@ -208,7 +235,7 @@ real claim, so the fake resolver cannot be reached by a name that could be.
 - Dark only, one `@theme` block, a pale primary so signal green means live, held, current or
   focused and nothing else.
 - Scope is held to how the product looks and behaves; the grace window, the schedule, transfers and
-  the DoH leg are each deferred with a reason in Open.
+  the DoH leg are each deferred with a reason in Open Questions.
 
 ### The rest
 
@@ -551,9 +578,13 @@ real claim, so the fake resolver cannot be reached by a name that could be.
   the whole flow is exercised by hand through the demo names and shown in the video linked from the
   README. The database layer's gap is named in the README.
 
-## Open
+## Open Questions
 
 - Notify the parent holder when a child name is claimed?
+- Instrumentation. Nothing is measured yet. The right first cut is one structured log line per
+  check carrying the reason code, the step reached, elapsed time and the provider, and nothing
+  that identifies a person or a name: no domain, no token, no claim or account id. Vercel's logs
+  hold it with no vendor. Left for after submission on purpose.
 - Grace window length. Atlassian uses 14 days. Needs to be demoable in minutes too.
 - Orgs where the user is not the person who controls the DNS. Out of scope now, revisit later.
 - `example.com` and `app.example.com` held by different accounts. The model allows it, and the zone
