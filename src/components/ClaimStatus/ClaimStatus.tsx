@@ -14,9 +14,10 @@ type ClaimStatusProps = {
 /**
  * The top of the record screen: what state this claim is in, then the name it is about.
  *
- * Takes a message rather than a claim, because two callers build it from different things. The
- * Suspense fallback builds it from the row, which is what the shell can say with no waiting, and
- * the resolved half builds it from the finished check. Same component, two amounts of knowledge.
+ * Takes a message rather than a claim, because it is built from two different things at two
+ * different times. The page builds it from the row, which is what can be said before any check has
+ * run, and `ClaimStatusLive` replaces that with the message the check endpoint answered with. Same
+ * component, two amounts of knowledge.
  */
 const ClaimStatus: React.FC<ClaimStatusProps> = ({ name, message, action = null }) => {
   const extra = 'extra' in message ? message.extra : null;

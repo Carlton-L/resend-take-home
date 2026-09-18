@@ -8,9 +8,9 @@ import { claimCopy } from '@/lib/claims/messages';
  * The record screen, before its shell arrives. See `src/app/domains/loading.tsx` for what a
  * `loading.tsx` does.
  *
- * This route needs it most. The shell reads the session and the claim row before it can send
- * anything, and the check streams in behind that, so a click from the list used to sit on the old
- * page with nothing said.
+ * This route needs it most. The page reads the session and the claim row before it can send
+ * anything, and the check is a further request once it has, so a click from the list used to sit on
+ * the old page with nothing said.
  */
 const Loading: React.FC = () => (
   <main

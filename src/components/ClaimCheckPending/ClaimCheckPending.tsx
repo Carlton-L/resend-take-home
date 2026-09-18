@@ -3,14 +3,14 @@ import type React from 'react';
 import { claimCopy } from '@/lib/claims/messages';
 
 /**
- * What the page shows while the check is still running.
+ * What the chain shows before the first check has answered.
  *
- * This is the `fallback` of the Suspense boundary around the check, so it is sent with the rest of
- * the page and replaced when the real result arrives down the same response. No client state and
- * no second request.
+ * `ClaimCheck` renders this while `CheckRunner` has no view yet, which is the moment between the
+ * page arriving and the endpoint answering. It is server rendered as part of the page, so a person
+ * sees it with the record rather than after a script has loaded.
  *
- * The live region is on the page, around the boundary, rather than here. A region that arrives and
- * leaves with its own content is not reliably announced.
+ * The live region is on the page, around the whole chain, rather than here. A region that arrives
+ * and leaves with its own content is not reliably announced.
  */
 const ClaimCheckPending: React.FC = () => {
   return (

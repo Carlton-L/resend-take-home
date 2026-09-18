@@ -143,7 +143,7 @@ export const claimCopy = {
 
   /**
    * The claim's own state, read from the row rather than from the check. The row carries it before
-   * the check runs, so this renders in the page shell while the check is still streaming.
+   * the check runs, so the page renders this and the check's answer replaces it.
    */
   status: {
     pending: {
