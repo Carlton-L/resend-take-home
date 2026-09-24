@@ -190,6 +190,9 @@ importers:
       resend:
         specifier: ^6.27.0
         version: 6.27.0
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
       tldts:
         specifier: ^7.4.12
         version: 7.4.12
@@ -1694,6 +1697,9 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  server-only@0.0.1:
+    resolution: {integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==}
+
   sharp@0.35.4:
     resolution: {integrity: sha512-n++8XWcj+jCOr2IOl7h8LbKnGBDY4aPbmprMONBNFdn0ImXqpGVv5zliDs0V9HbmbCQLpbuo2ej9rAoOQTvMDA==}
     engines: {node: '>=20.9.0'}
@@ -2848,6 +2854,8 @@ snapshots:
 
   semver@7.8.5:
     optional: true
+
+  server-only@0.0.1: {}
 
   sharp@0.35.4(@types/node@20.19.43):
     dependencies:

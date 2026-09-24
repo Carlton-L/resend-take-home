@@ -1,4 +1,5 @@
 // src/lib/auth/supabase/server.ts
+import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { cache } from 'react';

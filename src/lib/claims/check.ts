@@ -1,4 +1,5 @@
 // src/lib/claims/check.ts
+import 'server-only';
 import { diagnose } from '@/lib/claims/diagnose';
 import {
   type ClaimAfterCheck,
@@ -11,6 +12,7 @@ import {
   shouldMarkVerified,
   tokenHasRunOut,
 } from '@/lib/claims/evaluate';
+import { describeProvider } from '@/lib/claims/provider';
 import { formatRecordValue, recordFullName } from '@/lib/claims/record';
 import type { CheckResult } from '@/lib/claims/state';
 import {
@@ -21,6 +23,7 @@ import {
   markAtRisk,
   markRecovered,
   markVerified,
+  recordObservation,
 } from '@/lib/claims/store';
 import { createFakeResolver } from '@/lib/dns/fakeResolver';
 import { createNodeResolver } from '@/lib/dns/nodeResolver';
@@ -89,6 +92,14 @@ export type ClaimOutcome = Check & ClaimAfterCheck;
 export const runCheck = async (claim: Claim, now: Date = new Date()): Promise<ClaimOutcome> => {
   const { trace, result } = await checkClaim(claim, now);
   const write = await recordCheck(claim, result, now);
+
+  // An expired claim asked DNS nothing, so there is nothing observed to write.
+  if (trace !== null) {
+    await recordObservation(claim.id, claim.ownerId, {
+      checkedAt: new Date(),
+      dnsHost: describeProvider(trace.nameservers)?.name ?? null,
+    });
+  }
 
   return { trace, result, ...claimAfterCheck(claim, write, now, result) };
 };

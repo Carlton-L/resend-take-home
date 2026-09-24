@@ -1,4 +1,5 @@
 // src/lib/auth/rateLimit.ts
+import 'server-only';
 import { sql } from 'drizzle-orm';
 import { ATTEMPT_RETENTION_SECONDS, SEND_LIMITS } from '@/lib/auth/config';
 import { identifierHash } from '@/lib/auth/secrets';

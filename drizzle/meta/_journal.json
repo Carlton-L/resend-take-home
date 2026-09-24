@@ -43,6 +43,13 @@
       "when": 1789566036756,
       "tag": "0005_workable_ozymandias",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790289208940,
+      "tag": "0006_bitter_impossible_man",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 // src/lib/claims/provider.test.ts
 import { describe, expect, it } from 'vitest';
-import { describeProvider } from '@/lib/claims/provider';
+import { describeProvider, panelUrlFor } from '@/lib/claims/provider';
 
 describe('describeProvider', () => {
   it.each([
@@ -45,5 +45,47 @@ describe('describeProvider', () => {
 
   it('has nothing to say when the zone returned no nameservers', () => {
     expect(describeProvider([])).toBeNull();
+  });
+});
+
+describe('panelUrlFor', () => {
+  it.each([
+    ['abby.ns.cloudflare.com', 'https://dash.cloudflare.com/'],
+    ['dns1.registrar-servers.com', 'https://ap.www.namecheap.com/domains/list/'],
+    ['ns1.squarespacedns.com', 'https://account.squarespace.com/domains'],
+    ['ns-1234.awsdns-56.org', 'https://console.aws.amazon.com/route53/v2/hostedzones'],
+  ])('links the host behind %s to its panel', (nameserver, expected) => {
+    expect(panelUrlFor(describeProvider([nameserver])?.name ?? null)).toBe(expected);
+  });
+
+  // carlton.dev's nameservers are Google's, and the panel depends on who sold the domain.
+  it('gives no link for a host whose panel we have not checked', () => {
+    expect(panelUrlFor('Google')).toBeNull();
+  });
+
+  it('gives no link for a host we do not recognize', () => {
+    expect(panelUrlFor('some-small-host.com')).toBeNull();
+  });
+
+  it('gives no link when no nameservers were found', () => {
+    expect(panelUrlFor(null)).toBeNull();
+  });
+
+  // The map is keyed by display name. A host renamed in PROVIDERS and not here would lose its link
+  // without failing anything else.
+  it('keys every link by a name the provider table produces', () => {
+    const names = [
+      'abby.ns.cloudflare.com',
+      'dns1.registrar-servers.com',
+      'ns1.squarespacedns.com',
+      'ns01.domaincontrol.com',
+      'ns-1234.awsdns-56.org',
+      'ns1.vercel-dns.com',
+      'curitiba.ns.porkbun.com',
+      'ns1.digitalocean.com',
+    ].map((nameserver) => describeProvider([nameserver])?.name ?? null);
+    for (const name of names) {
+      expect(panelUrlFor(name)).not.toBeNull();
+    }
   });
 });

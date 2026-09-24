@@ -1,4 +1,5 @@
 // src/lib/auth/secrets.ts
+import 'server-only';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 /** Keeps the parts of a signed message from running into each other. */
