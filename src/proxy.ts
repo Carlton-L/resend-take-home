@@ -36,14 +36,7 @@ export const proxy = async (request: NextRequest) => {
     },
   );
 
-  const { data } = await supabase.auth.getUser();
-
-  // Spike only: a signed-out request for a static detail screen goes to sign in.
-  if (!data.user && request.nextUrl.pathname.startsWith('/spike/b/')) {
-    const signIn = new URL('/signin', request.url);
-    signIn.searchParams.set('next', request.nextUrl.pathname);
-    return NextResponse.redirect(signIn);
-  }
+  await supabase.auth.getUser();
 
   return response;
 };

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { IBM_Plex_Mono, Inter } from 'next/font/google';
 import type React from 'react';
 import AppHeader from '@/components/AppHeader/AppHeader';
+import { signedInEmail } from '@/lib/auth/supabase/server';
 import { appCopy } from '@/lib/copy/app';
 import './globals.css';
 
@@ -32,9 +33,8 @@ type RootLayoutProps = {
  * Reading the session here makes every page dynamic, which they already are: a page whose header
  * names the signed in account cannot be served from a static file.
  */
-const RootLayout: React.FC<RootLayoutProps> = ({ children }) => {
-  // Spike only: no session read here, so pages under this layout can be static.
-  const email = null;
+const RootLayout: React.FC<RootLayoutProps> = async ({ children }) => {
+  const email = await signedInEmail();
 
   // suppressHydrationWarning covers the html element's attributes only. Browser extensions write
   // attributes onto it before React hydrates, which is not a mismatch this code can fix.
