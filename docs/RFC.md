@@ -111,8 +111,10 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
   the screen derives `checking` from the in-flight request
 - Public suffix and parse failures are validation errors, not states
 - Route Handlers, not Server Actions. Node runtime, never Edge
-- Checks run from the browser against `POST /api/claims/[id]/check`, which answers with the five
-  steps as the screen renders them. The page renders the record from the row and runs no query
+- Checks run from the browser against `POST /api/claims/[id]/check`, which streams one JSON object
+  per line: steps 01 and 02 when DNS answers, 03 to 05 after the second look and the write, then
+  the whole answer. The screen shows each step as it lands, 450ms apart. Refusals answer plain
+  JSON before any stream starts
 - Rate limits on claims created per account, on sign in email, and on checks, counted in Postgres.
   Each decision and its record are one SQL statement, which also prunes the window. Checks are
   counted per claim and per account, 20 and 60 per five minutes, both above the cadence so the
@@ -353,9 +355,7 @@ second opinion.
   under three problems: it could not be rate limited, the list's rows carried `prefetch={false}`
   against a hover spending a trace and a write, and the only way to ask again was the browser's
   reload button.
-  Cost: a browser with JavaScript off sees the record and no check. Accepted, because the record is
-  what the user came for and proving control is a round trip either way. The claim form still posts
-  a plain form and still works without it.
+  Cost: the claim screen needs JavaScript, like claiming does.
 - The endpoint answers with the five steps as the screen renders them rather than with the trace.
   Sending the trace would put the copy, the step rules and the provider table into the browser
   bundle to produce the same strings a second time, and every date in it would arrive as a string
@@ -371,8 +371,7 @@ second opinion.
 - A check that fails to run is not a check that failed. Limited, unavailable, offline, signed out
   and released each get the four part message minus the DNS value, and four of the five are
   answered by the button that is already there.
-- The timeline stores nothing. `last_checked_at` would buy one string the client can produce
-  truthfully from its own last answer, and a stored check has no reader until history is rendered.
+- A check stores when it finished and who serves the zone, and nothing else about itself.
 - `check_attempts` is its own table rather than a kind column on `sign_in_attempts`. That table
   stores hashes so it cannot be read back as a list of who tried to sign in, which is the wrong
   shape for counting checks per claim, and sharing it would put two retention windows in one prune.
@@ -393,18 +392,22 @@ second opinion.
   cross there reports the product working correctly as a fault.
 - Step labels are steps rather than statements. "Record found" can only be true, so it contradicts
   its own glyph.
-- The chain is always present, above the record card, at two densities. One line when there is
-  nothing to act on, open when there is. It never appears or disappears, because an absence cannot
-  tell a person "you fixed it" from "we stopped looking". Saying that out loud needs `last_failure`,
-  which is deferred.
+- The claim screen is four cards joined by one straight line: nameservers, record, check, verified.
+  A card appears when it has something to say and stays for the rest of the visit. Cards before the
+  current one dim and ease back on hover. The screen scrolls so the current card sits under the
+  header.
+- Opening a claim shows its stored state at once, then checks. A claim that has never been checked
+  plays its first check step by step. After that a check runs in the background and only the steps
+  that changed move.
 - The four part message moves into the step that produced it and the separate failure box is
   deleted. A tooltip has no touch equivalent; a modal hides the record while telling you to use it.
 - Control proved against a name another account holds is a status rather than a failure. The person
   did everything right.
-- The provider line sits at the foot, beneath both cards, where it is acted on.
-- No per-server timings. One count of answered steps in the chain header.
-- One check answer feeds the status, the chain and the provider line. The browser holds it and the
-  three regions read it, so the trace and the write happen once and the three cannot disagree.
+- The DNS host sits in the header and above the record, with a link to its panel for the hosts we
+  have checked.
+- No per-server timings.
+- One check answer feeds the pill, the steps and the list. The browser holds it and the
+  three read it, so the trace and the write happen once and the three cannot disagree.
   Without this a claim that verified mid-render showed PENDING above its own verified result.
 - The row moving decides the status, not the check. A write that hits the unique index or fails
   leaves the claim where it was.
@@ -443,15 +446,10 @@ second opinion.
   `value_mismatch` reports.
 - Copy controls sit inside the field border. Four cells with separate buttons beside them do not
   say which value each button belongs to.
-- The claim's state is the top of the record screen, read from the row rather than from the check.
-  The row carries the status before any check runs, so the shell says it while the check is still
-  streaming. The eyebrow previously read CLAIMING on a name this account already held.
-- The record card collapses on a claim that already holds its name. "Add this record" is
-  instruction for work already done. It stays one click away, because comparing this value against
-  the one in the panel is why someone opens a verified claim.
-- The record screen is wider than the rest of the app. Four columns need the width. The check and
-  the notices span the same width, so the cards line up, and each paragraph inside them is capped
-  at the measure the other screens read at. Two card widths on one screen read as unfinished.
+- The claim's state is the top of the record screen, read from the row until a check answers. The
+  pill says Checking while Check now runs and changes only once step 05 has landed.
+- On a claim that holds its name the record card is a past card, dimmed and one hover away,
+  because comparing this value with the one in the panel is why someone opens a verified claim.
 - One measure for every screen, 1040px, shared by the top bar.
 - Claims sit in a sidebar of favicons that opens on hover, with Claim a domain at the top. It is
   fixed and drawn over the page, so opening it moves nothing. A badge on the favicon marks a claim
@@ -527,10 +525,8 @@ second opinion.
 - Each check that asks DNS stores when it finished and who serves the zone (`last_checked_at`,
   `dns_host`). The list still runs no check, but it can say how old a row's state is, and the claim
   header can name the DNS host before a visit's first check comes back.
-- The closed check line carries no time at all. When the check ran, and that another is coming,
-  are said next to the button that asks now, which is the one place either can be acted on. The
-  relative time is honest again because the client re-renders it, and it is coarse, since a second
-  by second count is motion on a page where nothing is happening.
+- When the last check ran and when the next one runs sit next to Check now, the one place either
+  can be acted on. A hidden tab doesn't check, and catches up when it is shown again.
 - The list's rows prefetch again and the comment goes with the prop. The reason recorded for that
   prop was wrong. Measured on the deployment, 2026-09-15: loading `/domains` with `prefetch={false}`
   removed produces no request to `/claim/<id>` of any kind, and Next does not prefetch in `next dev`
