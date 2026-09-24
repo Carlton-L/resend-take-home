@@ -1,16 +1,39 @@
 @import "tailwindcss";
+@import "./motion.css";
+
+/*
+  Where the hover sidebar exists: wide enough, and a pointer that can hover. Everywhere else the
+  domain picker in the breadcrumb does its job.
+*/
+@custom-variant rail (@media (min-width: 721px) and (hover: hover));
+@custom-variant norail {
+  @media (max-width: 720px) {
+    @slot;
+  }
+  @media (hover: none) {
+    @slot;
+  }
+}
+
+/* The page measure shared by the top bar and every screen. */
+@utility page-wrap {
+  width: min(1040px, calc(100% - 48px));
+  margin-inline: auto;
+  @media (max-width: 720px) {
+    width: calc(100% - 32px);
+  }
+}
 
 /*
   The theme. Every colour, radius and face the app uses is named here and nowhere else, so a
   component says what a surface is for and this file says what that looks like.
 
-  Values come from carlton.dev's tokens (src/styles/tokens.css there): patch chrome near black,
-  phosphor signal for the primary action and focus, amber for the attention tone. Dark only, which
-  is also how Resend ships. A light palette would be a second block of the same names.
+  Dark only. Three tones, from the design in prototypes/28:
+  signal green: held, passed, the primary action. wait cyan: time has to pass, and focus.
+  warn amber: the next move is the person's. There is no red.
 
-  Tones keep their meaning from the RFC. good: held. attention: the next move is the person's.
-  wrong: a check step that needs a change. neutral: waiting. The colour is the only thing that
-  changes here.
+  The attention and wrong tokens predate the design. They are retuned to amber so the screens that
+  still use them follow the same palette until they are replaced.
 */
 @theme {
   --color-*: initial;
@@ -25,16 +48,30 @@
   --color-surface-2: #161619;
   --color-surface-3: #1c1c20;
   --color-line: #232326;
+  /* The border on controls and chips. */
+  --color-line-control: #2a2a2e;
   --color-line-2: #3a3a3e;
 
   --color-fg: #e6e6e2;
   --color-fg-2: #b3b3ad;
   --color-fg-3: #8f8f8a;
   --color-fg-4: #6a6a66;
+  --color-fg-5: #5c5c58;
 
   --color-signal: #3dff88;
-  --color-signal-hover: #7dffae;
-  --color-on-signal: #0a0a0b;
+  --color-signal-hover: #6bffa6;
+  --color-on-signal: #05140b;
+  --color-signal-soft: rgb(61 255 136 / 0.1);
+  --color-signal-edge: rgb(61 255 136 / 0.25);
+
+  --color-wait: #56b4e9;
+  --color-wait-soft: rgb(86 180 233 / 0.1);
+  --color-wait-edge: rgb(86 180 233 / 0.28);
+
+  --color-warn: #e8a317;
+  --color-warn-soft: rgb(232 163 23 / 0.1);
+  --color-warn-edge: rgb(232 163 23 / 0.3);
+  --color-on-warn: #1a1204;
 
   /* The primary action is pale, so signal green only ever means live, held, current or focused. */
   --color-primary: #e6e6e2;
@@ -45,26 +82,23 @@
   --color-good-line: #2a8a52;
   --color-good-fg: #3dff88;
 
-  /*
-    Attention is a yellower amber and wrong is vermilion rather than pink red: the pair nearest
-    the originals in Wong's colour-blind safe set, so they stay apart for deuteranopia and
-    protanopia. Both are already tokens on carlton.dev.
-  */
-  --color-attention-bg: #2a2410;
-  --color-attention-line: #8a7410;
-  --color-attention-fg: #f1e6b5;
-  --color-attention-glyph: #f0c93a;
+  --color-attention-bg: #221905;
+  --color-attention-line: rgb(232 163 23 / 0.3);
+  --color-attention-fg: #e8a317;
+  --color-attention-glyph: #e8a317;
 
-  --color-wrong-bg: #2c1410;
-  --color-wrong-line: #6a2a1c;
-  --color-wrong-fg: #ff7a5c;
-  --color-wrong-label: #ffb39f;
-  --color-wrong-strong: #c92a2a;
-  --color-wrong-strong-hover: #e03a3a;
+  --color-wrong-bg: #221905;
+  --color-wrong-line: rgb(232 163 23 / 0.35);
+  --color-wrong-fg: #e8a317;
+  --color-wrong-label: #e8a317;
+  --color-wrong-strong: #e8a317;
+  --color-wrong-strong-hover: #f0b53a;
 
   --radius-sm: 4px;
   --radius-md: 7px;
   --radius-lg: 12px;
+
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* Faces are loaded in layout.tsx and arrive as variables, so these have to be resolved inline. */

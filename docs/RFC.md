@@ -452,49 +452,43 @@ second opinion.
 - The record screen is wider than the rest of the app. Four columns need the width. The check and
   the notices span the same width, so the cards line up, and each paragraph inside them is capped
   at the measure the other screens read at. Two card widths on one screen read as unfinished.
-- One measure for every other screen, 672px, top aligned. The header shares the measure of the
-  page under it, read from the path.
-- No section navigation in the header. Three screens make one section: the list is the hub and
-  carries Claim a domain beside its heading, the claim form and the record screen carry a back
-  link to the list above their heading, and the wordmark goes to the list. A link is named for a
-  place and a button for an action, so Claim a domain is a button on the page where claims live.
-  Two filled buttons, tabs, a sidebar, the paths `/domains` and `/claim`, and two plain words were
-  each tried in the bar and each read as more navigation than three screens need, and a single
-  Domains link would have been a slot for sections that do not exist. Below `sm` the paths, the address and Sign
-  out fold into one button and a popover, since the bar wrapped to two lines on a phone.
-- One auth round trip per render. The header's address is read through the same cached call the
-  page makes, where it used to make its own.
-- A list row is one line. A long name scrolls under a fade, the rule the record row already uses,
-  and the at risk date is hidden below `sm`. The record screen carries both in full.
+- One measure for every screen, 1040px, shared by the top bar.
+- Claims sit in a sidebar of favicons that opens on hover, with Claim a domain at the top. It is
+  fixed and drawn over the page, so opening it moves nothing. A badge on the favicon marks a claim
+  that needs something. Phones, touch screens and builds with `SIDEBAR` off get a picker on the
+  domain name in the breadcrumb instead. `SIDEBAR` is a code constant in `src/lib/ui/config.ts`.
+  The project has no feature flags.
+- Pages and layouts read no session and load no data, so every page is static and a link to one
+  is prefetched. Screens are client components that fetch from `/api` with SWR, and show a
+  skeleton of the same height until the data arrives.
+- A list row is one line on desktop. Below 900px the date goes. Below 720px the pill moves under
+  the name and the host goes.
 - The demo names are a table: name with its copy control, outcome in the chain's words, and what
   the script does. Three things are said about every name and a reader compares down a column.
 - The theme is a token block in `globals.css` and nothing else names a colour, radius or face. Dark
-  only, from carlton.dev's tokens: near black surfaces, signal green for the primary action and
-  focus, amber for the attention tone. Resend ships dark only too. Light is a second block of the
-  same names, when there is a reason for it.
+  only. Three tones: signal green for held, passed and the primary action, cyan for waiting and
+  focus, amber for the person's move. There is no red.
 - In a four part message the action comes before the description. What to do matters more than why,
   and a copyable value sits between them so it reads as instruction, thing to paste, reason.
 - The keep-the-record line on a verified claim is a warning with a bold lead. It is the one thing on
   that screen the person could get wrong.
-- A claim can be released from the list. Each row has a menu built on the popover attribute, which
-  closes on Escape and returns focus without a hand built menu, and it opens the same confirmation
-  the record screen uses.
-- Refresh on the list re-reads the rows and runs no check. The list never asks DNS anything, so
-  what it reflects is a release made elsewhere or a claim a record screen verified since the page
-  loaded. Checking every pending row from the list would spend each claim's rate limit on a page
-  that cannot act on the answer.
-- The primary action is pale, and signal green means live, held, current or focused and nothing
-  else. One hue for "this is good" and "press this" put a semantic colour on the accent.
+- A claim is released from its own screen, from the header menu.
+- Refresh on the list reads the list again and runs no check. The list also reads again when the
+  window regains focus and after every claim or release. A note on Refresh says a claim is checked
+  on its own screen.
+- The primary action is signal green, as in the design.
 - A tinted check row carries a 3px stripe in its tone and the fix panel prints the state word.
   The two tints are both near black, and for red-green colour vision the red and the amber drift
-  together, so the glyph was carrying the state alone. Wrong is vermilion and attention a yellower
-  amber, the nearest pair in Wong's colour-blind safe set.
-- The list filters by the word on the pill and sorts three ways, on the rows already loaded, with
-  the choice in the URL. The chips carry counts, so the account is summarized before a row is read.
-- The list sorts needs-attention first by default, stable, so newest still leads inside each
-  group, and a notice above the list counts the rows that need the person with a button that
-  filters to them. A long list under any sort can put those rows below the fold; the sentence
-  cannot be scrolled past.
+  together, so the glyph was carrying the state alone. Wrong and attention now share amber.
+- The list filters by the word on the pill and sorts three ways, with the choice in the URL. The
+  chips carry counts. The pill words are the list's labels from before the rebuild: Pending,
+  Verified, Action needed, At risk, Expired. The list can't tell which wrong record a claim has, so
+  it doesn't name one. The claim screen does.
+- The list sorts needs-attention first by default, stable, so newest still leads in each group.
+  A notice above the list counts the claims that need the person. Show filters to them, and presses
+  their chip when they share one word.
+- Claiming needs JavaScript. The input checks the name as it is typed, and the new row plays in
+  the list before the claim opens.
 - The claim route has its own error boundary. A throw reading the claim keeps the way back to
   the list and retries the segment; the root boundary speaks for the whole app.
 - A pending claim carries an attention `Action needed` state when a check finds a wrong record at
@@ -527,17 +521,12 @@ second opinion.
 - Sign in lands on the list, always. A rule that routes by how many claims an account has puts a
   person somewhere different on their second visit, and the empty list is the first run screen.
 - The home page is the signed out landing and nothing else. A signed in account asking for it is
-  redirected to the list, and the claim form is in the header, so a second claim does not start by
-  going somewhere else first.
+  redirected to the list, where Claim a domain is, and it is also at the top of the sidebar.
 - The list runs no check. A row's state is the claim's own, read from the database, so opening the
   list costs one query whatever is in it. A check belongs where someone has gone to act on it.
 - Each check that asks DNS stores when it finished and who serves the zone (`last_checked_at`,
   `dns_host`). The list still runs no check, but it can say how old a row's state is, and the claim
   header can name the DNS host before a visit's first check comes back.
-- Every dynamic route has a fallback, so a click always does something. These pages read a session
-  and a row before they can send anything, and a navigation with nothing on screen reads as a
-  product that has hung. The claim button disables itself separately, because a form post is a
-  fresh document load and no route fallback covers it.
 - The closed check line carries no time at all. When the check ran, and that another is coming,
   are said next to the button that asks now, which is the one place either can be acted on. The
   relative time is honest again because the client re-renders it, and it is coarse, since a second

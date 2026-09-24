@@ -1,0 +1,158 @@
+/*
+  Keyframes and the patch visuals that Tailwind classes can't express cleanly. Layout stays in
+  Tailwind. The rules are copied from prototypes/28-timeline.html. Every animation here has a
+  reduced motion path at the bottom.
+*/
+
+/* The dot grid behind every screen. */
+.dot-grid {
+  background-image: radial-gradient(circle at 1px 1px, #17171a 1.2px, transparent 1.6px);
+  background-size: 26px 26px;
+}
+
+/* Screen enter, keyed on the path. Deeper comes from the right, back comes from the left. */
+.screen-in-r {
+  animation: screen-in-r 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.screen-in-l {
+  animation: screen-in-l 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes screen-in-r {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+@keyframes screen-in-l {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+}
+
+/* A card or notice that appears. */
+.enter-up {
+  animation: enter-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.enter-up-fast {
+  animation: enter-up 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* Status dots. Waiting breathes, checking blinks. */
+.dot-breathe {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+.dot-blink {
+  animation: blink 0.8s ease-in-out infinite;
+}
+@keyframes breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* An input that refused a submit. */
+.shake {
+  animation: shake 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* The same shake under a second name, so a class swap restarts it. */
+.shake-b {
+  animation: shake-b 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes shake-b {
+  25% {
+    transform: translateX(-4px);
+  }
+  60% {
+    transform: translateX(3px);
+  }
+}
+@keyframes shake {
+  25% {
+    transform: translateX(-4px);
+  }
+  60% {
+    transform: translateX(3px);
+  }
+}
+
+/* The claim card, when Claim a domain sends you to it. */
+.shine {
+  animation: shine 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes shine {
+  0% {
+    border-color: #232326;
+    box-shadow: none;
+  }
+  25% {
+    border-color: rgb(61 255 136 / 0.4);
+    box-shadow: 0 14px 50px rgb(61 255 136 / 0.1);
+  }
+  100% {
+    border-color: #232326;
+    box-shadow: none;
+  }
+}
+
+/* A new row in the list grows in and glows once. A sidebar row slides in. */
+.row-in {
+  animation: row-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.row-in > * {
+  animation: row-glow 1.6s ease-out;
+}
+@keyframes row-in {
+  from {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    max-height: 64px;
+    opacity: 1;
+  }
+}
+@keyframes row-glow {
+  0%,
+  30% {
+    background: rgb(61 255 136 / 0.07);
+  }
+}
+.rail-row-in {
+  animation: rail-row-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes rail-row-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-in-r,
+  .screen-in-l,
+  .enter-up,
+  .enter-up-fast,
+  .dot-breathe,
+  .dot-blink,
+  .shake,
+  .shake-b,
+  .shine,
+  .row-in,
+  .row-in > *,
+  .rail-row-in {
+    animation: none;
+  }
+}
