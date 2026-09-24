@@ -1,4 +1,5 @@
 // src/lib/dns/testNames.ts
+import 'server-only';
 import type { DnsScript } from '@/lib/dns/fakeResolver';
 
 /**

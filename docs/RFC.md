@@ -120,6 +120,11 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
 - `maxDuration` 20 on the check route. The worst case is the 2s deadline on every step a trace
   reaches, five for a four label name, plus a second each for the two probes that only run after a
   failure. Below that, a slow zone returns a platform error instead of our message
+- Screens read JSON: `GET /api/me`, `GET /api/claims`, `GET /api/claims/[id]`. Create, release
+  and sign out answer JSON to a fetch and a 303 to a form post, until the old screens are gone
+- Server modules import `server-only`, so importing one from a client file fails the build
+- The proxy sends a signed out request for an app page to sign in, and a signed in request for `/`
+  or `/signin` to the list. Every route still checks the session itself
 - One way in to the resolver: a claim this account owns. The public trace route that the DNS slice
   shipped with is deleted, since it let anyone aim our nameserver queries at any zone, as often as
   they liked, with no account and no ceiling
@@ -158,6 +163,9 @@ verified, at risk and contested rows.
 One owner per name, any number of pending attempts, which is what step 8 needs. A contested row is
 still the incumbent's, so leaving it out would free the name for a third account for the length of
 the contest.
+
+`claims.last_checked_at` and `claims.dns_host`, both nullable, written by every check that asks
+DNS. An expired pending claim asks nothing, so it moves neither.
 
 `check_attempts`, one row per check we agreed to run, which is what the check limit counts. Rows are
 pruned by the statement that counts them.
@@ -523,6 +531,9 @@ second opinion.
   going somewhere else first.
 - The list runs no check. A row's state is the claim's own, read from the database, so opening the
   list costs one query whatever is in it. A check belongs where someone has gone to act on it.
+- Each check that asks DNS stores when it finished and who serves the zone (`last_checked_at`,
+  `dns_host`). The list still runs no check, but it can say how old a row's state is, and the claim
+  header can name the DNS host before a visit's first check comes back.
 - Every dynamic route has a fallback, so a click always does something. These pages read a session
   and a row before they can send anything, and a navigation with nothing on screen reads as a
   product that has hung. The claim button disables itself separately, because a form post is a

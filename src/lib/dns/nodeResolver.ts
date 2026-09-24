@@ -1,4 +1,5 @@
 // src/lib/dns/nodeResolver.ts
+import 'server-only';
 import { Resolver } from 'node:dns/promises';
 import { isQueryableAddress } from '@/lib/dns/address';
 import { joinRecords } from '@/lib/dns/txt';

@@ -76,6 +76,18 @@ export const claims = pgTable(
      * already shown by the row without a stored flag.
      */
     actionNeededSince: timestamp('action_needed_since', { withTimezone: true }),
+    /**
+     * When the last check that asked DNS finished. Written by every such check, so the list can say
+     * how fresh a row is. Null until the first one. An expired pending claim asks nothing, so it
+     * does not move this.
+     */
+    lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
+    /**
+     * Who serves the zone, as the last check found it: a provider name, or the nameserver's own
+     * domain when we don't recognize it. Null when no nameservers were found. Stored so the header
+     * can name the host before the first check of a visit comes back.
+     */
+    dnsHost: text('dns_host'),
   },
   (table) => [
     /**

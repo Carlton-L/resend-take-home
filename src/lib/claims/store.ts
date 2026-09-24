@@ -1,4 +1,5 @@
 // src/lib/claims/store.ts
+import 'server-only';
 import { and, desc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { CLAIM_LIMIT, TOKEN_TTL_MS } from '@/lib/claims/config';
 import { isExpired } from '@/lib/claims/evaluate';
@@ -22,6 +23,10 @@ export type Claim = {
   failingSince: Date | null;
   /** Set on the first check that found a wrong record while the claim was still pending. */
   actionNeededSince: Date | null;
+  /** When the last check that asked DNS finished. */
+  lastCheckedAt: Date | null;
+  /** The DNS host the last check found, or null when it found no nameservers. */
+  dnsHost: string | null;
 };
 
 /** Postgres unique violation. Both indexes on `claims` are unique, so either can raise it. */
@@ -199,6 +204,9 @@ export type ClaimSummary = {
   failingSince: Date | null;
   /** Set while a pending claim has a wrong record at its name. Null otherwise. */
   actionNeededSince: Date | null;
+  issuedAt: Date;
+  lastCheckedAt: Date | null;
+  dnsHost: string | null;
 };
 
 /**
@@ -226,6 +234,9 @@ export const claimsForOwner = async (ownerId: string): Promise<ClaimSummary[]> =
       expiresAt: claims.expiresAt,
       failingSince: claims.failingSince,
       actionNeededSince: claims.actionNeededSince,
+      issuedAt: claims.issuedAt,
+      lastCheckedAt: claims.lastCheckedAt,
+      dnsHost: claims.dnsHost,
     })
     .from(claims)
     .where(eq(claims.ownerId, ownerId))
@@ -414,5 +425,28 @@ export const clearActionNeeded = async (
     return rows.length > 0 ? 'action_cleared' : 'unchanged';
   } catch {
     return 'unavailable';
+  }
+};
+
+/**
+ * What a check saw, written after every check that asked DNS: when it finished and who serves the
+ * zone. Unconditional on status, since it records an observation rather than a transition, and
+ * scoped to the owner like every other write.
+ *
+ * Never fails the check. The answer the person is waiting for is already known, and a missed
+ * timestamp only makes the list say an older time.
+ */
+export const recordObservation = async (
+  id: string,
+  ownerId: string,
+  observation: { checkedAt: Date; dnsHost: string | null },
+): Promise<void> => {
+  try {
+    await getDb()
+      .update(claims)
+      .set({ lastCheckedAt: observation.checkedAt, dnsHost: observation.dnsHost })
+      .where(and(eq(claims.id, id), eq(claims.ownerId, ownerId)));
+  } catch {
+    // Not logged, for the same reason as the other writes: the statement travels on the error.
   }
 };

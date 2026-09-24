@@ -1,4 +1,5 @@
 // src/lib/email/send.ts
+import 'server-only';
 import { Resend } from 'resend';
 import { MAIL_FROM } from '@/lib/auth/config';
 

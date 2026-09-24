@@ -1,4 +1,5 @@
 // src/lib/auth/confirmUrl.ts
+import 'server-only';
 import { appOrigin, CONFIRM_PATH } from '@/lib/auth/config';
 import { safeNextPath } from '@/lib/auth/nextPath';
 import { type ConfirmLinkClaims, signConfirmLink } from '@/lib/auth/secrets';

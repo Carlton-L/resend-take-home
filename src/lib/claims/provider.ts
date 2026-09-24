@@ -61,3 +61,25 @@ export const describeProvider = (nameservers: readonly string[]): Provider | nul
 
   return { name: getDomain(first) ?? first, recognized: false };
 };
+
+/**
+ * Where "Open DNS" goes for each host we link to. The account's landing page rather than a deep
+ * link to the domain: these URLs are stable, and a deep link that changes breaks without anyone
+ * noticing.
+ *
+ * Only hosts whose link has been opened and checked. Any other host gets no button.
+ */
+const PANEL_URLS: Readonly<Record<string, string>> = {
+  Cloudflare: 'https://dash.cloudflare.com/',
+  Namecheap: 'https://ap.www.namecheap.com/domains/list/',
+  Squarespace: 'https://account.squarespace.com/domains',
+  GoDaddy: 'https://dcc.godaddy.com/control/portfolio',
+  'Amazon Route 53': 'https://console.aws.amazon.com/route53/v2/hostedzones',
+  Vercel: 'https://vercel.com/dashboard/domains',
+  Porkbun: 'https://porkbun.com/account/domainsSpeedy',
+  DigitalOcean: 'https://cloud.digitalocean.com/networking/domains',
+};
+
+/** The DNS panel for a stored host name, or null when we don't link to that host. */
+export const panelUrlFor = (dnsHost: string | null): string | null =>
+  dnsHost === null ? null : (PANEL_URLS[dnsHost] ?? null);

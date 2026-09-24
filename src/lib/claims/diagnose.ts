@@ -1,4 +1,5 @@
 // src/lib/claims/diagnose.ts
+import 'server-only';
 import { randomBytes } from 'node:crypto';
 import { parseRecordValue, recordFullName } from '@/lib/claims/record';
 import type { CheckResult } from '@/lib/claims/state';

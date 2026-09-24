@@ -1,4 +1,5 @@
 // src/lib/claims/rateLimit.ts
+import 'server-only';
 import { sql } from 'drizzle-orm';
 import { CHECK_ATTEMPT_RETENTION_SECONDS, CHECK_LIMITS } from '@/lib/claims/config';
 import { getDb } from '@/lib/db/client';

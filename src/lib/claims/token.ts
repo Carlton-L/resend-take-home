@@ -1,4 +1,5 @@
 // src/lib/claims/token.ts
+import 'server-only';
 import { randomBytes } from 'node:crypto';
 
 /**
