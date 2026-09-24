@@ -140,6 +140,278 @@
   }
 }
 
+/* ---------- The claim screen ---------- */
+
+/* A card before the current one dims, and eases back on hover. */
+.card-past {
+  opacity: 0.42;
+  filter: saturate(0.5);
+}
+.card-past:hover {
+  opacity: 0.9;
+  filter: none;
+}
+
+/* The verified card, the moment a claim verifies while you watch. */
+.card-glow {
+  border-color: rgb(61 255 136 / 0.4);
+  box-shadow:
+    0 0 0 1px rgb(61 255 136 / 0.15),
+    0 0 60px rgb(61 255 136 / 0.08);
+}
+.celebrate .verified-mark {
+  animation: pop 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.celebrate .verified-mark path {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: draw 0.45s 0.18s ease-out forwards;
+}
+.celebrate .verified-mark::before,
+.celebrate .verified-mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #3dff88;
+  animation: burst 0.9s ease-out forwards;
+}
+.celebrate .verified-mark::after {
+  animation-delay: 0.15s;
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* One step of the check: a node on the cable, its number, its label, what it found. */
+.step-node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid #2a2a2e;
+  background: #101013;
+  color: #3dff88;
+  transition:
+    background 0.25s,
+    border-color 0.25s;
+}
+.step-node > * {
+  display: none;
+}
+.step[data-state="run"] .step-node {
+  border-color: rgb(61 255 136 / 0.25);
+  background: #0c1a12;
+}
+.step[data-state="run"] .step-node::after {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: #3dff88;
+  animation: spin 0.75s linear infinite;
+}
+.step[data-state="done"] .step-node {
+  background: #3dff88;
+  border-color: #3dff88;
+}
+.step[data-state="done"] .step-tick {
+  display: block;
+}
+.step[data-state="wait"] .step-node {
+  border-color: #56b4e9;
+  background: #0d1a22;
+  color: #56b4e9;
+}
+.step[data-state="wait"] .step-wait {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #56b4e9;
+  animation: breathe 2.4s ease-in-out infinite;
+}
+.step[data-state="wrong"] .step-node {
+  background: #e8a317;
+  border-color: #e8a317;
+  color: #e8a317;
+}
+.step[data-state="wrong"] .step-bang {
+  display: block;
+  font: 700 14px / 1 var(--font-sans, sans-serif);
+  color: #1a1204;
+}
+.step[data-state="idle"] .step-label,
+.step[data-state="idle"] .step-number,
+.step[data-state="queued"] .step-label,
+.step[data-state="queued"] .step-number {
+  opacity: 0.7;
+}
+.step[data-state="run"] .step-label,
+.step[data-state="done"] .step-label,
+.step[data-state="wait"] .step-label,
+.step[data-state="wrong"] .step-label {
+  color: #e6e6e2;
+}
+.step[data-state="run"] .step-answer,
+.step[data-state="done"] .step-answer {
+  color: #8f8f8a;
+}
+.step[data-state="wait"] .step-answer {
+  color: #56b4e9;
+}
+.step[data-state="wrong"] .step-answer {
+  color: #e8a317;
+}
+
+/* A step that just landed pops once. */
+.step.step-pop .step-node {
+  animation: pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.step.step-pop .step-node::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  animation: burst 0.65s ease-out forwards;
+}
+/* The step a background check is asking about. */
+.step.step-probe .step-node::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  animation: probe 1.3s ease-out infinite;
+}
+
+/* The cable under a row of steps, what has passed, and the pulse that runs along it. */
+.cable-fill {
+  background: #3dff88;
+  box-shadow: 0 0 8px rgb(61 255 136 / 0.45);
+  transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.cable-lead {
+  transition:
+    background 0.3s,
+    box-shadow 0.3s;
+}
+.cable-lead[data-tone="done"] {
+  background: #3dff88;
+  box-shadow: 0 0 8px rgb(61 255 136 / 0.45);
+}
+.cable-lead[data-tone="wait"] {
+  background: #56b4e9;
+  box-shadow: 0 0 8px rgb(86 180 233 / 0.4);
+}
+.cable-lead[data-tone="wrong"] {
+  background: #e8a317;
+  box-shadow: 0 0 8px rgb(232 163 23 / 0.4);
+}
+.cable-pulse {
+  position: absolute;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: #3dff88;
+  box-shadow: 0 0 12px 3px rgb(61 255 136 / 0.6);
+  animation: travel 1.3s linear infinite;
+}
+.cable-pulse::before {
+  content: "";
+  position: absolute;
+  right: 5px;
+  top: 4px;
+  width: 56px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #3dff88);
+}
+
+/* A live dot that pings: the result block while checking, and the timer. */
+.live-dot {
+  position: relative;
+}
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: ping 1.8s ease-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.14);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes burst {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+@keyframes probe {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+@keyframes travel {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  86% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+@keyframes ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .screen-in-r,
   .screen-in-l,
@@ -152,7 +424,25 @@
   .shine,
   .row-in,
   .row-in > *,
-  .rail-row-in {
+  .rail-row-in,
+  .celebrate .verified-mark,
+  .celebrate .verified-mark path,
+  .celebrate .verified-mark::before,
+  .celebrate .verified-mark::after,
+  .step[data-state="run"] .step-node::after,
+  .step[data-state="wait"] .step-wait,
+  .step.step-pop .step-node,
+  .step.step-pop .step-node::before,
+  .step.step-probe .step-node::before,
+  .cable-pulse,
+  .live-dot::after {
     animation: none;
+  }
+  .celebrate .verified-mark path {
+    stroke-dashoffset: 0;
+  }
+  .card-past,
+  .cable-fill {
+    transition: none;
   }
 }

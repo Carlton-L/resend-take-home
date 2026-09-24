@@ -5,6 +5,8 @@ type OperatorProps = {
   label: string;
   /** The small chip after the label: a count, or what kind of card it is. */
   badge?: React.ReactNode;
+  /** The badge's colour, when it reports a state. */
+  badgeTone?: 'neutral' | 'good' | 'wait' | 'warn';
   /** Controls after the label and badge. The header wraps when they don't fit on one line. */
   controls?: React.ReactNode;
   children: React.ReactNode;
@@ -13,10 +15,18 @@ type OperatorProps = {
   onAnimationEnd?: React.AnimationEventHandler<HTMLElement>;
 };
 
+const BADGE_TONE = {
+  neutral: 'border-line-control text-fg-3',
+  good: 'border-signal/30 text-signal',
+  wait: 'border-wait/30 text-wait',
+  warn: 'border-warn/30 text-warn',
+};
+
 /** A card with a labelled header, the operator box from the design. */
 const Operator: React.FC<OperatorProps> = ({
   label,
   badge,
+  badgeTone = 'neutral',
   controls,
   children,
   className = '',
@@ -34,7 +44,9 @@ const Operator: React.FC<OperatorProps> = ({
         {label}
       </span>
       {badge !== undefined && (
-        <span className='inline-flex h-[18px] items-center rounded border border-line-control px-1.5 font-medium font-mono text-[9.5px] text-fg-3 uppercase leading-none tracking-[0.1em]'>
+        <span
+          className={`inline-flex h-[18px] items-center rounded border px-1.5 font-medium font-mono text-[9.5px] uppercase leading-none tracking-[0.1em] ${BADGE_TONE[badgeTone]}`}
+        >
           {badge}
         </span>
       )}

@@ -3,8 +3,10 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseRouteClient } from '@/lib/auth/supabase/route';
 import { runCheck } from '@/lib/claims/check';
 import { isClaimId } from '@/lib/claims/config';
+import { toClaimDTO } from '@/lib/claims/dto';
 import { recordCheckAttempt } from '@/lib/claims/rateLimit';
 import { claimForOwner } from '@/lib/claims/store';
+import { type CheckEvent, EARLY_STEPS, earlySteps, encodeEvent } from '@/lib/claims/stream';
 import { type CheckResponse, checkView } from '@/lib/claims/view';
 import { isSameOrigin } from '@/lib/http/sameOrigin';
 
@@ -27,14 +29,17 @@ export const maxDuration = 20;
 const json = (body: CheckResponse, status: number) => NextResponse.json(body, { status });
 
 /**
- * Runs one check of one claim and answers with what the screen renders.
+ * Runs one check of one claim and streams it, one JSON object per line.
+ *
+ * Steps 01 and 02 go out when DNS has answered. Steps 03 to 05 go out after the second look and the
+ * write, because either can change them. `done` carries the whole answer and the claim as it now
+ * stands, and the screen takes that as the truth.
+ *
+ * Every refusal (origin, session, not found, the check limit) answers plain JSON before a stream
+ * starts, so the client reads the status code first and only then the body.
  *
  * POST because it writes: a claim that proves itself here is marked verified, and the attempt is
  * counted whether or not it proves anything.
- *
- * The check used to run in the page body, which is why it could not be limited and why the domain
- * list could not prefetch a row. Both follow from it being a request of its own: the limit has an
- * ordinary place to sit, and a prefetched record screen now costs a render and nothing else.
  *
  * The route client rather than `signedInUser`, for the same reason as the other two endpoints. The
  * proxy does not run on `/api`, so this request is where an expired access token is discovered,
@@ -83,6 +88,43 @@ export const POST = async (request: NextRequest, context: { params: Promise<{ id
     );
   }
 
-  const outcome = await runCheck(claim);
-  return respond({ ok: true, view: checkView(outcome) }, 200);
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start: async (controller) => {
+      const send = (event: CheckEvent) => controller.enqueue(encoder.encode(encodeEvent(event)));
+      let sent = 0;
+      try {
+        const now = new Date();
+        const outcome = await runCheck(claim, now, {
+          onTraced: (check) => {
+            earlySteps(claim, check, now).forEach((step, index) => {
+              send({ type: 'step', index, step });
+            });
+            sent = EARLY_STEPS;
+          },
+        });
+        const view = checkView(outcome);
+        // An expired claim asks DNS nothing, so its early steps were never sent.
+        view.steps.slice(sent).forEach((step, offset) => {
+          send({ type: 'step', index: sent + offset, step });
+        });
+        // The row as the check left it, with when it ran and who serves the zone.
+        const fresh = await claimForOwner(claim.id, user.id).catch(() => null);
+        send({ type: 'done', view, claim: fresh === null ? null : toClaimDTO(fresh) });
+      } catch {
+        send({ type: 'error', error: 'unavailable' });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return applyCookies(
+    new NextResponse(stream, {
+      headers: {
+        'content-type': 'application/x-ndjson; charset=utf-8',
+        'cache-control': 'no-store',
+      },
+    }),
+  );
 };

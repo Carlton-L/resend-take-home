@@ -44,7 +44,17 @@ export type Check = {
  * the fake resolver is unreachable from any name that could be, and the switch that enables it
  * cannot be used to verify a domain someone else owns.
  */
-export const checkClaim = async (claim: Claim, now: Date = new Date()): Promise<Check> => {
+/**
+ * Called once DNS has answered, before the second look and the write. The streamed check sends
+ * steps 01 and 02 from here, since nothing after the trace changes them.
+ */
+export type CheckHooks = { onTraced?: (check: Check) => void };
+
+export const checkClaim = async (
+  claim: Claim,
+  now: Date = new Date(),
+  hooks: CheckHooks = {},
+): Promise<Check> => {
   // A claim still trying to prove itself, whose token has run out, cannot be proved by anything in
   // DNS, so asking would spend a query on a question already answered by the row. A claim that
   // holds its name is past this: verifying does not clear `expires_at`, so every name held longer
@@ -68,6 +78,7 @@ export const checkClaim = async (claim: Claim, now: Date = new Date()): Promise<
 
   const trace = await traceName(resolver, queriedName, { timeoutMs: DEFAULT_TIMEOUT_MS });
   const result = evaluateClaim(trace, claim, now);
+  hooks.onTraced?.({ trace, result });
 
   // A second look, only on a failure and only for the two reasons a probe can speak to. The trace
   // layer stays a pure description of what DNS holds at one name; asking a second question about a
@@ -89,8 +100,12 @@ export type ClaimOutcome = Check & ClaimAfterCheck;
  * the provider line at the foot all render from, so the three cannot disagree. It runs once per
  * request to the check endpoint, which is the only caller.
  */
-export const runCheck = async (claim: Claim, now: Date = new Date()): Promise<ClaimOutcome> => {
-  const { trace, result } = await checkClaim(claim, now);
+export const runCheck = async (
+  claim: Claim,
+  now: Date = new Date(),
+  hooks: CheckHooks = {},
+): Promise<ClaimOutcome> => {
+  const { trace, result } = await checkClaim(claim, now, hooks);
   const write = await recordCheck(claim, result, now);
 
   // An expired claim asked DNS nothing, so there is nothing observed to write.

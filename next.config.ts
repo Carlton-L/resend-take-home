@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
    * the network and this has no meaning in a build.
    */
   allowedDevOrigins: process.env.DEV_ORIGIN ? [process.env.DEV_ORIGIN] : [],
+  /** Claiming moved to the domains screen. Old links to the claim form land there. */
+  redirects: async () => [{ source: '/claim', destination: '/domains', permanent: false }],
 };
 
 export default nextConfig;
