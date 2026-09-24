@@ -6,7 +6,14 @@
   domain picker in the breadcrumb does its job.
 */
 @custom-variant rail (@media (min-width: 721px) and (hover: hover));
-@custom-variant norail (@media (max-width: 720px), (hover: none));
+@custom-variant norail {
+  @media (max-width: 720px) {
+    @slot;
+  }
+  @media (hover: none) {
+    @slot;
+  }
+}
 
 /* The page measure shared by the top bar and every screen. */
 @utility page-wrap {

@@ -5,6 +5,8 @@ type OperatorProps = {
   label: string;
   /** The small chip after the label: a count, or what kind of card it is. */
   badge?: React.ReactNode;
+  /** Controls after the label and badge. The header wraps when they don't fit on one line. */
+  controls?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   /** For an animation the card plays, such as the shine. */
@@ -15,6 +17,7 @@ type OperatorProps = {
 const Operator: React.FC<OperatorProps> = ({
   label,
   badge,
+  controls,
   children,
   className = '',
   onAnimationEnd,
@@ -24,7 +27,9 @@ const Operator: React.FC<OperatorProps> = ({
     onAnimationEnd={onAnimationEnd}
     className={`relative rounded-[7px] border border-line bg-surface ${className}`}
   >
-    <div className='flex h-10 items-center gap-2.5 border-line border-b px-[18px] max-[720px]:px-3.5'>
+    <div
+      className={`flex items-center gap-2.5 border-line border-b px-[18px] max-[720px]:px-3.5 ${controls === undefined ? 'h-10' : 'min-h-10 flex-wrap gap-y-2 py-[7px]'}`}
+    >
       <span className='font-medium font-mono text-[10.5px] text-fg-3 uppercase leading-none tracking-[0.12em]'>
         {label}
       </span>
@@ -33,6 +38,7 @@ const Operator: React.FC<OperatorProps> = ({
           {badge}
         </span>
       )}
+      {controls}
     </div>
     {children}
   </section>

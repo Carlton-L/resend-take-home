@@ -2,11 +2,12 @@
 'use client';
 
 import type React from 'react';
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { shell } from '@/client/shellStore';
 import { domainsCopy } from '@/lib/copy/domains';
+import AttentionNotice from '@/screens/DomainsScreen/AttentionNotice';
 import ClaimInput from '@/screens/DomainsScreen/ClaimInput';
-import ClaimsList from '@/screens/DomainsScreen/ClaimsList';
+import ClaimsList, { ClaimsListSkeleton } from '@/screens/DomainsScreen/ClaimsList';
 import ReleasedNotice from '@/screens/DomainsScreen/ReleasedNotice';
 
 /** The list of claims, and where a new one starts. */
@@ -20,7 +21,11 @@ const DomainsScreen: React.FC = () => {
         {domainsCopy.heading}
       </h1>
       <ClaimInput />
-      <ClaimsList />
+      {/* The filter and sort live in the URL, which a static page only reads in the browser. */}
+      <Suspense fallback={<ClaimsListSkeleton />}>
+        <AttentionNotice />
+        <ClaimsList />
+      </Suspense>
       <ReleasedNotice />
     </div>
   );

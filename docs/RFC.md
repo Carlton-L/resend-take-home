@@ -473,15 +473,20 @@ second opinion.
 - The keep-the-record line on a verified claim is a warning with a bold lead. It is the one thing on
   that screen the person could get wrong.
 - A claim is released from its own screen, from the header menu.
-- The list has no Refresh. It refetches when the window regains focus and after every claim or
-  release. It still runs no check.
+- Refresh on the list reads the list again and runs no check. The list also reads again when the
+  window regains focus and after every claim or release. A note on Refresh says a claim is checked
+  on its own screen.
 - The primary action is signal green, as in the design.
 - A tinted check row carries a 3px stripe in its tone and the fix panel prints the state word.
   The two tints are both near black, and for red-green colour vision the red and the amber drift
   together, so the glyph was carrying the state alone. Wrong and attention now share amber.
-- The list has no filter or sort. Newest first. The pill words come from the row: Waiting for
-  record, Action needed, Expired, Verified, At risk. The list can't tell which wrong record a claim
-  has, so it doesn't name one. The claim screen does.
+- The list filters by the word on the pill and sorts three ways, with the choice in the URL. The
+  chips carry counts. The pill words are the list's labels from before the rebuild: Pending,
+  Verified, Action needed, At risk, Expired. The list can't tell which wrong record a claim has, so
+  it doesn't name one. The claim screen does.
+- The list sorts needs-attention first by default, stable, so newest still leads in each group.
+  A notice above the list counts the claims that need the person. Show filters to them, and presses
+  their chip when they share one word.
 - Claiming needs JavaScript. The input checks the name as it is typed, and the new row plays in
   the list before the claim opens.
 - The claim route has its own error boundary. A throw reading the claim keeps the way back to

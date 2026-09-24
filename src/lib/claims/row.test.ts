@@ -43,9 +43,9 @@ describe('formatDay', () => {
 });
 
 describe('claimRowView', () => {
-  it('shows a pending claim as waiting, with when it was added', () => {
+  it('shows a pending claim as Pending, waiting, with when it was added', () => {
     expect(claimRowView(claim(), NOW)).toEqual({
-      word: 'Waiting for record',
+      word: 'Pending',
       tone: 'wait',
       badge: 'clock',
       detail: 'Added 3 days ago',

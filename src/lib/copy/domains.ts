@@ -1,9 +1,9 @@
 // src/lib/copy/domains.ts
 
 /**
- * Strings for the app shell and the domains screen. The words on the status pills come from the
- * row alone, because the list runs no check: it cannot tell which wrong record a claim has, only
- * that it has one.
+ * Strings for the app shell and the domains screen. The words on the status pills are the list's
+ * labels from before the rebuild, and come from the row alone: the list runs no check, so it can
+ * tell that a claim has a wrong record but not which one.
  */
 export const domainsCopy = {
   brand: 'DomainClaim',
@@ -44,7 +44,7 @@ export const domainsCopy = {
 
   /** A pill says the state. The text beside it says the one date that goes with it. */
   row: {
-    waiting: 'Waiting for record',
+    pending: 'Pending',
     verified: 'Verified',
     actionNeeded: 'Action needed',
     atRisk: 'At risk',

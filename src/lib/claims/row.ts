@@ -86,7 +86,7 @@ export const claimRowView = (claim: ClaimDTO, now: Date): ClaimRowView => {
         };
       }
       return {
-        word: copy.waiting,
+        word: copy.pending,
         tone: 'wait',
         badge: 'clock',
         detail: copy.added(formatAgo(since(claim.issuedAt, now))),
