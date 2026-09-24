@@ -101,7 +101,14 @@ export const parseDate = (value: string | null): Date | null =>
  * What each endpoint answers. A typed value on both ends, the same pattern as `CheckResponse`. The
  * HTTP status is set to match, so logs read right, and the client reads this.
  */
-export type MeResponse = { ok: true; email: string } | { ok: false; error: 'signed_out' };
+export type MeResponse =
+  | {
+      ok: true;
+      email: string;
+      /** Whether `.test` demo names are accepted here, so the input can check them as you type. */
+      testNamespace: boolean;
+    }
+  | { ok: false; error: 'signed_out' };
 
 export type ClaimsResponse =
   | { ok: true; claims: ClaimDTO[] }

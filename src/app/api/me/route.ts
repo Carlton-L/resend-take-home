@@ -2,6 +2,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { supabaseRouteClient } from '@/lib/auth/supabase/route';
 import type { MeResponse } from '@/lib/claims/dto';
+import { testNamespaceEnabled } from '@/lib/dns/testNames';
 
 export const runtime = 'nodejs';
 
@@ -24,5 +25,5 @@ export const GET = async (request: NextRequest) => {
   if (!email) {
     return respond({ ok: false, error: 'signed_out' }, 401);
   }
-  return respond({ ok: true, email }, 200);
+  return respond({ ok: true, email, testNamespace: testNamespaceEnabled() }, 200);
 };
