@@ -1,0 +1,60 @@
+/* Spike only. The two transition candidates, same motion in both. */
+
+@keyframes spike-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@keyframes spike-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes spike-out-left {
+  to {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes spike-out-right {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+/* React ViewTransition classes. */
+::view-transition-new(.spike-from-right) {
+  animation: spike-in-right 220ms ease-out both;
+}
+::view-transition-new(.spike-from-left) {
+  animation: spike-in-left 220ms ease-out both;
+}
+::view-transition-old(.spike-to-left) {
+  animation: spike-out-left 160ms ease-in both;
+}
+::view-transition-old(.spike-to-right) {
+  animation: spike-out-right 160ms ease-in both;
+}
+
+/* CSS keyed mode. Enter only; the old screen is gone as soon as the new one commits. */
+.spike-enter-right {
+  animation: spike-in-right 220ms ease-out both;
+}
+.spike-enter-left {
+  animation: spike-in-left 220ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-new(*),
+  ::view-transition-old(*),
+  .spike-enter-right,
+  .spike-enter-left {
+    animation: none;
+  }
+}
