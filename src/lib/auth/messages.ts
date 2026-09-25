@@ -13,28 +13,37 @@ import { SIGN_IN_LINK_TTL_MINUTES } from '@/lib/auth/config';
 export const signInCopy = {
   form: {
     heading: 'Sign in',
-    label: 'Email address',
-    submit: 'Send sign in link',
+    brand: 'DomainClaim',
+    headline: 'Prove you own your domain.',
+    sub: 'Sign in, then add one TXT record at your DNS provider.',
+    github: 'Continue with GitHub',
+    or: 'or',
+    label: 'Email',
+    placeholder: 'you@company.com',
+    submit: 'Email me a link',
     submitting: 'Sending',
   },
   invalidEmail: {
-    title: 'Enter a valid email address',
-    description: 'The address must be in the form name@example.com.',
-    action: 'Correct the address and send again.',
+    message: 'Enter an email address, like you@company.com.',
   },
   sent: {
-    title: 'Check your email',
+    label: 'Sign in · email',
+    badge: 'Sent',
+    title: 'Check your inbox',
     description: (email: string) =>
-      `A sign in link was sent to ${email}. It expires in ${SIGN_IN_LINK_TTL_MINUTES} minutes.`,
-    resend: 'Send another link',
-    resendIn: (seconds: number) => `Send another link in ${seconds}s`,
-    changeAddress: 'Use a different address',
+      `We sent a sign in link to ${email}. It works for ${SIGN_IN_LINK_TTL_MINUTES} minutes.`,
+    resend: 'Resend link',
+    resendIn: (seconds: number) => `Resend in ${seconds}s`,
+    resent: 'Sent again',
+    changeAddress: 'Use a different email',
   },
   unavailable: {
     title: 'The link could not be sent',
     description: 'The email was not sent.',
     action: 'Try again in a moment.',
   },
+  /** Back from GitHub without a session: a cancelled consent screen or a refused code. */
+  oauthFailed: 'GitHub sign in did not finish. Try again, or use an email link.',
   confirm: {
     title: 'Signing you in',
     description: (email: string) => `Signing in as ${email}. If nothing happens, press Sign in.`,
