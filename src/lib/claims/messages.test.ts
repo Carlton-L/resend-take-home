@@ -46,10 +46,9 @@ const everyString: string[] = [
   ...Object.values(claimCopy.create.tooMany),
   ...Object.values(claimCopy.create.unavailable),
   ...Object.values(claimCopy.create.invalid),
-  claimCopy.demo.heading,
-  claimCopy.demo.description,
-  ...Object.values(claimCopy.demo.columns),
-  ...Object.values(claimCopy.demo.outcome).flatMap((outcome) => [outcome.label, outcome.line]),
+  claimCopy.demo.button,
+  claimCopy.demo.menu,
+  ...claimCopy.demo.names.flatMap((item) => [item.label, item.line]),
   claimCopy.list.nav,
   claimCopy.list.heading,
   claimCopy.list.intro,
@@ -287,8 +286,16 @@ describe('claim copy', () => {
 
 describe('the demo list', () => {
   it('says what every scripted name does', () => {
+    const listed = claimCopy.demo.names.map((item) => item.name);
     for (const name of testNames()) {
-      expect(claimCopy.demo.outcome[name]).toBeDefined();
+      expect(listed).toContain(name);
+    }
+  });
+
+  it('lists only names that have a script', () => {
+    const scripted = testNames();
+    for (const { name } of claimCopy.demo.names) {
+      expect(scripted).toContain(name);
     }
   });
 });

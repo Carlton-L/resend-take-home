@@ -15,6 +15,7 @@ import { claimPath, DOMAINS_PATH } from '@/lib/claims/config';
 import { claimCopy } from '@/lib/claims/messages';
 import { domainsCopy } from '@/lib/copy/domains';
 import { type ClaimInputState, readClaimInput } from '@/lib/domain/claimInput';
+import DemoNames from '@/screens/DomainsScreen/DemoNames';
 
 /** The line under the input. `refused` is what the server said after a submit. */
 type Message = { kind: 'state'; state: ClaimInputState } | { kind: 'refused'; text: string };
@@ -223,6 +224,19 @@ const ClaimInput: React.FC = () => {
           </button>
         </form>
         <Line message={message} submitted={submitted} />
+        {/* Held open until the account is known, so the card doesn't grow when the menu arrives. */}
+        {me === undefined ? (
+          <div aria-hidden='true' className='mt-1.5 h-6' />
+        ) : (
+          me.testNamespace && (
+            <DemoNames
+              onPick={(name) => {
+                onChange(name);
+                inputRef.current?.focus();
+              }}
+            />
+          )
+        )}
       </div>
     </Operator>
   );

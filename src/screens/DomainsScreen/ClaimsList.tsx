@@ -162,22 +162,36 @@ const Row: React.FC<{
   );
 };
 
-/** While the list loads: rows of the same height, so nothing moves when it arrives. */
+/**
+ * While the list loads: rows of the same height, so nothing moves when it arrives. On a phone a row
+ * is two lines, the name and the pill under it.
+ */
 const Skeleton: React.FC = () => (
   <>
     {[0, 1, 2].map((key) => (
       <li key={key} aria-hidden='true' className='border-line border-t first:border-t-0'>
-        <div className='flex h-16 items-center gap-4 px-[18px]'>
+        <div className='flex h-16 items-center gap-4 px-[18px] max-[720px]:h-20 max-[720px]:pl-4'>
           <span className='size-9 flex-none rounded-[7px] bg-surface-2' />
-          <span className='h-3.5 w-40 rounded bg-surface-2' />
+          <span className='flex flex-col gap-2.5'>
+            <span className='h-3.5 w-40 rounded bg-surface-2' />
+            <span className='hidden h-5 w-20 rounded-full bg-surface-2 max-[720px]:block' />
+          </span>
         </div>
       </li>
     ))}
   </>
 );
 
+/** The chips' line on a phone, held while the list loads. */
+const ChipsSkeleton: React.FC = () => (
+  <span aria-hidden='true' className='order-3 hidden h-6 w-full gap-1.5 max-[720px]:flex'>
+    <span className='h-6 w-14 rounded-full bg-surface-2' />
+    <span className='h-6 w-20 rounded-full bg-surface-2' />
+  </span>
+);
+
 const CHIP =
-  'inline-flex h-6 items-center gap-1.5 rounded-full border px-[9px] text-xs leading-none transition-colors focus-visible:outline-2 focus-visible:outline-wait focus-visible:outline-offset-2';
+  'inline-flex h-6 flex-none whitespace-nowrap items-center gap-1.5 rounded-full border px-[9px] text-xs leading-none transition-colors focus-visible:outline-2 focus-visible:outline-wait focus-visible:outline-offset-2';
 const CHIP_ON = 'border-signal/45 bg-signal-soft text-signal';
 const CHIP_OFF = 'border-line-control text-fg-3 hover:border-line-2 hover:text-fg';
 
@@ -245,8 +259,10 @@ const ClaimsList: React.FC = () => {
 
   const controls = (
     <>
-      {rows !== null && rows.length > 0 && (
-        <fieldset className='ml-1.5 flex flex-wrap gap-1.5 max-[720px]:order-3 max-[720px]:ml-0 max-[720px]:w-full'>
+      {rows === null && <ChipsSkeleton />}
+      {/* On a phone the chips are one line that scrolls sideways, so the header is one height. */}
+      {rows !== null && (
+        <fieldset className='ml-1.5 flex flex-wrap gap-1.5 max-[720px]:order-3 max-[720px]:ml-0 max-[720px]:w-full max-[720px]:flex-nowrap max-[720px]:overflow-x-auto max-[720px]:[scrollbar-width:none] max-[720px]:[&::-webkit-scrollbar]:hidden'>
           <legend className='sr-only'>{copy.filter.label}</legend>
           <button
             type='button'
@@ -368,7 +384,19 @@ const ClaimsList: React.FC = () => {
 
 /** What shows before the list can render, including while the URL is read at build time. */
 export const ClaimsListSkeleton: React.FC = () => (
-  <Operator label={domainsCopy.list.card} badge={<span className='invisible'>0</span>}>
+  <Operator
+    label={domainsCopy.list.card}
+    badge={<span className='invisible'>0</span>}
+    controls={
+      <>
+        <ChipsSkeleton />
+        <span aria-hidden='true' className='ml-auto flex items-center gap-2'>
+          <span className='h-7 w-[150px] rounded-[7px] bg-surface-2' />
+          <span className='h-7 w-[84px] rounded-[7px] bg-surface-2' />
+        </span>
+      </>
+    }
+  >
     <ul aria-busy='true'>
       <Skeleton />
     </ul>

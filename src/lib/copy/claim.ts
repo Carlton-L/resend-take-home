@@ -60,6 +60,16 @@ export const claimScreenCopy = {
     stoppedShort: 'Automatic checks stopped',
   },
 
+  /** How long something lasted: "under a minute", "12 min", "3 hours", "2 days". */
+  lasted: {
+    underMinute: 'under a minute',
+    minutes: (n: number) => `${n} min`,
+    hour: 'an hour',
+    hours: (n: number) => `${n} hours`,
+    day: 'a day',
+    days: (n: number) => `${n} days`,
+  },
+
   ago: {
     now: 'just now',
     seconds: (n: number) => `${n}s ago`,
@@ -86,7 +96,6 @@ export const claimScreenCopy = {
     waitingTitle: 'No record found yet',
     waitingText: 'New records usually appear within a few minutes of saving.',
     findRegistrar: 'Find your registrar',
-    copyValue: 'Copy value',
   },
 
   verified: {
@@ -94,6 +103,8 @@ export const claimScreenCopy = {
     /** Softened until verified claims are checked on a schedule. */
     line: 'Keep the TXT record in place. Removing it puts the claim at risk.',
     riskTitle: 'Verified, now at risk',
+    /** On the check that took the claim out of at risk, with how long the record was missing. */
+    recovered: (downFor: string) => `Recovered. The record was missing for ${downFor}.`,
     riskLine: (when: string, name: string) =>
       `The record is missing since ${when}. Add it back to keep ${name}.`,
     back: 'Back to domains',

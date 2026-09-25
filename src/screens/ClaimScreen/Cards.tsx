@@ -5,7 +5,6 @@ import Link from 'next/link';
 import type React from 'react';
 import { forwardRef, useId, useState } from 'react';
 import type { ShownStep } from '@/client/check/checkReducer';
-import ClipboardButton from '@/components/ClipboardButton/ClipboardButton';
 import CopyValue from '@/components/CopyValue/CopyValue';
 import Operator from '@/components/Operator/Operator';
 import Tip from '@/components/Tip/Tip';
@@ -24,7 +23,10 @@ type Badge = { text: string; tone: 'neutral' | 'good' | 'wait' | 'warn' };
 export type Place = 'past' | 'current';
 
 const cardClass = (place: Place) =>
-  `transition-[opacity,filter] duration-350 ease-out-soft ${place === 'past' ? 'card-past' : 'border-[#2e2e33]'}`;
+  `rounded-[9px] transition-[opacity,filter] duration-350 ease-out-soft focus:outline-none focus-visible:outline-2 focus-visible:outline-wait focus-visible:outline-offset-4 ${place === 'past' ? 'card-past' : 'border-[#2e2e33]'}`;
+
+/** A card takes focus after Check now, so the keyboard follows the check to where it lands. */
+const focusable = (label: string) => ({ tabIndex: -1, role: 'group', 'aria-label': label });
 
 /** The badge on a card that holds steps: what those steps are doing now. */
 export const rowBadge = (steps: ShownStep[], idle: Badge): Badge => {
@@ -68,7 +70,7 @@ export const NameserversCard = forwardRef<HTMLDivElement, NameserversCardProps>(
     const badge = rowBadge(steps, { text: claimScreenCopy.badge.queued, tone: 'neutral' });
     const passed = steps.every((step) => step.state === 'done');
     return (
-      <div ref={ref} className={cardClass(place)}>
+      <div ref={ref} className={cardClass(place)} {...focusable(claimScreenCopy.cards.nameservers)}>
         <Operator
           label={claimScreenCopy.cards.nameservers}
           badge={badge.text}
@@ -108,7 +110,7 @@ export const RecordCard = forwardRef<HTMLDivElement, RecordCardProps>(
     const { record, dnsHost, dnsPanelUrl } = claim;
 
     return (
-      <div ref={ref} className={cardClass(place)}>
+      <div ref={ref} className={cardClass(place)} {...focusable(screen.cards.record)}>
         <Operator
           label={screen.cards.record}
           badge={screen.badge.txt}
@@ -249,7 +251,7 @@ export const CheckCard = forwardRef<HTMLDivElement, CheckCardProps>(
         ? { text: copy.live, tone: 'good' as const }
         : { text: copy.live, tone: found.tone };
     return (
-      <div ref={ref} className={cardClass(place)}>
+      <div ref={ref} className={cardClass(place)} {...focusable(claimScreenCopy.cards.check)}>
         <Operator
           label={claimScreenCopy.cards.check}
           // Only on the current card. A past check card on a verified claim has nothing live to say.
@@ -274,6 +276,8 @@ type VerifiedCardProps = {
   claim: ClaimDetailDTO;
   /** Plays the verified moment. Only when it happens while the screen is open. */
   celebrate: boolean;
+  /** How long the record was missing, when a check this visit took the claim out of at risk. */
+  recoveredAfter?: string | null;
 };
 
 const CheckMark: React.FC = () => (
@@ -290,12 +294,16 @@ const CheckMark: React.FC = () => (
 );
 
 export const VerifiedCard = forwardRef<HTMLDivElement, VerifiedCardProps>(
-  ({ place, claim, celebrate }, ref) => {
+  ({ place, claim, celebrate, recoveredAfter = null }, ref) => {
     const copy = claimScreenCopy.verified;
     const risk = claim.status === 'at_risk';
     const since = claim.failingSince === null ? '' : formatDay(new Date(claim.failingSince));
     return (
-      <div ref={ref} className={`${cardClass(place)} ${celebrate ? 'celebrate' : ''}`}>
+      <div
+        ref={ref}
+        className={`${cardClass(place)} ${celebrate ? 'celebrate' : ''}`}
+        {...focusable(claimScreenCopy.cards.verified)}
+      >
         <Operator
           label={claimScreenCopy.cards.verified}
           badge={risk ? claimScreenCopy.badge.atRisk : claimScreenCopy.badge.output}
@@ -321,6 +329,9 @@ export const VerifiedCard = forwardRef<HTMLDivElement, VerifiedCardProps>(
               <h2 className='mb-1 font-semibold text-xl tracking-[-0.015em]'>
                 {risk ? copy.riskTitle : copy.title(claim.name)}
               </h2>
+              {!risk && recoveredAfter !== null && (
+                <p className='mb-1 text-[13px] text-signal'>{copy.recovered(recoveredAfter)}</p>
+              )}
               <p className='mb-3.5 text-fg-3'>
                 {risk ? copy.riskLine(since, claim.name) : copy.line}
               </p>
@@ -337,13 +348,3 @@ export const VerifiedCard = forwardRef<HTMLDivElement, VerifiedCardProps>(
   },
 );
 VerifiedCard.displayName = 'VerifiedCard';
-
-/** The value to copy, as a small button in a result block. */
-export const CopyValueButton: React.FC<{ value: string }> = ({ value }) => (
-  <ClipboardButton
-    value={value}
-    label={claimCopy.record.valueLabel}
-    variant='button'
-    text={claimScreenCopy.result.copyValue}
-  />
-);

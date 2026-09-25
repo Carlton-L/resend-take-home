@@ -170,7 +170,8 @@ the contest.
 DNS. An expired pending claim asks nothing, so it moves neither.
 
 `check_attempts`, one row per check we agreed to run, which is what the check limit counts. Rows are
-pruned by the statement that counts them.
+pruned by the statement that counts them. No foreign key to `claims`: the rows outlive a released
+claim, so releasing and claiming again does not start the count over.
 
 `checks` and `transfers` are designed here and not built. `checks` held the full trace of every
 check for a history nothing renders, and the timeline turned out not to need it: the steps are
@@ -194,8 +195,8 @@ created a minute past its expiry, the one fixture set at creation rather than in
 another account needs a second account. A script that succeeds returns the value the caller is
 looking for, so a demo claim verifies rather than reporting a mismatch against a fixed token. Off by default, and `.test` stays refused as a
 special-use name. On for the preview and the submitted deployment. Documented in the README. Each
-name lands with the slice that can produce its reason, and the claim screen lists the ones that
-exist.
+name lands with the slice that can produce its reason. Demo names, under the claim input, lists
+them.
 
 A global switch would be a hole. Anyone who found it could verify any domain. `.test` is never a
 real claim, so the fake resolver cannot be reached by a name that could be.
@@ -348,7 +349,9 @@ second opinion.
   link cannot display one address while carrying a token for another.
 - Sign in sends are limited per address, per IP and globally, counted in Postgres.
 - Every state-changing post refuses a request whose Origin is not the host it arrived on: claim,
-  check, release, and sign in. Sign in was the one without it. It sends mail and creates an
+  check, release, sign in, sign out and the email link's confirm. On confirm, another site could
+  otherwise post a valid link for its own address and sign the visitor in as that account. Sign in
+  was the first one without it. It sends mail and creates an
   account for the address it is given, so a page on another site could have driven it, bounded
   only by the limits. The cookie is SameSite=Lax already; this is the second mechanism.
 - A tripped limit returns the same screen as a successful send and sends nothing, so the endpoint
@@ -397,7 +400,8 @@ second opinion.
   disappears.
 - A check that fails to run is not a check that failed. Limited, unavailable, offline, signed out
   and released each get the four part message minus the DNS value, and four of the five are
-  answered by the button that is already there.
+  answered by the button that is already there. The message shows on the card the person is on.
+  The timer keeps the time of the last answer, so a refused check never reads as checked.
 - The timeline stores nothing. `last_checked_at` would buy one string the client can produce
   truthfully from its own last answer, and a stored check has no reader until history is rendered.
 - `check_attempts` is its own table rather than a kind column on `sign_in_attempts`. That table
@@ -426,7 +430,11 @@ second opinion.
 - Step labels are steps rather than statements. "Record found" can only be true, so it contradicts
   its own glyph.
 - The check card opens once a check finds something at the name, or on Check now, and stays open.
-  Before that there is nothing in it to act on, and the record card is the next move.
+  Before that there is nothing in it to act on, and the record card is the next move. Check now on
+  a check stopped at the zone or its nameservers runs card 01 again and leaves the check card shut.
+- After Check now, focus moves to the card the check runs in, then to the card it lands on. When
+  that is the record card, the next Tab reaches the copy controls.
+- A failure with a value to paste carries Open DNS beside the value, for hosts we link to.
 - The four part message moves into the step that produced it and the separate failure box is
   deleted. A tooltip has no touch equivalent; a modal hides the record while telling you to use it.
 - Control proved against a name another account holds is a status rather than a failure. The person
@@ -493,9 +501,10 @@ second opinion.
   is prefetched. Screens are client components that fetch from `/api` with SWR, and show a
   skeleton of the same height until the data arrives.
 - A list row is one line on desktop. Below 900px the date goes. Below 720px the pill moves under
-  the name and the host goes.
-- The demo names are a table: name with its copy control, outcome in the chain's words, and what
-  the script does. Three things are said about every name and a reader compares down a column.
+  the name and the host goes, and the filter chips are one line that scrolls sideways. The loading
+  rows and chips line match those heights.
+- Demo names is a small menu under the claim input, shown where the namespace is on. Each name
+  has its outcome in a pill and one line on what the script does. Picking one fills the field.
 - The theme is a token block in `globals.css` and nothing else names a colour, radius or face. Dark
   only. Three tones: signal green for held, passed and the primary action, cyan for waiting and
   focus, amber for the person's move. There is no red.
@@ -621,9 +630,9 @@ second opinion.
 - A record that answers again takes the claim back to `verified` and clears `failing_since`.
   `verified_at` does not move. The account has held the name since it first proved it, and a record
   coming back is not a second proof of ownership.
-- The check that recovers a claim says so. Going quietly back to Verified leaves the person who has
-  just fixed their zone reading a screen that says nothing about what they did, which is the same
-  ambiguity as a chain that disappears.
+- The check that recovers a claim says so, with how long the record was missing. Going quietly back
+  to Verified leaves the person who has just fixed their zone reading a screen that says nothing
+  about what they did, which is the same ambiguity as a chain that disappears.
 - The list row says how long a name has been failing, and no other row carries a date. The status
   word says what is true and the date says how long it has been true, which is the part a person
   weighs and the number the grace window will count from. The full timestamp with its UTC suffix,
@@ -681,7 +690,7 @@ second opinion.
 | Reason | Title | Next action | Test |
 | --- | --- | --- | --- |
 | `record_not_found` | No record found yet | Add the record below. | `record-not-found.test`, `other-txt.test` |
-| `record_not_found`, on a claim that holds the name | The record is missing | Add the record below back in {host}. | `flaky.test`, second check |
+| `record_not_found`, on a claim that holds the name | The record is missing | Add the record from the card above back in {host}. | `flaky.test`, second check |
 | `no_txt_at_name` | The name exists but has no TXT record | Keep it, and add the TXT record beside it. | `no-txt-at-name.test` |
 | `cname_at_name` | | | |
 | `value_mismatch` | The TXT record has a different value | Replace the value in {host} with the one below. | `value-mismatch.test` |

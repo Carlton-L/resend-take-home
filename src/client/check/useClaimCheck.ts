@@ -138,10 +138,10 @@ export const useClaimCheck = (
     abort.current = controller;
     const pace = reducedMotion() ? 0 : STEP_MS;
 
+    // `lastAt` stays on the last answer. A check that did not run is not a check that happened.
     const fail = (error: CheckError) => {
       dispatch({ type: 'fail', error });
       checksDone.current += 1;
-      setLastAt(Date.now());
       // Refused by the limit or gone: asking again on a timer can't help.
       if (error === 'limited' || error === 'not_found') {
         clearTimer();

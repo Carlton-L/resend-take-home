@@ -43,77 +43,93 @@ export const claimCopy = {
     },
   },
 
-  /** Only rendered where the demo namespace is switched on. Off, `.test` is refused at input. */
+  /**
+   * The demo names menu under the claim input. Only rendered where the demo namespace is switched
+   * on. Off, `.test` is refused at input. Listed in the order a reviewer would try them.
+   */
   demo: {
-    heading: 'Demo names',
-    description:
-      'These names resolve against a scripted resolver, so every outcome can be reached without a real domain. Claim one like any other name.',
-    /** Column headings for the table of names. */
-    columns: { name: 'Name', outcome: 'Outcome', script: 'What the resolver does' },
-    /** What each name is scripted to do, so the outcome can be checked against the screen. */
-    outcome: {
-      'verified.test': { tone: 'good', label: 'Verifies', line: 'on the first check.' },
-      'record-not-found.test': {
-        tone: 'neutral',
-        label: 'Waits',
-        line: 'the zone answers and has no record at the name.',
-      },
-      'no-txt-at-name.test': {
-        tone: 'attention',
-        label: 'Needs a change',
-        line: 'the name exists with no TXT record on it.',
-      },
-      'appended-zone.test': {
-        tone: 'attention',
-        label: 'Needs a change',
-        line: 'the record is at the name with the zone appended a second time.',
-      },
-      'nameservers-unreachable.test': {
-        tone: 'neutral',
-        label: 'Waits',
-        line: 'no nameserver answers inside the deadline.',
-      },
-      'zone-not-found.test': {
-        tone: 'attention',
-        label: 'Needs a change',
-        line: 'no nameservers at any level.',
-      },
-      'one-dead-nameserver.test': {
+    button: 'Demo names',
+    menu: 'Demo names. Pick one to fill the field.',
+    names: [
+      {
+        name: 'verified.test',
         tone: 'good',
         label: 'Verifies',
-        line: 'one of three servers hangs, the other two answer, no warning.',
+        line: 'All three nameservers return the record.',
       },
-      'crowded-name.test': {
-        tone: 'good',
-        label: 'Verifies',
-        line: 'our record sits beside an SPF record and a Google one at the same name.',
-      },
-      'value-mismatch.test': {
-        tone: 'attention',
-        label: 'Needs a change',
-        line: 'a TXT record is there with another token.',
-      },
-      'other-txt.test': {
+      {
+        name: 'record-not-found.test',
         tone: 'neutral',
         label: 'Waits',
-        line: "another service has a TXT record at the name and ours isn't there.",
+        line: 'The zone answers. Nothing is at the name yet.',
       },
-      'flaky.test': {
+      {
+        name: 'value-mismatch.test',
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'A TXT record is there with another token.',
+      },
+      {
+        name: 'appended-zone.test',
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'The record landed with the domain added twice.',
+      },
+      {
+        name: 'no-txt-at-name.test',
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'The name exists with no TXT record on it.',
+      },
+      {
+        name: 'other-txt.test',
+        tone: 'neutral',
+        label: 'Waits',
+        line: "Another service's TXT record is at the name. Ours isn't.",
+      },
+      {
+        name: 'crowded-name.test',
+        tone: 'good',
+        label: 'Verifies',
+        line: 'The record sits beside SPF and Google records.',
+      },
+      {
+        name: 'one-dead-nameserver.test',
+        tone: 'good',
+        label: 'Verifies',
+        line: 'One of three nameservers hangs. The other two answer.',
+      },
+      {
+        name: 'zone-not-found.test',
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'No nameservers at any level.',
+      },
+      {
+        name: 'nameservers-unreachable.test',
+        tone: 'neutral',
+        label: 'Waits',
+        line: 'No nameserver answers inside the deadline.',
+      },
+      {
+        name: 'slow-nameservers.test',
+        tone: 'neutral',
+        label: 'Waits',
+        line: 'The nameservers answer after the deadline.',
+      },
+      {
+        name: 'expired.test',
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'Created with its token already expired.',
+      },
+      {
+        name: 'flaky.test',
         tone: 'neutral',
         label: 'Flips',
-        line: 'the record comes and goes on each check: verified, then at risk, then recovered.',
+        line: 'Verifies. Reopen it for At risk, then Check now to recover.',
       },
-      'expired.test': {
-        tone: 'attention',
-        label: 'Needs a change',
-        line: 'created with its token already expired.',
-      },
-      'slow-nameservers.test': {
-        tone: 'neutral',
-        label: 'Waits',
-        line: 'the servers are alive and slower than the deadline.',
-      },
-    } as Record<string, { tone: 'good' | 'neutral' | 'attention'; label: string; line: string }>,
+    ] as { name: string; tone: 'good' | 'neutral' | 'attention'; label: string; line: string }[],
   },
 
   /** The domain list. Every claim this account has, with no check run on any of them. */
@@ -729,7 +745,7 @@ export const describeFailure = (
           record: { label: 'Looked for', values: [reason.queriedName] },
           description: `The nameservers no longer return the record this claim was verified with. Common causes: a DNS migration, or a record removed during cleanup.${cacheNote}`,
           copyable: null,
-          action: `Add the record below back in ${panel}.`,
+          action: `Add the record from the card above back in ${panel}.`,
         };
       }
 

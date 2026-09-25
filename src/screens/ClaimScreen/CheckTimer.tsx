@@ -71,8 +71,10 @@ const CheckTimer: React.FC<CheckTimerProps> = ({ running, nextAt, lastAt, stoppe
     return null;
   }
 
+  // Off inside whatever live region holds it. The count changes every second, and a screen reader
+  // would read every one.
   return (
-    <>
+    <span aria-live='off'>
       <span className='font-mono text-[12px] text-fg-3 tabular-nums max-[720px]:hidden'>
         {wide}
       </span>
@@ -83,7 +85,7 @@ const CheckTimer: React.FC<CheckTimerProps> = ({ running, nextAt, lastAt, stoppe
       >
         {showLast && checked !== null ? checked : first}
       </button>
-    </>
+    </span>
   );
 };
 

@@ -4,6 +4,7 @@ import { appOrigin, DEFAULT_SIGNED_IN_PATH, LINK_DEAD_PATH } from '@/lib/auth/co
 import { safeNextPath } from '@/lib/auth/nextPath';
 import { confirmLinkSignatureValid } from '@/lib/auth/secrets';
 import { supabaseRouteClient } from '@/lib/auth/supabase/route';
+import { isSameOrigin } from '@/lib/http/sameOrigin';
 
 export const runtime = 'nodejs';
 
@@ -16,8 +17,18 @@ export const runtime = 'nodejs';
  *
  * 303 so the browser follows the redirect with a GET. A 302 after a POST leaves the method to the
  * browser, and some will repeat the POST.
+ *
+ * Same origin only. Another site could otherwise post a valid link for its own address and sign
+ * the visitor in as that account.
  */
 export const POST = async (request: NextRequest) => {
+  if (!isSameOrigin(request)) {
+    return new NextResponse('This request did not come from a page on this site.', {
+      status: 403,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    });
+  }
+
   const form = await request.formData().catch(() => null);
   const tokenHash = form?.get('token_hash');
   const email = form?.get('email');

@@ -4,7 +4,15 @@
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSWRConfig } from 'swr';
 import { CLAIMS_KEY, claimKey, createClaim, releaseClaim } from '@/client/api';
 import { probeIndex, type ShownStep, stoppedIn } from '@/client/check/checkReducer';
@@ -23,7 +31,6 @@ import { claimScreenCopy } from '@/lib/copy/claim';
 import { BUTTON } from '@/screens/ClaimScreen/buttons';
 import {
   CheckCard,
-  CopyValueButton,
   NameserversCard,
   type Place,
   RecordCard,
@@ -53,6 +60,24 @@ const clockTime = (at: number): string =>
   new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** "12 min", "3 hours", "2 days". */
+const lasted = (ms: number): string => {
+  const copy = claimScreenCopy.lasted;
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) {
+    return copy.underMinute;
+  }
+  if (minutes < 60) {
+    return copy.minutes(minutes);
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return hours === 1 ? copy.hour : copy.hours(hours);
+  }
+  const days = Math.floor(hours / 24);
+  return days === 1 ? copy.day : copy.days(days);
+};
 
 /** The notices above the record: a name another account holds, a reissued token. */
 const RecordNotes: React.FC<{ claim: ClaimDetailDTO }> = ({ claim }) => {
@@ -112,14 +137,24 @@ const ClaimScreen: React.FC = () => {
     }
   }, [claim, state.steps]);
 
-  // The verified moment, only when it happens while the screen is open.
+  // The verified moment, only when it happens while the screen is open. A claim that comes back
+  // from at risk says how long its record was missing, read from the row before the check cleared it.
   const lastStatus = useRef<string | null>(null);
+  const failingSince = useRef<string | null>(null);
+  const [recoveredAfter, setRecoveredAfter] = useState<string | null>(null);
   useEffect(() => {
     if (claim === undefined) {
       return;
     }
     const before = lastStatus.current;
     lastStatus.current = claim.status;
+    if (before === 'at_risk' && claim.status === 'verified' && failingSince.current !== null) {
+      setRecoveredAfter(lasted(Date.now() - new Date(failingSince.current).getTime()));
+    }
+    if (claim.status === 'at_risk') {
+      setRecoveredAfter(null);
+    }
+    failingSince.current = claim.failingSince;
     if (before === 'pending' && claim.status === 'verified') {
       setCelebrate(true);
       const timer = setTimeout(() => setCelebrate(false), 1600);
@@ -178,6 +213,65 @@ const ClaimScreen: React.FC = () => {
     return () => cancelAnimationFrame(frame);
   }, [loaded, current, cardRefs]);
 
+  // A claim that recovers loses the failure in its check card while the page moves on to the
+  // verified card below it. That card would jump up by the failure's height. So the check card keeps
+  // its height until the scroll has carried it above the fold, then gives it back there, with the
+  // scroll moved by the same amount so nothing on screen moves.
+  const checkResultShown = useRef(false);
+  const checkHeight = useRef(0);
+  const holding = useRef(false);
+  useLayoutEffect(() => {
+    const card = ref2.current;
+    if (card === null) {
+      checkHeight.current = 0;
+      return;
+    }
+    if (holding.current) {
+      return;
+    }
+    const was = checkHeight.current;
+    const now = card.offsetHeight;
+    if (current !== 3 || checkResultShown.current || was <= now) {
+      checkHeight.current = now;
+      return;
+    }
+    card.style.minHeight = `${was}px`;
+    holding.current = true;
+    const release = () => {
+      const held = ref2.current;
+      const head = headRef.current;
+      if (held === null || head === null || !holding.current) {
+        return;
+      }
+      // Still on screen: letting go now would move what is under it.
+      if (held.getBoundingClientRect().bottom > TOP_BAR + head.offsetHeight) {
+        return;
+      }
+      window.removeEventListener('scrollend', release);
+      clearTimeout(timer);
+      const below = ref3.current;
+      const topBefore = below?.getBoundingClientRect().top ?? 0;
+      const before = held.offsetHeight;
+      held.style.minHeight = '';
+      const delta = before - held.offsetHeight;
+      holding.current = false;
+      checkHeight.current = held.offsetHeight;
+      const spacer = tailRef.current;
+      if (spacer !== null) {
+        spacer.style.height = `${spacer.offsetHeight + delta}px`;
+      }
+      // In the same frame, so the verified card never paints anywhere else. Scroll anchoring would
+      // do this a frame later and only in some browsers.
+      const moved = (below?.getBoundingClientRect().top ?? topBefore) - topBefore;
+      if (Math.abs(moved) >= 1) {
+        window.scrollBy({ top: moved, behavior: 'instant' });
+      }
+    };
+    // After the scroll to the verified card. `scrollend` is missing in older Safari.
+    const timer = setTimeout(release, 900);
+    window.addEventListener('scrollend', release);
+  });
+
   // After a check someone watched, bring its result into view. It sits under the steps, often
   // below the fold, and it holds the one thing to do next.
   const resultRef = useRef<HTMLDivElement>(null);
@@ -211,11 +305,33 @@ const ClaimScreen: React.FC = () => {
     return () => cancelAnimationFrame(frame);
   }, [state.running]);
 
+  // After Check now, focus follows the check: to the card it runs in, then to the card it lands on,
+  // which is the record card when the person has more to do there.
+  const focusFollows = useRef(false);
+
   const checkNow = useCallback(() => {
-    checkShownRef.current = true;
-    setCheckShown(true);
+    focusFollows.current = true;
+    // A check stopped at the zone or its nameservers runs again in card 01. There is nothing for
+    // the check card to show until that passes.
+    if (current !== 0) {
+      checkShownRef.current = true;
+      setCheckShown(true);
+    }
     check.checkNow();
-  }, [check]);
+  }, [check, current]);
+
+  useEffect(() => {
+    if (!focusFollows.current || !loaded) {
+      return;
+    }
+    if (state.running === null) {
+      focusFollows.current = false;
+    }
+    const frame = requestAnimationFrame(() => {
+      cardRefs[current]?.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loaded, current, state.running, cardRefs]);
 
   // An expired token is replaced on the same claim: claiming the name again reissues it.
   const [renewing, setRenewing] = useState(false);
@@ -347,10 +463,36 @@ const ClaimScreen: React.FC = () => {
     />
   );
 
-  // Card 01's result: the zone or its nameservers stopped the check.
+  // A check that could not run: limited, unavailable, offline, or the claim is gone. It says so on
+  // whichever card the person is on, and the claim's stored state stays as it was.
+  const errorNotice = (withButton: boolean) => {
+    if (state.error === null) {
+      return null;
+    }
+    const base =
+      state.error === 'not_found' ? claimCopy.check.missing : claimCopy.check[state.error];
+    // The limit says when checks resume, so nothing counts down to a check that will be refused.
+    const message =
+      state.error === 'limited' && check.resumeAt !== null
+        ? { ...base, action: claimCopy.check.limited.actionAt(clockTime(check.resumeAt)) }
+        : base;
+    return (
+      <FailureNotice
+        message={{ ...message, record: null, copyable: null }}
+        tone={state.error === 'limited' ? 'warn' : 'wait'}
+        actions={withButton && state.error !== 'not_found' ? checkButton(true) : null}
+      />
+    );
+  };
+  const errorOn: 0 | 1 | 2 | null =
+    state.error === null ? null : visible[2] ? 2 : current === 0 ? 0 : 1;
+
+  // Card 01's result: the zone or its nameservers stopped the check, or the check could not run.
   const nsStop = stoppedIn(state.steps, 0, 2);
   const nsResult =
-    claim === undefined || nsStop === null || nsStop.fix === null ? null : (
+    claim === undefined ? null : errorOn === 0 ? (
+      errorNotice(true)
+    ) : nsStop === null || nsStop.fix === null ? null : (
       <FailureNotice
         message={nsStop.fix}
         tone={nsStop.state === 'wait' ? 'wait' : 'warn'}
@@ -388,21 +530,8 @@ const ClaimScreen: React.FC = () => {
     if (claim === undefined) {
       return null;
     }
-    if (state.error !== null) {
-      const base =
-        state.error === 'not_found' ? claimCopy.check.missing : claimCopy.check[state.error];
-      // The limit says when checks resume, so nothing counts down to a check that will be refused.
-      const message =
-        state.error === 'limited' && check.resumeAt !== null
-          ? { ...base, action: claimCopy.check.limited.actionAt(clockTime(check.resumeAt)) }
-          : base;
-      return (
-        <FailureNotice
-          message={{ ...message, record: null, copyable: null }}
-          tone={state.error === 'limited' ? 'warn' : 'wait'}
-          actions={state.error === 'not_found' ? null : checkButton(true)}
-        />
-      );
+    if (errorOn === 2) {
+      return errorNotice(true);
     }
     if (live) {
       const copy = claimScreenCopy.result;
@@ -453,31 +582,38 @@ const ClaimScreen: React.FC = () => {
       <FailureNotice
         message={stop.fix}
         tone={stop.state === 'wait' ? 'wait' : 'warn'}
-        actions={
-          <>
-            <CopyValueButton value={claim.record.value} />
-            {checkButton(true)}
-          </>
+        panel={
+          claim.dnsPanelUrl === null || claim.dnsHost === null
+            ? null
+            : { url: claim.dnsPanelUrl, label: claimScreenCopy.header.openDns(claim.dnsHost) }
         }
+        actions={checkButton(true)}
       />
     );
   })();
 
   const gate =
     claim !== undefined && !holdsTheName(claim.status) ? (
-      <div className='mt-4 flex flex-wrap items-center gap-4'>
-        {checkButton(false)}
-        {limitOver ? (
-          timer
-        ) : (
-          <span className='font-mono text-[12px] text-fg-3'>
-            {check.resumeAt === null
-              ? claimCopy.check.limited.action
-              : claimScreenCopy.result.resumesAt(clockTime(check.resumeAt))}
-          </span>
-        )}
-      </div>
+      <>
+        {errorOn === 1 && <div className='mt-4'>{errorNotice(false)}</div>}
+        <div className='mt-4 flex flex-wrap items-center gap-4'>
+          {checkButton(false)}
+          {limitOver ? (
+            timer
+          ) : (
+            <span className='font-mono text-[12px] text-fg-3'>
+              {check.resumeAt === null
+                ? claimCopy.check.limited.action
+                : claimScreenCopy.result.resumesAt(clockTime(check.resumeAt))}
+            </span>
+          )}
+        </div>
+      </>
+    ) : errorOn === 1 && claim !== undefined ? (
+      <div className='mt-4'>{errorNotice(true)}</div>
     ) : null;
+
+  checkResultShown.current = checkResult !== null;
 
   const layoutKey = `${visible.join()}-${current}-${state.steps.map((s) => s.state).join()}-${state.error}-${live}`;
 
@@ -552,7 +688,13 @@ const ClaimScreen: React.FC = () => {
         )}
         {claim !== undefined && visible[3] && (
           <div className='enter-up'>
-            <VerifiedCard ref={ref3} place={place(3)} claim={claim} celebrate={celebrate} />
+            <VerifiedCard
+              ref={ref3}
+              place={place(3)}
+              claim={claim}
+              celebrate={celebrate}
+              recoveredAfter={recoveredAfter}
+            />
           </div>
         )}
       </div>
