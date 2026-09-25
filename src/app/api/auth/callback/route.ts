@@ -1,6 +1,6 @@
 // src/app/api/auth/callback/route.ts
 import { type NextRequest, NextResponse } from 'next/server';
-import { appOrigin, DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH } from '@/lib/auth/config';
+import { DEFAULT_SIGNED_IN_PATH, SIGN_IN_PATH } from '@/lib/auth/config';
 import { safeNextPath } from '@/lib/auth/nextPath';
 import { supabaseRouteClient } from '@/lib/auth/supabase/route';
 
@@ -15,7 +15,8 @@ export const runtime = 'nodejs';
  * and a stale tab look the same, and the next step for all of them is to start again.
  */
 export const GET = async (request: NextRequest) => {
-  const origin = appOrigin();
+  // Same host as the one sign in started on, which is where the session cookie has to land.
+  const origin = request.nextUrl.origin;
   const params = request.nextUrl.searchParams;
   const code = params.get('code');
   const next = safeNextPath(params.get('next'));

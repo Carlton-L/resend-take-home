@@ -126,7 +126,7 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
   and sign out answer JSON to a fetch and a 303 to a form post, until the old screens are gone
 - Server modules import `server-only`, so importing one from a client file fails the build
 - The proxy sends a signed out request for an app page to sign in, and a signed in request for `/`
-  or `/signin` to the list. Every route still checks the session itself
+  to the list. Every route still checks the session itself
 - One way in to the resolver: a claim this account owns. The public trace route that the DNS slice
   shipped with is deleted, since it let anyone aim our nameserver queries at any zone, as often as
   they liked, with no account and no ceiling
@@ -567,8 +567,9 @@ second opinion.
   a malformed one with an error rather than an empty result.
 - Sign in lands on the list, always. A rule that routes by how many claims an account has puts a
   person somewhere different on their second visit, and the empty list is the first run screen.
-- The home page is the signed out landing and nothing else. A signed in account asking for it is
-  redirected to the list, where Claim a domain is, and it is also at the top of the sidebar.
+- Sign in is the home page. One screen explains the product and signs you in, so the way in is one
+  click from the first page. `/signin` redirects there. A signed in account asking for it is
+  redirected to the list.
 - The list runs no check. A row's state is the claim's own, read from the database, so opening the
   list costs one query whatever is in it. A check belongs where someone has gone to act on it.
 - Each check that asks DNS stores when it finished and who serves the zone (`last_checked_at`,

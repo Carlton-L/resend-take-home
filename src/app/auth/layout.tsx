@@ -1,14 +1,15 @@
 // src/app/auth/layout.tsx
 import type React from 'react';
-import LegacyFrame from '@/components/LegacyFrame/LegacyFrame';
+import SignedOutFrame from '@/components/SignedOutFrame/SignedOutFrame';
+import { signInCopy } from '@/lib/auth/messages';
 
 type Props = {
   children: React.ReactNode;
 };
 
-/** Signed out pages keep the old header until sign in is rebuilt. */
+/** The pages an email link opens: the confirm page and the dead link page. */
 const Layout: React.FC<Props> = ({ children }) => (
-  <LegacyFrame email={null}>{children}</LegacyFrame>
+  <SignedOutFrame crumb={signInCopy.form.heading}>{children}</SignedOutFrame>
 );
 
 export default Layout;
