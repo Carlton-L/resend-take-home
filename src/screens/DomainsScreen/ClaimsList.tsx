@@ -34,7 +34,7 @@ const Row: React.FC<{ claim: ClaimDTO; view: ClaimRowView; isNew: boolean }> = (
     >
       <Link href={claimPath(claim.id)} className={ROW}>
         <span className='max-[720px]:row-span-2 max-[720px]:self-center'>
-          <Favicon badge={view.badge} ring='row' />
+          <Favicon badge={view.badge} ring='row' claimId={claim.id} />
         </span>
         <span className='min-w-0'>
           <b className='block truncate font-medium text-base text-fg'>{claim.name}</b>
