@@ -269,6 +269,20 @@ const ClaimScreen: React.FC = () => {
     }
   };
 
+  // The pill is read on its own only on arrival. When a check changes the claim's state, say it.
+  const [announced, setAnnounced] = useState('');
+  const lastWord = useRef<string | null>(null);
+  const viewWord = state.view?.status.label ?? null;
+  useEffect(() => {
+    if (viewWord === null || claim === undefined) {
+      return;
+    }
+    if (lastWord.current !== null && lastWord.current !== viewWord) {
+      setAnnounced(`${claim.name}: ${viewWord}`);
+    }
+    lastWord.current = viewWord;
+  }, [viewWord, claim]);
+
   if (error !== undefined && claim === undefined) {
     return (
       <div className='page-wrap pt-[92px] max-[720px]:pt-7'>
@@ -543,6 +557,9 @@ const ClaimScreen: React.FC = () => {
         )}
       </div>
       <div ref={tailRef} aria-hidden='true' />
+      <p aria-live='polite' className='sr-only'>
+        {announced}
+      </p>
 
       {claim !== undefined && (
         <ReleaseDialog

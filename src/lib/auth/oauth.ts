@@ -2,7 +2,7 @@
 import { safeNextPath } from '@/lib/auth/nextPath';
 
 /**
- * The providers the sign in screen offers. Each is enabled in Supabase with its own OAuth app.
+ * The providers the home page offers. Each is enabled in Supabase with its own OAuth app.
  * GitHub only: the people claiming a domain here have a GitHub account, and a second provider is
  * a second app to keep registered for no one new.
  */

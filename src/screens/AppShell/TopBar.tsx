@@ -62,7 +62,7 @@ const Who: React.FC = () => {
 
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  // No reload: the sign in screen is static, so it can open at once. The cache is cleared first,
+  // No reload: the home page is static, so it can open at once. The cache is cleared first,
   // so the next account to sign in on this tab never sees this one's claims.
   const leave = async () => {
     await signOut();
