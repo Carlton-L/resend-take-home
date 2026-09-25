@@ -107,7 +107,11 @@ const Rail: React.FC = () => {
                   aria-label={view === null ? claim.name : `${claim.name}, ${view.word}`}
                   className={`group/row flex h-12 w-full items-center gap-3 px-2.5 transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-2 focus-visible:outline-wait focus-visible:-outline-offset-2 ${active ? 'bg-surface-2' : ''}`}
                 >
-                  <Favicon badge={view?.badge ?? null} ring={active ? 'surface-2' : 'row'} />
+                  <Favicon
+                    badge={view?.badge ?? null}
+                    ring={active ? 'surface-2' : 'row'}
+                    claimId={claim.id}
+                  />
                   <span className={`flex min-w-0 flex-1 flex-col ${fade}`}>
                     <b className='truncate font-medium text-[13px] text-fg'>{claim.name}</b>
                     <span className={`truncate text-[11.5px] ${view ? TONE_TEXT[view.tone] : ''}`}>

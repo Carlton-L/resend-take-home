@@ -311,6 +311,12 @@ second opinion.
 - Nameserver addresses that are not globally reachable are refused before the query is sent. The
   zone picks its own nameservers, so without this a stranger's zone can have us probe loopback,
   private and link-local addresses on the network we run on. IANA special-purpose list, IPv4 only.
+- Favicons come through our own route, `/api/favicon/[id]`, for names the account has claimed
+  only. It fetches `/favicon.ico`, then the icons the home page links to. Every hop is checked: http
+  or https, the default port, a public IPv4 address, at most two redirects. The request is pinned
+  to the checked address, so a second DNS answer can't point it somewhere else. Two seconds a
+  request, five in all, 256KB, raster images only: an SVG could run script from our origin. A miss
+  is a 404 and the globe. Kept by the browser for a day, a miss for an hour.
 - The outcome names the nameserver that answered fastest. Others may hold the record too; the
   per-server rows are where that shows.
 - Auth email sent by us through the Resend SDK, not by Supabase SMTP. The product needs

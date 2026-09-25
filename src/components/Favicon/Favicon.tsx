@@ -1,5 +1,8 @@
 // src/components/Favicon/Favicon.tsx
+'use client';
+
 import type React from 'react';
+import { useState } from 'react';
 import type { Badge } from '@/lib/claims/row';
 
 type FaviconProps = {
@@ -11,9 +14,17 @@ type FaviconProps = {
    * parent with `group/row` from surface to surface-2 on hover.
    */
   ring?: 'surface' | 'surface-2' | 'row';
+  /** The claim whose site icon to show. Without one, or until it loads, the globe stands in. */
+  claimId?: string;
 };
 
-/** Stands in for a site's own icon until favicons are fetched. */
+/**
+ * What each claim's icon turned out to be, for this tab. A list re-renders often, and without this
+ * every row would show the globe for a moment before the cached icon loaded again.
+ */
+const known = new Map<string, 'ok' | 'none'>();
+
+/** Stands in for a site's own icon, before it loads and when the site has none. */
 const Globe: React.FC = () => (
   <svg
     aria-hidden='true'
@@ -75,20 +86,46 @@ const RING = {
  * A claim's icon, with a badge only while the claim needs something: an hourglass while it waits,
  * a triangle when it is wrong or at risk. Decorative: the name and the status word carry it.
  */
-const Favicon: React.FC<FaviconProps> = ({ badge, size = 36, ring = 'surface' }) => (
-  <span
-    aria-hidden='true'
-    className={`relative grid flex-none place-items-center ${size === 36 ? 'size-9' : 'size-7'}`}
-  >
-    <Globe />
-    {badge !== null && (
-      <span
-        className={`absolute right-0.5 bottom-0.5 grid size-[15px] place-items-center rounded-full bg-bg ${RING[ring]} ${badge === 'clock' ? 'text-wait' : 'text-warn'}`}
-      >
-        {badge === 'clock' ? <Clock /> : <Warn />}
-      </span>
-    )}
-  </span>
-);
+const Favicon: React.FC<FaviconProps> = ({ badge, size = 36, ring = 'surface', claimId }) => {
+  const [result, setResult] = useState(claimId === undefined ? 'none' : known.get(claimId));
+  const icon = size === 36 ? 20 : 16;
+  return (
+    <span
+      aria-hidden='true'
+      className={`relative grid flex-none place-items-center ${size === 36 ? 'size-9' : 'size-7'}`}
+    >
+      {result !== 'ok' && <Globe />}
+      {claimId !== undefined && result !== 'none' && (
+        // A plain img: the route answers with a cached image or a 404, which falls back to the globe.
+        // biome-ignore lint/performance/noImgElement: a same-origin 20px icon needs no image pipeline
+        <img
+          src={`/api/favicon/${claimId}`}
+          alt=''
+          width={icon}
+          height={icon}
+          loading='lazy'
+          decoding='async'
+          onLoad={() => {
+            known.set(claimId, 'ok');
+            setResult('ok');
+          }}
+          onError={() => {
+            known.set(claimId, 'none');
+            setResult('none');
+          }}
+          className={`rounded-[4px] ${result === 'ok' ? '' : 'absolute opacity-0'}`}
+          style={{ width: icon, height: icon }}
+        />
+      )}
+      {badge !== null && (
+        <span
+          className={`absolute right-0.5 bottom-0.5 grid size-[15px] place-items-center rounded-full bg-bg ${RING[ring]} ${badge === 'clock' ? 'text-wait' : 'text-warn'}`}
+        >
+          {badge === 'clock' ? <Clock /> : <Warn />}
+        </span>
+      )}
+    </span>
+  );
+};
 
 export default Favicon;

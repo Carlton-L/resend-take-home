@@ -69,9 +69,14 @@ const DomainPicker: React.FC<DomainPickerProps> = ({ currentId, currentName }) =
                 key={claim.id}
                 href={claimPath(claim.id)}
                 onClick={close}
-                className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none ${claim.id === currentId ? 'bg-surface-2' : ''}`}
+                className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-2 focus-visible:outline-wait focus-visible:-outline-offset-2 ${claim.id === currentId ? 'bg-surface-2' : ''}`}
               >
-                <Favicon badge={view?.badge ?? null} size={28} ring='surface-2' />
+                <Favicon
+                  badge={view?.badge ?? null}
+                  size={28}
+                  ring='surface-2'
+                  claimId={claim.id}
+                />
                 <span className='flex min-w-0 flex-col'>
                   <b className='truncate font-medium text-[13px] text-fg'>{claim.name}</b>
                   <span className={`truncate text-[11.5px] ${view ? TONE_TEXT[view.tone] : ''}`}>
