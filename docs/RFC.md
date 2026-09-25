@@ -327,6 +327,11 @@ second opinion.
   does and would spend a single use link. A scanner does not submit a form.
 - Sign in with GitHub, through Supabase OAuth, or an email link. No Google: the people claiming a
   domain here have GitHub, and a second provider is a second app to keep registered.
+- A GitHub sign in that doesn't finish goes back to sign in with a note, and keeps `next`.
+- The sign in screen plays a demo: a small copy of the app claiming one name, built from the real
+  cards with made-up data. It runs in a frame at 780px wide, so the app's own layout rules see a
+  desktop at any screen size. It stops while the tab is hidden and holds its last frame with
+  reduced motion.
 - The confirm page posts its own form with a script as it loads, so the link is one click. Most
   scanners fetch without running scripts and stop at the page. A sandbox that runs scripts, like
   Safe Links detonation, can still spend it; the person then asks for a new link. The token stays
