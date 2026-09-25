@@ -325,6 +325,12 @@ second opinion.
   accepts one, so the user never sees a supabase.co URL.
 - Sign in links render on GET and are redeemed on POST. Scanners fetch links before the person
   does and would spend a single use link. A scanner does not submit a form.
+- Sign in with GitHub, through Supabase OAuth, or an email link. No Google: the people claiming a
+  domain here have GitHub, and a second provider is a second app to keep registered.
+- The confirm page posts its own form with a script as it loads, so the link is one click. Most
+  scanners fetch without running scripts and stop at the page. A sandbox that runs scripts, like
+  Safe Links detonation, can still spend it; the person then asks for a new link. The token stays
+  single use. With scripts off, the button is still there.
 - A dead link in a browser already signed in as that address continues to the destination. The
   person asked to be signed in as someone and they are, so an error would be about the token.
 - The confirmation page names the account being signed in to, and that address is signed, so a

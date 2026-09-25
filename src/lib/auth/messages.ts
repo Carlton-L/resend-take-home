@@ -36,8 +36,8 @@ export const signInCopy = {
     action: 'Try again in a moment.',
   },
   confirm: {
-    title: 'Sign in to DomainClaim',
-    description: (email: string) => `Continue as ${email}.`,
+    title: 'Signing you in',
+    description: (email: string) => `Signing in as ${email}. If nothing happens, press Sign in.`,
     submit: 'Sign in',
     note: 'This link works once.',
   },

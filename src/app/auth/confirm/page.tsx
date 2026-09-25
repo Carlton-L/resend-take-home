@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import type React from 'react';
+import AutoSubmit from '@/components/AutoSubmit/AutoSubmit';
 import { DEFAULT_SIGNED_IN_PATH, LINK_DEAD_PATH } from '@/lib/auth/config';
 import { signInCopy } from '@/lib/auth/messages';
 import { safeNextPath } from '@/lib/auth/nextPath';
@@ -21,9 +22,10 @@ const single = (value: string | string[] | undefined): string | null =>
   typeof value === 'string' ? value : null;
 
 /**
- * Rendered on GET, redeemed on POST. This page spends nothing: it shows which account is about to
- * be signed in to and gives one button. A scanner that fetches the link sees this and stops, so
- * the token survives until a person clicks.
+ * Rendered on GET, redeemed on POST. The page spends nothing itself. In a browser a script posts
+ * the form as it loads, so the email link signs in with one click. A scanner that fetches the link
+ * without running scripts sees this page and stops, so the token survives for the person. With
+ * scripts off, the button does the same thing.
  *
  * The address shown here comes out of the link, so it is signed. Without that signature anyone
  * could send someone a link holding their own valid token alongside a display of the recipient's
@@ -62,7 +64,12 @@ const ConfirmPage: React.FC<ConfirmPageProps> = async ({ searchParams }) => {
       <div className='flex max-w-md flex-col gap-6'>
         <h1 className='font-medium text-2xl tracking-tight'>{signInCopy.confirm.title}</h1>
         <p className='text-fg-2 leading-relaxed'>{signInCopy.confirm.description(email)}</p>
-        <form method='post' action='/api/auth/confirm' className='flex flex-col gap-3'>
+        <form
+          id='confirm-sign-in'
+          method='post'
+          action='/api/auth/confirm'
+          className='flex flex-col gap-3'
+        >
           <input type='hidden' name='token_hash' value={tokenHash} />
           <input type='hidden' name='email' value={email} />
           <input type='hidden' name='sig' value={signature} />
@@ -75,6 +82,7 @@ const ConfirmPage: React.FC<ConfirmPageProps> = async ({ searchParams }) => {
           </button>
         </form>
         <p className='text-fg-3 text-sm'>{signInCopy.confirm.note}</p>
+        <AutoSubmit formId='confirm-sign-in' />
       </div>
     </main>
   );
