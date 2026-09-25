@@ -59,6 +59,14 @@ const SignInScreen: React.FC = () => {
   );
   const [cooldown, setCooldown] = useState(0);
   const [resent, setResent] = useState(false);
+  // Leaving for GitHub takes a moment. Coming back with the back button restores this page from
+  // the browser's cache as it was, so the waiting state is cleared then.
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    const reset = () => setLeaving(false);
+    window.addEventListener('pageshow', reset);
+    return () => window.removeEventListener('pageshow', reset);
+  }, []);
 
   useEffect(() => {
     if (cooldown <= 0) {
@@ -184,10 +192,19 @@ const SignInScreen: React.FC = () => {
         <div className='flex flex-col gap-2.5 max-[900px]:order-5'>
           <a
             href={github}
-            className={`${BUTTON.regular} h-[42px] justify-start px-4 text-[13.5px]`}
+            onClick={() => setLeaving(true)}
+            aria-busy={leaving}
+            className={`${BUTTON.regular} h-[42px] justify-start px-4 text-[13.5px] ${leaving ? 'pointer-events-none' : ''}`}
           >
-            <GitHubIcon />
-            {copy.form.github}
+            {leaving ? (
+              <span
+                aria-hidden='true'
+                className='size-4 flex-none animate-spin rounded-full border-2 border-line-control border-t-signal motion-reduce:animate-none'
+              />
+            ) : (
+              <GitHubIcon />
+            )}
+            {leaving ? copy.form.githubLeaving : copy.form.github}
           </a>
         </div>
         <div

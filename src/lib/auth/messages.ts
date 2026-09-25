@@ -17,6 +17,7 @@ export const signInCopy = {
     headline: 'Prove you own your domain.',
     sub: 'Sign in, then add one TXT record at your DNS provider.',
     github: 'Continue with GitHub',
+    githubLeaving: 'Opening GitHub',
     or: 'or',
     label: 'Email',
     placeholder: 'you@company.com',
@@ -45,12 +46,17 @@ export const signInCopy = {
   /** Back from GitHub without a session: a cancelled consent screen or a refused code. */
   oauthFailed: 'GitHub sign in did not finish. Try again, or use an email link.',
   confirm: {
+    label: 'Sign in · email',
+    badge: 'Link',
     title: 'Signing you in',
-    description: (email: string) => `Signing in as ${email}. If nothing happens, press Sign in.`,
+    description: (email: string) => `Signing in as ${email}.`,
     submit: 'Sign in',
-    note: 'This link works once.',
+    /** Only with scripts off, where the page can't sign in on its own. */
+    note: 'Press Sign in to continue. This link works once.',
   },
   dead: {
+    label: 'Sign in · email',
+    badge: 'Expired',
     title: 'This link no longer works',
     description: `Sign in links work once, expire after ${SIGN_IN_LINK_TTL_MINUTES} minutes, and are replaced when a new one is sent.`,
     action: 'Send a new link',
