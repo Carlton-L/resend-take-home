@@ -328,7 +328,7 @@ second opinion.
 - Sign in with GitHub, through Supabase OAuth, or an email link. No Google: the people claiming a
   domain here have GitHub, and a second provider is a second app to keep registered.
 - A GitHub sign in that doesn't finish goes back to sign in with a note, and keeps `next`.
-- The sign in screen plays a demo: a small copy of the app claiming one name, built from the real
+- The home page plays a demo: a small copy of the app claiming one name, built from the real
   cards with made-up data. It runs in a frame at 780px wide, so the app's own layout rules see a
   desktop at any screen size. It stops while the tab is hidden and holds its last frame with
   reduced motion.
@@ -518,6 +518,18 @@ second opinion.
   it off part way to the node.
 - The header's second row is as tall as the Open DNS button before the button exists, so the first
   check naming the host doesn't move the page.
+- On a phone a row of steps scrolls sideways. Each column is as wide as its
+  longest label or answer, so text stays on one line, and the row scrolls to the step the check is
+  on. Fades at the edges say there is more.
+- A tip opens on tap as well as hover and focus. Safari doesn't focus a tapped button, so focus
+  alone never opened one on an iPhone. A tip moves sideways to stay on screen.
+- Sign out goes to the home page without a reload, and clears the cache first.
+- The attention notice on Domains slides open when the list loads, so the list moves down smoothly.
+  It can only appear once the claims are known.
+- Status messages sit in live regions that are on the page from the first render, so a screen
+  reader announces them when they change. A check that changes a claim's state says the new state.
+- The claim screen's loading header has the real header's heights, so the page doesn't move when
+  the claim arrives.
 - A claim is released from its own screen, with Release claim in the header. It is the only action
   there, so it is a button rather than a menu.
 - Refresh on the list reads the list again and runs no check. The list also reads again when the

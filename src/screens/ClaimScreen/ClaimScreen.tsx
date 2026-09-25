@@ -269,6 +269,20 @@ const ClaimScreen: React.FC = () => {
     }
   };
 
+  // The pill is read on its own only on arrival. When a check changes the claim's state, say it.
+  const [announced, setAnnounced] = useState('');
+  const lastWord = useRef<string | null>(null);
+  const viewWord = state.view?.status.label ?? null;
+  useEffect(() => {
+    if (viewWord === null || claim === undefined) {
+      return;
+    }
+    if (lastWord.current !== null && lastWord.current !== viewWord) {
+      setAnnounced(`${claim.name}: ${viewWord}`);
+    }
+    lastWord.current = viewWord;
+  }, [viewWord, claim]);
+
   if (error !== undefined && claim === undefined) {
     return (
       <div className='page-wrap pt-[92px] max-[720px]:pt-7'>
@@ -470,9 +484,16 @@ const ClaimScreen: React.FC = () => {
   return (
     <div className='page-wrap pb-6'>
       {claim === undefined ? (
-        <div className='pt-[92px] pb-[22px] max-[720px]:pt-7' aria-busy='true'>
-          <div className='h-[41px] w-64 rounded bg-surface-2' />
-          <div className='mt-2.5 h-4 w-80 rounded bg-surface-2' />
+        // The header's own heights, so nothing moves when the claim arrives: the name, the pill
+        // row on a phone, and the meta row as tall as the Open DNS button.
+        <div className='pt-[92px] pb-[22px] max-[720px]:pt-7 max-[720px]:pb-4' aria-busy='true'>
+          <div className='h-[41px] w-64 max-w-full rounded bg-surface-2 max-[720px]:h-7 max-[720px]:w-40' />
+          <div className='mt-2 hidden h-6 w-20 rounded-full bg-surface-2 max-[720px]:block' />
+          {/* On a phone the meta line usually wraps to two lines. */}
+          <div className='mt-2.5 flex h-7 flex-col justify-center gap-1.5 max-[720px]:mt-2 max-[720px]:h-10'>
+            <div className='h-4 w-80 max-w-full rounded bg-surface-2 max-[720px]:h-3.5' />
+            <div className='hidden h-3.5 w-40 rounded bg-surface-2 max-[720px]:block' />
+          </div>
         </div>
       ) : (
         <ClaimHeader
@@ -536,6 +557,9 @@ const ClaimScreen: React.FC = () => {
         )}
       </div>
       <div ref={tailRef} aria-hidden='true' />
+      <p aria-live='polite' className='sr-only'>
+        {announced}
+      </p>
 
       {claim !== undefined && (
         <ReleaseDialog

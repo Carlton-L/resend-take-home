@@ -2,8 +2,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type React from 'react';
+import { useSWRConfig } from 'swr';
 import { signOut } from '@/client/api';
 import { useClaims, useMe } from '@/client/queries';
 import { DOMAINS_PATH } from '@/lib/claims/config';
@@ -59,9 +60,14 @@ const Who: React.FC = () => {
   const { data: me } = useMe();
   const name = me === undefined ? '' : (me.email.split('@')[0] ?? '');
 
+  const router = useRouter();
+  const { mutate } = useSWRConfig();
+  // No reload: the home page is static, so it can open at once. The cache is cleared first,
+  // so the next account to sign in on this tab never sees this one's claims.
   const leave = async () => {
     await signOut();
-    window.location.assign('/');
+    await mutate(() => true, undefined, { revalidate: false });
+    router.replace('/');
   };
 
   return (

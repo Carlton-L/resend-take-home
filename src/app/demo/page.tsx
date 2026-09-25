@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** The sign in screen's demo, on its own page so a frame can show it at a desktop width. */
+/** The home page's demo, on its own page so a frame can show it at a desktop width. */
 const DemoPage: React.FC = () => <SignInDemo />;
 
 export default DemoPage;

@@ -389,6 +389,21 @@
   animation: blink 1s steps(1) infinite;
 }
 
+/* A notice that opens above a list, pushing it down smoothly rather than in one jump. */
+.notice-open {
+  animation: notice-open 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes notice-open {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
 /* A live dot that pings: the result block while checking, and the timer. */
 .live-dot {
   position: relative;
@@ -502,11 +517,20 @@
   .step.step-probe .step-node::before,
   .cable-pulse,
   .cable-pulse.cable-pulse-once,
+  .notice-open,
   .live-dot::after {
     animation: none;
   }
   .celebrate .verified-mark path {
     stroke-dashoffset: 0;
+  }
+  /* A pulse that can't travel says nothing, so it isn't drawn. */
+  .cable-pulse,
+  .demo-click {
+    display: none;
+  }
+  .demo-caret {
+    animation: none;
   }
   .card-past,
   .cable-fill {
