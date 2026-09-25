@@ -56,9 +56,6 @@ export const DOMAINS_PATH = '/domains';
 
 export const claimPath = (id: string): string => `${CLAIM_PATH}/${id}`;
 
-/** The record screen is the one page with the wider measure. */
-export const isRecordPath = (pathname: string): boolean => pathname.startsWith(`${CLAIM_PATH}/`);
-
 /** Where the record screen asks for a check. One constant, so the route and its caller agree. */
 export const claimCheckPath = (id: string): string => `/api/claims/${id}/check`;
 

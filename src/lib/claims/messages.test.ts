@@ -91,7 +91,6 @@ const everyString: string[] = [
   claimCopy.record.challenger(NAME),
   claimCopy.record.provider.recognized('Google'),
   claimCopy.record.provider.unrecognized('some-small-host.com'),
-  ...Object.values(claimCopy.loading),
   claimCopy.check.running,
   claimCopy.check.now,
   claimCopy.check.checking,

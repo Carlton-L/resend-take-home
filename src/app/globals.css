@@ -15,10 +15,17 @@
   }
 }
 
-/* The page measure shared by the top bar and every screen. */
+/*
+  The page measure shared by the top bar and every screen. Centred on the whole window on every
+  page, signed in or not, so moving between the home page and the app doesn't shift the content
+  sideways. Where the sidebar shows, the side margin clears it: 56px of sidebar and a 24px gap.
+*/
 @utility page-wrap {
   width: min(1040px, calc(100% - 48px));
   margin-inline: auto;
+  @media (min-width: 721px) and (hover: hover) {
+    width: min(1040px, calc(100% - 160px));
+  }
   @media (max-width: 720px) {
     width: calc(100% - 32px);
   }

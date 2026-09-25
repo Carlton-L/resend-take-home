@@ -17,7 +17,7 @@ export const metadata: Metadata = {
  * them on, and `next` is read and checked on the client with the same function the server uses.
  */
 const HomePage: React.FC = () => (
-  <SignedOutFrame crumb={signInCopy.form.heading}>
+  <SignedOutFrame crumb={signInCopy.form.brand}>
     <Suspense fallback={null}>
       <SignInScreen />
     </Suspense>
