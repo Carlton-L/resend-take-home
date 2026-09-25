@@ -126,17 +126,16 @@ export const claims = pgTable(
  * the per claim count impossible. Sharing one table would also mean two retention windows in one
  * prune and a kind test added to a statement that already works.
  *
- * `claim_id` cascades, because releasing a claim deletes the row and a foreign key with no cascade
- * would refuse that delete for the few minutes an attempt row survives.
+ * `claim_id` has no foreign key. Releasing a claim deletes its row, and a cascade would delete its
+ * attempts with it, so release, claim again and check would start both counts over. The attempts
+ * outlive the claim for the five minutes they count, and the prune removes them.
  */
 export const checkAttempts = pgTable(
   'check_attempts',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: uuid('owner_id').notNull(),
-    claimId: uuid('claim_id')
-      .notNull()
-      .references(() => claims.id, { onDelete: 'cascade' }),
+    claimId: uuid('claim_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

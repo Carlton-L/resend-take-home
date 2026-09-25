@@ -50,6 +50,13 @@
       "when": 1790289208940,
       "tag": "0006_bitter_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790328394549,
+      "tag": "0007_check_attempts_outlive_release",
+      "breakpoints": true
     }
   ]
 }
