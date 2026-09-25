@@ -2,6 +2,7 @@
 'use client';
 
 import type React from 'react';
+import { useEffect, useState } from 'react';
 import type { ShownStep } from '@/client/check/checkReducer';
 import Tip from '@/components/Tip/Tip';
 import { claimCopy } from '@/lib/claims/messages';
@@ -50,7 +51,33 @@ const stateWord = (state: ShownStep['state']): string =>
  * colour. A pulse runs along the segment being asked: once, arriving as the step lands, while a
  * check is revealed, and on a loop while a background check waits for its answer.
  */
+/**
+ * The step a background check is asking about, held until its pulse finishes the run it is on. A
+ * check often answers in a few hundred milliseconds, and dropping the pulse then cut it off part
+ * way along the cable.
+ */
+const useFinishedProbe = (probe: number | null) => {
+  const [shown, setShown] = useState(probe);
+  useEffect(() => {
+    if (probe !== null) {
+      setShown(probe);
+      return;
+    }
+    // Nothing plays with reduced motion, so there is no run to wait for.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShown(null);
+    }
+  }, [probe]);
+  const finished = () => {
+    if (probe === null) {
+      setShown(null);
+    }
+  };
+  return { shown, finished };
+};
+
 const StepRow: React.FC<StepRowProps> = ({ steps, from, probe }) => {
+  const held = useFinishedProbe(probe);
   const count = steps.length;
   const centre = (k: number) => (k + 0.5) * (100 / count);
 
@@ -69,9 +96,13 @@ const StepRow: React.FC<StepRowProps> = ({ steps, from, probe }) => {
       : null;
 
   const runAt = steps.findIndex((step) => step.state === 'run');
-  const pulseAt = runAt >= 0 ? runAt : probe === null ? -1 : probe - from;
+  const pulseAt = runAt >= 0 ? runAt : held.shown === null ? -1 : held.shown - from;
   const pulseStart = pulseAt <= 0 ? 0 : centre(pulseAt - 1);
-  const pulse = pulseAt >= 0 ? { left: pulseStart, width: centre(pulseAt) - pulseStart } : null;
+  // The probe index counts all five steps, so a probe in the other row lands outside this one.
+  const pulse =
+    pulseAt >= 0 && pulseAt < count
+      ? { left: pulseStart, width: centre(pulseAt) - pulseStart }
+      : null;
 
   return (
     <div className='pt-[26px] pb-1 max-[720px]:pt-5'>
@@ -97,7 +128,11 @@ const StepRow: React.FC<StepRowProps> = ({ steps, from, probe }) => {
               className='absolute top-0 h-full'
               style={{ left: `${pulse.left}%`, width: `${pulse.width}%` }}
             >
-              <span className={`cable-pulse ${runAt >= 0 ? 'cable-pulse-once' : ''}`} />
+              <span
+                className={`cable-pulse ${runAt >= 0 ? 'cable-pulse-once' : ''}`}
+                // A probe loops while the check runs, and stops at the end of the run it is on.
+                onAnimationIteration={runAt >= 0 ? undefined : held.finished}
+              />
             </span>
           )}
         </li>
