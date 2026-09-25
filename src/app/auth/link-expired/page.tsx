@@ -3,8 +3,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type React from 'react';
+import Operator from '@/components/Operator/Operator';
 import { SIGN_IN_PATH } from '@/lib/auth/config';
 import { signInCopy } from '@/lib/auth/messages';
+import { BUTTON } from '@/screens/ClaimScreen/buttons';
 
 export const metadata: Metadata = {
   title: 'Link expired',
@@ -17,19 +19,23 @@ export const metadata: Metadata = {
  * mean guessing at one.
  */
 const LinkExpiredPage: React.FC = () => {
+  const copy = signInCopy.dead;
   return (
-    <div className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-6 py-16 sm:py-24'>
-      {/* The page keeps the app's measure. A one field form does not, so it is capped inside it. */}
-      <div className='flex max-w-md flex-col gap-6'>
-        <h1 className='font-medium text-2xl tracking-tight'>{signInCopy.dead.title}</h1>
-        <p className='text-fg-2 leading-relaxed'>{signInCopy.dead.description}</p>
-        <Link
-          href={SIGN_IN_PATH}
-          className='w-fit rounded-md bg-primary px-4 py-2 font-medium text-on-primary text-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2'
-        >
-          {signInCopy.dead.action}
-        </Link>
-      </div>
+    <div className='page-wrap flex flex-1 items-center justify-center py-12'>
+      <Operator
+        label={copy.label}
+        badge={copy.badge}
+        badgeTone='warn'
+        className='w-[min(460px,100%)]'
+      >
+        <div className='px-[26px] pt-[26px] pb-[22px] max-[720px]:px-5'>
+          <h1 className='mb-2 font-semibold text-2xl tracking-[-0.02em]'>{copy.title}</h1>
+          <p className='mb-[22px] text-fg-3'>{copy.description}</p>
+          <Link href={SIGN_IN_PATH} className={BUTTON.primary}>
+            {copy.action}
+          </Link>
+        </div>
+      </Operator>
     </div>
   );
 };

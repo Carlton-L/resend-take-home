@@ -3,11 +3,13 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import type React from 'react';
 import AutoSubmit from '@/components/AutoSubmit/AutoSubmit';
+import Operator from '@/components/Operator/Operator';
 import { DEFAULT_SIGNED_IN_PATH, LINK_DEAD_PATH } from '@/lib/auth/config';
 import { signInCopy } from '@/lib/auth/messages';
 import { safeNextPath } from '@/lib/auth/nextPath';
 import { confirmLinkSignatureValid } from '@/lib/auth/secrets';
 import { signedInEmail } from '@/lib/auth/supabase/server';
+import { BUTTON } from '@/screens/ClaimScreen/buttons';
 
 export const metadata: Metadata = {
   title: 'Sign in',
@@ -23,7 +25,8 @@ const single = (value: string | string[] | undefined): string | null =>
 
 /**
  * Rendered on GET, redeemed on POST. The page spends nothing itself. In a browser a script posts
- * the form as it loads, so the email link signs in with one click. A scanner that fetches the link
+ * the form as it loads, so the email link signs in with one click, and the page shows a spinner
+ * for the moment that takes. A scanner that fetches the link
  * without running scripts sees this page and stops, so the token survives for the person. With
  * scripts off, the button does the same thing.
  *
@@ -55,32 +58,41 @@ const ConfirmPage: React.FC<ConfirmPageProps> = async ({ searchParams }) => {
     redirect(next ?? DEFAULT_SIGNED_IN_PATH);
   }
 
+  const copy = signInCopy.confirm;
   return (
-    <div className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-6 py-16 sm:py-24'>
-      {/* The page keeps the app's measure. A one field form does not, so it is capped inside it. */}
-      <div className='flex max-w-md flex-col gap-6'>
-        <h1 className='font-medium text-2xl tracking-tight'>{signInCopy.confirm.title}</h1>
-        <p className='text-fg-2 leading-relaxed'>{signInCopy.confirm.description(email)}</p>
-        <form
-          id='confirm-sign-in'
-          method='post'
-          action='/api/auth/confirm'
-          className='flex flex-col gap-3'
-        >
-          <input type='hidden' name='token_hash' value={tokenHash} />
-          <input type='hidden' name='email' value={email} />
-          <input type='hidden' name='sig' value={signature} />
-          {next !== null && <input type='hidden' name='next' value={next} />}
-          <button
-            type='submit'
-            className='w-fit rounded-md bg-primary px-4 py-2 font-medium text-on-primary text-sm transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2'
-          >
-            {signInCopy.confirm.submit}
-          </button>
-        </form>
-        <p className='text-fg-3 text-sm'>{signInCopy.confirm.note}</p>
-        <AutoSubmit formId='confirm-sign-in' />
-      </div>
+    <div className='page-wrap flex flex-1 items-center justify-center py-12'>
+      <Operator
+        label={copy.label}
+        badge={copy.badge}
+        badgeTone='wait'
+        className='w-[min(460px,100%)]'
+      >
+        <div className='px-[26px] pt-[26px] pb-[22px] max-[720px]:px-5'>
+          <div className='flex items-center gap-3'>
+            <span
+              aria-hidden='true'
+              className='size-5 flex-none animate-spin rounded-full border-2 border-line-control border-t-signal motion-reduce:animate-none'
+            />
+            <h1 className='font-semibold text-2xl tracking-[-0.02em]'>{copy.title}</h1>
+          </div>
+          <p role='status' className='mt-2 text-fg-3'>
+            {copy.description(email)}
+          </p>
+          <form id='confirm-sign-in' method='post' action='/api/auth/confirm'>
+            <input type='hidden' name='token_hash' value={tokenHash} />
+            <input type='hidden' name='email' value={email} />
+            <input type='hidden' name='sig' value={signature} />
+            {next !== null && <input type='hidden' name='next' value={next} />}
+            <noscript>
+              <p className='mt-4 mb-3 text-[13px] text-fg-3'>{copy.note}</p>
+              <button type='submit' className={BUTTON.primary}>
+                {copy.submit}
+              </button>
+            </noscript>
+          </form>
+          <AutoSubmit formId='confirm-sign-in' />
+        </div>
+      </Operator>
     </div>
   );
 };
