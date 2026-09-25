@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSWRConfig } from 'swr';
-import { CLAIMS_KEY, releaseClaim } from '@/client/api';
+import { CLAIMS_KEY, claimKey, createClaim, releaseClaim } from '@/client/api';
 import { probeIndex, type ShownStep, stoppedIn } from '@/client/check/checkReducer';
 import { useClaimCheck } from '@/client/check/useClaimCheck';
 import { useClaim } from '@/client/queries';
@@ -52,6 +52,10 @@ const TONE: Record<'good' | 'attention' | 'neutral', Tone> = {
   attention: 'warn',
   neutral: 'wait',
 };
+
+/** "14:32" in the person's own clock. */
+const clockTime = (at: number): string =>
+  new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -179,11 +183,79 @@ const ClaimScreen: React.FC = () => {
     return () => cancelAnimationFrame(frame);
   }, [loaded, current, cardRefs]);
 
+  // After a check someone watched, bring its result into view. It sits under the steps, often
+  // below the fold, and it holds the one thing to do next.
+  const resultRef = useRef<HTMLDivElement>(null);
+  const nsResultRef = useRef<HTMLDivElement>(null);
+  const wasLive = useRef(false);
+  useEffect(() => {
+    const live = state.running === 'live';
+    const finished = wasLive.current && state.running === null;
+    wasLive.current = live;
+    if (!finished) {
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const el = nsResultRef.current ?? resultRef.current;
+      const head = headRef.current;
+      if (el === null || head === null) {
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const below = rect.bottom + CARD_GAP - window.innerHeight;
+      if (below <= 0) {
+        return;
+      }
+      // Never so far that the top of the result goes under the header.
+      const room = rect.top - (TOP_BAR + head.offsetHeight + CARD_GAP);
+      const by = Math.min(below, Math.max(0, room));
+      if (by > 0) {
+        window.scrollBy({ top: by, behavior: reducedMotion() ? 'auto' : 'smooth' });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [state.running]);
+
   const checkNow = useCallback(() => {
     checkShownRef.current = true;
     setCheckShown(true);
     check.checkNow();
   }, [check]);
+
+  // An expired token is replaced on the same claim: claiming the name again reissues it.
+  const [renewing, setRenewing] = useState(false);
+  const renew = async () => {
+    if (claim === undefined || renewing) {
+      return;
+    }
+    setRenewing(true);
+    try {
+      const created = await createClaim(claim.name);
+      if (created.ok) {
+        await Promise.all([mutate(claimKey(claim.id)), mutate(CLAIMS_KEY)]);
+        checkNow();
+      }
+    } finally {
+      setRenewing(false);
+    }
+  };
+
+  // Check now stays off until the check limit lets the next check through.
+  const [limitOver, setLimitOver] = useState(true);
+  useEffect(() => {
+    if (state.error !== 'limited') {
+      setLimitOver(true);
+      return;
+    }
+    const wait = check.resumeAt === null ? 60_000 : check.resumeAt - Date.now();
+    if (wait <= 0) {
+      setLimitOver(true);
+      return;
+    }
+    setLimitOver(false);
+    const timer = setTimeout(() => setLimitOver(true), wait);
+    return () => clearTimeout(timer);
+  }, [state.error, check.resumeAt]);
 
   const release = async () => {
     if (claim === undefined) {
@@ -240,12 +312,22 @@ const ClaimScreen: React.FC = () => {
     <button
       type='button'
       onClick={checkNow}
-      disabled={live}
+      disabled={live || !limitOver}
       className={small ? BUTTON.primarySmall : BUTTON.primary}
     >
-      {live ? claimCopy.check.checking : claimCopy.check.now}
+      {live
+        ? claimCopy.check.checking
+        : limitOver
+          ? claimCopy.check.now
+          : claimScreenCopy.result.limitReached}
     </button>
   );
+
+  // Decided from the row, the same way the check decides it, since the step doesn't carry a reason.
+  const expired =
+    claim !== undefined &&
+    !holdsTheName(claim.status) &&
+    new Date(claim.expiresAt).getTime() <= Date.now();
 
   const timer = (
     <CheckTimer
@@ -264,20 +346,31 @@ const ClaimScreen: React.FC = () => {
         message={nsStop.fix}
         tone={nsStop.state === 'wait' ? 'wait' : 'warn'}
         actions={
-          <>
-            {nsStop.key === 'zone' && (
-              <a
-                href={`https://lookup.icann.org/en/lookup?name=${encodeURIComponent(claim.name)}`}
-                target='_blank'
-                rel='noopener noreferrer'
-                className={BUTTON.small}
-              >
-                {claimScreenCopy.result.findRegistrar}
-                <OutArrow />
-              </a>
-            )}
-            {checkButton(true)}
-          </>
+          expired ? (
+            <button
+              type='button'
+              onClick={renew}
+              disabled={renewing}
+              className={BUTTON.primarySmall}
+            >
+              {renewing ? claimScreenCopy.result.gettingRecord : claimScreenCopy.result.newRecord}
+            </button>
+          ) : (
+            <>
+              {nsStop.key === 'zone' && (
+                <a
+                  href={`https://lookup.icann.org/en/lookup?name=${encodeURIComponent(claim.name)}`}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className={BUTTON.small}
+                >
+                  {claimScreenCopy.result.findRegistrar}
+                  <OutArrow />
+                </a>
+              )}
+              {checkButton(true)}
+            </>
+          )
         }
       />
     );
@@ -287,8 +380,13 @@ const ClaimScreen: React.FC = () => {
       return null;
     }
     if (state.error !== null) {
-      const message =
+      const base =
         state.error === 'not_found' ? claimCopy.check.missing : claimCopy.check[state.error];
+      // The limit says when checks resume, so nothing counts down to a check that will be refused.
+      const message =
+        state.error === 'limited' && check.resumeAt !== null
+          ? { ...base, action: claimCopy.check.limited.actionAt(clockTime(check.resumeAt)) }
+          : base;
       return (
         <FailureNotice
           message={{ ...message, record: null, copyable: null }}
@@ -360,7 +458,15 @@ const ClaimScreen: React.FC = () => {
     claim !== undefined && !holdsTheName(claim.status) ? (
       <div className='mt-4 flex flex-wrap items-center gap-4'>
         {checkButton(false)}
-        {timer}
+        {limitOver ? (
+          timer
+        ) : (
+          <span className='font-mono text-[12px] text-fg-3'>
+            {check.resumeAt === null
+              ? claimCopy.check.limited.action
+              : claimScreenCopy.result.resumesAt(clockTime(check.resumeAt))}
+          </span>
+        )}
       </div>
     ) : null;
 
@@ -399,7 +505,7 @@ const ClaimScreen: React.FC = () => {
           steps={state.steps.slice(0, 2)}
           probe={probe}
           dnsHost={claim?.dnsHost ?? null}
-          result={nsResult}
+          result={nsResult === null ? null : <div ref={nsResultRef}>{nsResult}</div>}
         />
         {claim !== undefined && visible[1] && (
           <div className='enter-up'>
@@ -424,7 +530,7 @@ const ClaimScreen: React.FC = () => {
               steps={state.steps.slice(2)}
               probe={probe}
               live={live}
-              result={checkResult}
+              result={checkResult === null ? null : <div ref={resultRef}>{checkResult}</div>}
             />
           </div>
         )}

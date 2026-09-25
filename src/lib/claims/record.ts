@@ -67,3 +67,11 @@ export const parseRecordValue = (raw: string): ParsedRecord | null => {
     expiry: expiryPart === undefined ? null : expiryPart.slice(EXPIRY_KEY.length),
   };
 };
+
+/**
+ * The values at the name that are ours. A zone can hold TXT records for other services at the
+ * record's name, most often through a wildcard (`*.apple.com` answers every name with its SPF
+ * record). Those say nothing about this claim, so they don't count as finding the record.
+ */
+export const claimRecords = (records: readonly string[]): string[] =>
+  records.filter((record) => parseRecordValue(record) !== null);

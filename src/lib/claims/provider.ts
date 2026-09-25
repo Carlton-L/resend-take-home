@@ -5,11 +5,15 @@ import { getDomain } from 'tldts';
  * Who answers for a zone, read from its NS records.
  *
  * This names the DNS host rather than the registrar, and those are often different companies. The
- * record goes in the panel of whoever answers, so that is the one to name. carlton.dev is the
- * example: nameservers are Google, the registrar is Squarespace, and the record goes to Google.
+ * record goes in the panel of whoever answers, so that is the one to name.
+ *
+ * `googledomains.com` nameservers are named Squarespace. Squarespace took over Google Domains in
+ * 2023 and kept its nameservers, so those zones are edited in Squarespace's panel. carlton.dev is
+ * one. Google Cloud DNS serves from the same names and gets the wrong label; it is the smaller
+ * group among people claiming a domain here.
  */
 const PROVIDERS: { match: RegExp; name: string }[] = [
-  { match: /(^|\.)googledomains\.com$/, name: 'Google' },
+  { match: /(^|\.)googledomains\.com$/, name: 'Squarespace' },
   { match: /(^|\.)google\.com$/, name: 'Google' },
   { match: /(^|\.)cloudflare\.com$/, name: 'Cloudflare' },
   { match: /(^|\.)awsdns-\d+\.(com|net|org|co\.uk)$/, name: 'Amazon Route 53' },

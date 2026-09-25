@@ -27,17 +27,14 @@ export const claimScreenCopy = {
   running: {
     zone: 'Looking up the zone',
     nameservers: 'Asking the nameservers',
-    record: 'Looking for TXT records',
+    record: 'Looking for the record',
     token: 'Comparing the value',
     claim: 'Saving the claim',
   },
   queued: 'Queued',
 
   header: {
-    menu: 'Claim actions',
-    copyRecord: 'Copy record',
-    copied: 'Copied',
-    release: 'Release this claim…',
+    release: 'Release claim',
     openDns: (host: string) => `Open ${host} DNS`,
     claimed: (day: string) => `Claimed ${day}`,
     verified: (day: string) => `Verified ${day}`,
@@ -70,6 +67,12 @@ export const claimScreenCopy = {
   },
 
   result: {
+    /** Replaces an expired token with a new one, on the same claim. */
+    newRecord: 'Get a new record',
+    gettingRecord: 'Getting a new record',
+    /** Check now while the check limit holds. */
+    limitReached: 'Check limit reached',
+    resumesAt: (time: string) => `Checks resume at ${time}`,
     checking: (name: string) => `Checking ${name}`,
     checkingText: (host: string) =>
       `We ask ${host} directly, so there's no cache in the way. Each step shows what it found as it lands.`,

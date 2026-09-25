@@ -1,6 +1,7 @@
 // src/lib/claims/messages.ts
-import { TOKEN_TTL_DAYS } from '@/lib/claims/config';
+import { RECORD_LABEL, TOKEN_TTL_DAYS } from '@/lib/claims/config';
 import { isExpired } from '@/lib/claims/evaluate';
+import { recordRelativeHost } from '@/lib/claims/record';
 import {
   type CheckResult,
   type ClaimStatus,
@@ -91,6 +92,21 @@ export const claimCopy = {
         tone: 'attention',
         label: 'Needs a change',
         line: 'a TXT record is there with another token.',
+      },
+      'other-txt.test': {
+        tone: 'neutral',
+        label: 'Waits',
+        line: "another service has a TXT record at the name and ours isn't there.",
+      },
+      'flaky.test': {
+        tone: 'neutral',
+        label: 'Flips',
+        line: 'the record comes and goes on each check: verified, then at risk, then recovered.',
+      },
+      'expired.test': {
+        tone: 'attention',
+        label: 'Needs a change',
+        line: 'created with its token already expired.',
       },
       'slow-nameservers.test': {
         tone: 'neutral',
@@ -247,7 +263,7 @@ export const claimCopy = {
     reissued:
       'The previous token expired and a new one was issued. The value below has changed; the old record no longer matches.',
     challenger: (name: string) =>
-      `Another account currently holds ${name}. Adding this record verifies your control of the DNS. It does not transfer the name.`,
+      `Another account currently holds ${name}. Adding this record proves your control of the DNS. The name moves to you once that account releases it.`,
     provider: {
       recognized: (name: string) =>
         `DNS for this domain is at ${name}. Add the record there, which may be a different company from your registrar.`,
@@ -293,8 +309,8 @@ export const claimCopy = {
       silent: 'none of them answered in time',
     },
     record: {
-      found: (n: number) => `${n === 1 ? '1 TXT record' : `${n} TXT records`} at the name`,
-      none: 'no record at this name yet',
+      found: (n: number) => `${n === 1 ? '1 claim record' : `${n} claim records`} at the name`,
+      none: 'no claim record at this name yet',
       gone: 'the verified record is missing',
       wrongType: 'name exists, no TXT record',
       appended: 'not here; found one level down',
@@ -343,16 +359,19 @@ export const claimCopy = {
       title: 'Check limit reached',
       description: 'Checks for this claim are rate limited to protect the nameservers.',
       action: 'Wait a minute, then press Check now.',
+      /** With the time from the limiter, which is when the oldest counted check ages out. */
+      actionAt: (time: string) => `Press Check now after ${time}.`,
     },
     unavailable: {
       title: 'The check could not run',
-      description: 'A server error stopped the check before DNS was queried.',
-      action: 'Press Check now in a moment.',
+      description:
+        'A problem on our side stopped it. Your record is not the cause. We try again on our own.',
+      action: 'If this keeps happening, reload the page.',
     },
     offline: {
       title: 'The check did not complete',
       description: 'The request failed, usually because the connection dropped.',
-      action: 'Press Check now once you are back online.',
+      action: "Check now once you're back online.",
     },
     signedOut: {
       title: 'Signed out',
@@ -372,8 +391,8 @@ export const claimCopy = {
     provedButHeld: {
       title: 'Control verified. Another account holds this name.',
       description:
-        'The record matches. A name is held by one account at a time, and transfers are not yet supported.',
-      action: 'Leave the record in place.',
+        'The record matches. A name is held by one account at a time. Once the other account releases it, the next check verifies this claim.',
+      action: 'Ask the account that holds this name to release it, and leave the record in place.',
     },
   },
 
@@ -600,7 +619,11 @@ export const describeClaim = (outcome: {
  */
 export type FailureMessage = {
   title: string;
-  record: { label: string; values: string[] } | null;
+  /**
+   * What was found or looked for. `against` is the value it should have been, when there is one,
+   * so the screen can mark where the found value goes wrong.
+   */
+  record: { label: string; values: string[]; against?: string } | null;
   description: string;
   /**
    * A value the action tells the person to use. Rendered with a copy control, because an action
@@ -666,10 +689,22 @@ export const formatSince = (milliseconds: number): string => {
   return minutes <= 1 ? 'a minute ago' : `${minutes} minutes ago`;
 };
 
+/**
+ * The short name for a record found with the zone typed twice: the name that was looked for, with
+ * its zone taken off. The zone is what was appended, so it is the tail of `foundAt` past the name.
+ */
+const shortName = (queriedName: string, foundAt: string): string => {
+  const zone = foundAt.slice(queriedName.length + 1);
+  const claimed = queriedName.slice(RECORD_LABEL.length + 1);
+  return recordRelativeHost(claimed, zone);
+};
+
 /** What a check knows about the claim that changes the words, rather than the reason. */
 export type FailureContext = {
   /** The claim already holds this name, so a missing record is a loss rather than a beginning. */
   held: boolean;
+  /** The DNS host by name when we recognise it, so an action can say where to go. */
+  provider?: string | null;
 };
 
 /**
@@ -685,6 +720,7 @@ export const describeFailure = (
   reason: FailureReason,
   context: FailureContext = { held: false },
 ): FailureMessage => {
+  const panel = context.provider ?? 'your DNS panel';
   switch (reason.code) {
     case 'record_not_found': {
       const cacheNote =
@@ -700,14 +736,14 @@ export const describeFailure = (
           record: { label: 'Looked for', values: [reason.queriedName] },
           description: `The nameservers no longer return the record this claim was verified with. Common causes: a DNS migration, or a record removed during cleanup.${cacheNote}`,
           copyable: null,
-          action: 'Add the record below back to your DNS panel.',
+          action: `Add the record below back in ${panel}.`,
         };
       }
 
       return {
         title: 'No record found yet',
         record: { label: 'Looked for', values: [reason.queriedName] },
-        description: `The nameservers answered with no record at this name. Checks query them directly and repeat automatically, so a record is found as soon as your DNS provider publishes it, without the wait a public resolver adds.${cacheNote}`,
+        description: `The nameservers answered without this claim's record. Checks query them directly and repeat automatically, so a record is found as soon as your DNS provider publishes it, without the wait a public resolver adds.${cacheNote}`,
         copyable: null,
         action: 'Add the record below.',
       };
@@ -718,49 +754,49 @@ export const describeFailure = (
         title: 'The name exists but has no TXT record',
         record: { label: 'Looked for', values: [reason.queriedName] },
         description:
-          'The nameservers returned the name with no TXT record on it. Usually a record of another type, a CNAME, or a subdomain exists at this name.',
+          'Something else is saved at this name: a record of another type, a CNAME, or a subdomain.',
         copyable: null,
-        action:
-          'Check the existing records at this exact name in your DNS panel and add the TXT record beside them.',
+        action: 'Keep it, and add the TXT record beside it.',
       };
 
     case 'appended_zone_suspected':
       return {
-        title: 'The record was saved with the domain appended twice',
-        record: { label: 'Found at', values: [reason.foundAt] },
-        description:
-          'Most DNS panels append your domain to the Name field. Entering the full name there produces the domain twice.',
-        copyable: null,
-        action: 'Delete that record and add it again with the short name below.',
+        title: 'The domain was added to the name twice',
+        record: { label: 'Found at', values: [reason.foundAt], against: reason.queriedName },
+        description: `${context.provider ?? 'Your DNS panel'} adds your domain to the Name field on its own. If you can't edit the record's name there, delete that record and add it again.`,
+        copyable: { label: 'Name to use', value: shortName(reason.queriedName, reason.foundAt) },
+        action: "Change the record's name to the short one below.",
       };
 
     case 'value_mismatch':
       return {
         title: 'The TXT record has a different value',
-        record: { label: 'Found', values: reason.found },
+        record: { label: 'Found', values: reason.found, against: reason.expected },
         description:
-          'A TXT record exists at this name, but its value does not match this claim. Common causes: a partial paste, a typo, or a record from an earlier claim.',
-        copyable: { label: claimCopy.record.valueLabel, value: reason.expected },
-        action: 'Replace the value in your DNS panel with the one below.',
+          'A DomainClaim record is at this name with another value. Common causes: a partial paste, or a record from an earlier claim.',
+        copyable: { label: 'Value to use', value: reason.expected },
+        action: `Replace the value in ${panel} with the one below.`,
       };
 
     case 'token_expired':
       return {
         title: 'This claim has expired',
         record: { label: 'Expired', values: [formatWhen(reason.expiredAt)] },
-        description: `Tokens are valid for ${TOKEN_TTL_DAYS} days. This one has passed its date, and the record in your DNS can no longer be verified.`,
+        description: `A record is valid for ${TOKEN_TTL_DAYS} days, and this one has run out. A new record replaces it, and the old one stops working.`,
         copyable: null,
-        action: 'Release this claim and create a new one to get a new token.',
+        action: 'Get a new record to try again.',
       };
 
     case 'nameservers_unreachable':
       return {
-        title: 'Nameservers did not respond',
+        title:
+          context.provider === null || context.provider === undefined
+            ? 'Nameservers did not respond'
+            : `${context.provider}'s nameservers aren't answering`,
         record: { label: 'Asked', values: [...reason.attempted] },
-        description: `None of them answered within ${formatDeadline(reason.timeoutMs)}. The zone may be down, slow, or pointed at the wrong nameservers. Checks repeat automatically, so a slow zone resolves on its own.`,
+        description: `None of them answered within ${formatDeadline(reason.timeoutMs)}. This is usually on their side. We keep trying.`,
         copyable: null,
-        action:
-          'If this persists for more than a few minutes, check the nameservers set for the domain at your registrar.',
+        action: 'If it lasts more than a few minutes, check the nameservers set at your registrar.',
       };
 
     case 'zone_not_found':
@@ -768,10 +804,9 @@ export const describeFailure = (
         title: 'No nameservers found for this domain',
         record: { label: 'Asked at', values: [...reason.walked] },
         description:
-          'DNS returned no nameservers for this domain. Either none are set at the registrar, or they were set within the last few minutes.',
+          'DNS returned no nameservers for this domain. Nameservers set in the last few minutes can take a while to appear.',
         copyable: null,
-        action:
-          'Check the nameservers set for the domain at your registrar, and allow a few minutes if they were set recently.',
+        action: 'Set nameservers at your registrar.',
       };
 
     default: {

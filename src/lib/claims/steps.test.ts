@@ -76,6 +76,42 @@ describe('stepsFor', () => {
     expect(states(o)).toEqual(['done', 'done', 'wait', 'idle', 'idle']);
   });
 
+  // apple.com answers every name with its SPF record through a wildcard. That record is not ours,
+  // so the record step waits and the token step is never reached.
+  it('waits on the record step when the only TXT records belong to other services', () => {
+    const o = outcome({
+      trace: trace({
+        outcome: {
+          status: 'records_found',
+          records: ['v=spf1 redirect=_spf.apple.com'],
+          answeredBy: NS,
+        },
+      }),
+      result: failed({
+        code: 'record_not_found',
+        queriedName: NAME,
+        nameservers: [NS],
+        negativeTtlSeconds: null,
+      }),
+      status: 'pending',
+      verifiedAt: null,
+    });
+    expect(states(o)).toEqual(['done', 'done', 'wait', 'idle', 'idle']);
+  });
+
+  it('counts only our records in the record step', () => {
+    const o = outcome({
+      trace: trace({
+        outcome: {
+          status: 'records_found',
+          records: ['v=spf1 -all', 'domainclaim-token=A expiry=Z'],
+          answeredBy: NS,
+        },
+      }),
+    });
+    expect(stepsFor(o)[2]?.answer).toMatch(/^1 /);
+  });
+
   // Same step, different answer: a name that exists with no TXT on it needs the person.
   it('fails the record step when the name answers with the wrong type', () => {
     const o = outcome({

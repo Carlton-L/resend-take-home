@@ -1,7 +1,14 @@
 // src/lib/claims/steps.ts
 import type { ClaimOutcome } from '@/lib/claims/check';
-import { claimCopy, describeFailure, type FailureMessage, formatWhen } from '@/lib/claims/messages';
+import {
+  claimCopy,
+  describeFailure,
+  type FailureContext,
+  type FailureMessage,
+  formatWhen,
+} from '@/lib/claims/messages';
 import { describeProvider } from '@/lib/claims/provider';
+import { claimRecords } from '@/lib/claims/record';
 import { holdsTheName } from '@/lib/claims/state';
 import { serverResponded } from '@/lib/dns/trace';
 
@@ -51,12 +58,15 @@ export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
   // and changes whose move is next. Read once here and passed down, so one reading feeds the
   // state, the answer and the message.
   const held = holdsTheName(status);
+  // The host goes into the words ("Replace the value in Cloudflare"), so it is read once here too.
+  const host = trace === null ? null : describeProvider(trace.nameservers);
+  const context: FailureContext = { held, provider: host?.recognized ? host.name : null };
 
   // An expired claim is decided from the row before any query, so there is no trace to read and no
   // step got as far as being asked.
   if (trace === null) {
     return [
-      { key: 'zone', state: 'wrong', answer: copy.zone.expired, fix: failureOf(result, held) },
+      { key: 'zone', state: 'wrong', answer: copy.zone.expired, fix: failureOf(result, context) },
       idle('nameservers'),
       idle('record'),
       idle('token'),
@@ -69,7 +79,7 @@ export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
       key: 'zone',
       state: 'wrong',
       answer: copy.zone.none,
-      fix: failureOf(result, held),
+      fix: failureOf(result, context),
     };
     return [none, idle('nameservers'), idle('record'), idle('token'), idle('claim')];
   }
@@ -96,7 +106,7 @@ export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
       key: 'nameservers',
       state: 'wait',
       answer: copy.nameservers.silent,
-      fix: failureOf(result, held),
+      fix: failureOf(result, context),
     };
     return [zone, silent, idle('record'), idle('token'), idle('claim')];
   }
@@ -112,12 +122,12 @@ export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
     fix: null,
   };
 
-  const record = recordStep(outcome, held);
+  const record = recordStep(outcome, context);
   if (record.state !== 'done') {
     return [zone, nameservers, record, idle('token'), idle('claim')];
   }
 
-  const token = tokenStep(outcome, held);
+  const token = tokenStep(outcome, context);
   if (token.state !== 'done') {
     return [zone, nameservers, record, token, idle('claim')];
   }
@@ -125,44 +135,57 @@ export const stepsFor = (outcome: ClaimOutcome): CheckStep[] => {
   return [zone, nameservers, record, token, claimStep(status, verifiedAt, provedButHeld)];
 };
 
-const failureOf = (result: ClaimOutcome['result'], held: boolean): FailureMessage | null =>
-  result.status === 'failed' ? describeFailure(result.reason, { held }) : null;
+const failureOf = (
+  result: ClaimOutcome['result'],
+  context: FailureContext,
+): FailureMessage | null =>
+  result.status === 'failed' ? describeFailure(result.reason, context) : null;
 
-const recordStep = ({ trace, result }: ClaimOutcome, held: boolean): CheckStep => {
+const recordStep = ({ trace, result }: ClaimOutcome, context: FailureContext): CheckStep => {
   const copy = claimCopy.steps.record;
 
-  if (trace !== null && trace.outcome.status === 'records_found') {
-    return {
-      key: 'record',
-      state: 'done',
-      answer: copy.found(trace.outcome.records.length),
-      fix: null,
-    };
+  // Found means one of our records is at the name. Records for other services don't count.
+  const ours =
+    trace !== null && trace.outcome.status === 'records_found'
+      ? claimRecords(trace.outcome.records)
+      : [];
+  if (ours.length > 0) {
+    return { key: 'record', state: 'done', answer: copy.found(ours.length), fix: null };
   }
 
   // A name that exists with no TXT on it is the person's to fix. A name with nothing at it on a
   // claim nobody has acted on is the expected state, so it waits rather than failing.
   if (result.status === 'failed' && result.reason.code === 'no_txt_at_name') {
-    return { key: 'record', state: 'wrong', answer: copy.wrongType, fix: failureOf(result, held) };
+    return {
+      key: 'record',
+      state: 'wrong',
+      answer: copy.wrongType,
+      fix: failureOf(result, context),
+    };
   }
 
   // Nothing at the name and the record one level down. The person has to move it, so this is theirs
   // rather than time's.
   if (result.status === 'failed' && result.reason.code === 'appended_zone_suspected') {
-    return { key: 'record', state: 'wrong', answer: copy.appended, fix: failureOf(result, held) };
+    return {
+      key: 'record',
+      state: 'wrong',
+      answer: copy.appended,
+      fix: failureOf(result, context),
+    };
   }
 
   // Nothing at the name on a claim that already holds it. The record was there when the name was
   // proved, so its absence is the person's move and the loudest thing this product ever has to
   // say. Waiting is the right reading only while nobody has added it yet.
-  if (held) {
-    return { key: 'record', state: 'wrong', answer: copy.gone, fix: failureOf(result, held) };
+  if (context.held) {
+    return { key: 'record', state: 'wrong', answer: copy.gone, fix: failureOf(result, context) };
   }
 
-  return { key: 'record', state: 'wait', answer: copy.none, fix: failureOf(result, held) };
+  return { key: 'record', state: 'wait', answer: copy.none, fix: failureOf(result, context) };
 };
 
-const tokenStep = ({ result }: ClaimOutcome, held: boolean): CheckStep => {
+const tokenStep = ({ result }: ClaimOutcome, context: FailureContext): CheckStep => {
   const copy = claimCopy.steps.token;
 
   if (result.status === 'verified') {
@@ -170,10 +193,10 @@ const tokenStep = ({ result }: ClaimOutcome, held: boolean): CheckStep => {
   }
 
   if (result.reason.code === 'token_expired') {
-    return { key: 'token', state: 'wrong', answer: copy.expired, fix: failureOf(result, held) };
+    return { key: 'token', state: 'wrong', answer: copy.expired, fix: failureOf(result, context) };
   }
 
-  return { key: 'token', state: 'wrong', answer: copy.mismatch, fix: failureOf(result, held) };
+  return { key: 'token', state: 'wrong', answer: copy.mismatch, fix: failureOf(result, context) };
 };
 
 const claimStep = (

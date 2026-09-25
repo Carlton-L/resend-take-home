@@ -4,7 +4,8 @@ import { describeProvider, panelUrlFor } from '@/lib/claims/provider';
 
 describe('describeProvider', () => {
   it.each([
-    ['ns-cloud-a1.googledomains.com', 'Google'],
+    ['ns-cloud-a1.googledomains.com', 'Squarespace'],
+    ['ns1.google.com', 'Google'],
     ['abby.ns.cloudflare.com', 'Cloudflare'],
     ['ns-1234.awsdns-56.org', 'Amazon Route 53'],
     ['ns01.domaincontrol.com', 'GoDaddy'],
@@ -14,10 +15,9 @@ describe('describeProvider', () => {
     expect(describeProvider([nameserver])).toEqual({ name: expected, recognized: true });
   });
 
-  // carlton.dev: nameservers are Google, the registrar is Squarespace. The record goes to Google,
-  // so the nameserver is the thing to name.
-  it('names the DNS host rather than the registrar', () => {
-    expect(describeProvider(['ns-cloud-b1.googledomains.com'])?.name).toBe('Google');
+  // carlton.dev: Google Domains nameservers, now run from Squarespace's panel since the takeover.
+  it('names former Google Domains zones for Squarespace, whose panel edits them', () => {
+    expect(describeProvider(['ns-cloud-b1.googledomains.com'])?.name).toBe('Squarespace');
   });
 
   it('falls back to the nameserver own domain when it is not one we know', () => {
@@ -58,7 +58,12 @@ describe('panelUrlFor', () => {
     expect(panelUrlFor(describeProvider([nameserver])?.name ?? null)).toBe(expected);
   });
 
-  // carlton.dev's nameservers are Google's, and the panel depends on who sold the domain.
+  it('links former Google Domains zones to the Squarespace panel', () => {
+    expect(panelUrlFor(describeProvider(['ns-cloud-a1.googledomains.com'])?.name ?? null)).toBe(
+      'https://account.squarespace.com/domains',
+    );
+  });
+
   it('gives no link for a host whose panel we have not checked', () => {
     expect(panelUrlFor('Google')).toBeNull();
   });

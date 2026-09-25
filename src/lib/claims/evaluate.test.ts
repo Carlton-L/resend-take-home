@@ -14,7 +14,7 @@ import {
   tokenHasRunOut,
 } from '@/lib/claims/evaluate';
 import { formatRecordValue, recordFullName } from '@/lib/claims/record';
-import type { CheckResult, FailureReason } from '@/lib/claims/state';
+import type { CheckResult, ClaimStatus, FailureReason } from '@/lib/claims/state';
 import { createFakeResolver } from '@/lib/dns/fakeResolver';
 import { scriptFor } from '@/lib/dns/testNames';
 import { traceName } from '@/lib/dns/trace';
@@ -35,8 +35,8 @@ const EXPECTED = formatRecordValue(CLAIM.token, CLAIM.expiresAt);
  * Real traces from the demo scripts rather than hand-built objects, so the comparison is tested
  * against the shapes the trace layer actually produces.
  */
-const traceFor = async (name: string) => {
-  const script = scriptFor(name, EXPECTED);
+const traceFor = async (name: string, status: ClaimStatus = 'pending') => {
+  const script = scriptFor(name, EXPECTED, status);
   if (script === null) {
     throw new Error(`no demo script for ${name}`);
   }
@@ -97,6 +97,21 @@ describe('evaluateClaim', () => {
     expect(result.reason.expected).toBe(EXPECTED);
     expect(result.reason.found).toHaveLength(1);
     expect(result.reason.found[0]).not.toBe(EXPECTED);
+  });
+
+  it('reads TXT records that are not ours as the record not being there', async () => {
+    const result = evaluateClaim(await traceFor('other-txt.test'), CLAIM, NOW);
+    expect(result.status === 'failed' && result.reason.code).toBe('record_not_found');
+  });
+
+  // flaky.test flips its record on every check, so each held state is one check away.
+  it('walks flaky.test from verified to at risk and back', async () => {
+    const found = evaluateClaim(await traceFor('flaky.test', 'pending'), CLAIM, NOW);
+    expect(found.status).toBe('verified');
+    const gone = evaluateClaim(await traceFor('flaky.test', 'verified'), CLAIM, NOW);
+    expect(gone.status === 'failed' && gone.reason.code).toBe('record_not_found');
+    const back = evaluateClaim(await traceFor('flaky.test', 'at_risk'), CLAIM, NOW);
+    expect(back.status).toBe('verified');
   });
 
   it('reports nameservers_unreachable with the deadline it gave up after', async () => {
