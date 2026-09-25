@@ -1,10 +1,8 @@
 // src/app/api/signout/route.ts
 import { type NextRequest, NextResponse } from 'next/server';
-import { appOrigin } from '@/lib/auth/config';
 import { supabaseRouteClient } from '@/lib/auth/supabase/route';
 import type { SignOutResponse } from '@/lib/claims/dto';
 import { isSameOrigin } from '@/lib/http/sameOrigin';
-import { wantsJson } from '@/lib/http/wantsJson';
 
 export const runtime = 'nodejs';
 
@@ -23,9 +21,6 @@ export const POST = async (request: NextRequest) => {
 
   const { supabase, applyCookies } = supabaseRouteClient(request);
   await supabase.auth.signOut();
-  // The new screens clear their own state and navigate. The old header menu posts a form.
-  if (wantsJson(request)) {
-    return applyCookies(NextResponse.json({ ok: true } satisfies SignOutResponse));
-  }
-  return applyCookies(NextResponse.redirect(new URL('/', appOrigin()), { status: 303 }));
+  // The screen clears its own state and goes to the home page.
+  return applyCookies(NextResponse.json({ ok: true } satisfies SignOutResponse));
 };

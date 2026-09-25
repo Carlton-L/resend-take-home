@@ -33,9 +33,7 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => (
   <SWRConfig value={{ onError }}>
     <div aria-hidden='true' className='dot-grid pointer-events-none fixed inset-0' />
     {SIDEBAR && <Rail />}
-    <div
-      className={`relative flex min-w-0 flex-1 flex-col overflow-x-clip ${SIDEBAR ? 'rail:pl-14' : ''}`}
-    >
+    <div className='relative flex min-w-0 flex-1 flex-col overflow-x-clip'>
       <TopBar />
       <Stage>{children}</Stage>
     </div>

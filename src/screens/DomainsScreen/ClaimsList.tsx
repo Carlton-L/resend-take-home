@@ -3,8 +3,10 @@
 
 import Link from 'next/link';
 import type React from 'react';
-import { useState } from 'react';
-import { useShell } from '@/client/shellStore';
+import { useEffect, useRef, useState } from 'react';
+import { useSWRConfig } from 'swr';
+import { CLAIMS_KEY, claimKey, releaseClaim } from '@/client/api';
+import { shell, useShell } from '@/client/shellStore';
 import Favicon from '@/components/Favicon/Favicon';
 import Operator from '@/components/Operator/Operator';
 import Pill from '@/components/Pill/Pill';
@@ -12,8 +14,10 @@ import { claimPath } from '@/lib/claims/config';
 import type { ClaimDTO } from '@/lib/claims/dto';
 import { chipsFor, SORTS, shownRows } from '@/lib/claims/listView';
 import { claimCopy } from '@/lib/claims/messages';
+import { recordFullName } from '@/lib/claims/record';
 import type { ClaimRowView } from '@/lib/claims/row';
 import { domainsCopy } from '@/lib/copy/domains';
+import ReleaseDialog from '@/screens/ClaimScreen/ReleaseDialog';
 import { useListRows } from '@/screens/DomainsScreen/useListRows';
 
 /**
@@ -21,16 +25,103 @@ import { useListRows } from '@/screens/DomainsScreen/useListRows';
  * Below 720px the pill moves under the name and the host goes.
  */
 const ROW =
-  'group/row grid h-16 w-full grid-cols-[36px_minmax(0,1fr)_190px_190px_16px] items-center gap-4 px-[18px] text-left transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-2 focus-visible:outline-wait focus-visible:-outline-offset-2 max-[900px]:grid-cols-[36px_minmax(0,1fr)_auto_16px] max-[720px]:h-auto max-[720px]:grid-cols-[36px_minmax(0,1fr)_16px] max-[720px]:gap-x-4 max-[720px]:gap-y-1.5 max-[720px]:px-4 max-[720px]:py-3';
+  'grid h-16 min-w-0 flex-1 grid-cols-[36px_minmax(0,1fr)_190px_190px_16px] items-center gap-4 pl-[18px] text-left focus-visible:bg-surface-2 focus-visible:outline-2 focus-visible:outline-wait focus-visible:-outline-offset-2 max-[900px]:grid-cols-[36px_minmax(0,1fr)_auto_16px] max-[720px]:h-auto max-[720px]:grid-cols-[36px_minmax(0,1fr)_16px] max-[720px]:gap-x-4 max-[720px]:gap-y-1.5 max-[720px]:py-3 max-[720px]:pl-4';
 
-const Row: React.FC<{ claim: ClaimDTO; view: ClaimRowView; isNew: boolean }> = ({
-  claim,
-  view,
-  isNew,
-}) => {
+const MENU_ITEM =
+  'flex h-8 w-full items-center whitespace-nowrap rounded-[5px] px-2.5 text-left text-[13px] text-warn hover:bg-surface-3 focus-visible:bg-surface-3 focus-visible:outline-none';
+
+/**
+ * The row's menu, beside its link so the two stay separate controls. One item for now: release.
+ * It opens to the left, inside the row's height, so the row's clip never cuts it off. Closes on
+ * Escape, on a click outside and when focus leaves it.
+ */
+const RowMenu: React.FC<{ name: string; onRelease: () => void }> = ({ name, onRelease }) => {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const itemRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    itemRef.current?.focus();
+    const outside = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', outside);
+    return () => document.removeEventListener('pointerdown', outside);
+  }, [open]);
+
+  const leave = (event: React.FocusEvent) => {
+    if (!rootRef.current?.contains(event.relatedTarget as Node | null)) {
+      setOpen(false);
+    }
+  };
+
+  const closeOnEscape = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape' && open) {
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+  };
+
+  return (
+    <div ref={rootRef} className='relative flex flex-none items-center px-2 max-[720px]:px-1.5'>
+      <button
+        ref={triggerRef}
+        type='button'
+        aria-label={domainsCopy.list.menu(name)}
+        aria-haspopup='menu'
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        onBlur={leave}
+        onKeyDown={closeOnEscape}
+        className={`flex size-8 items-center justify-center rounded-[7px] text-fg-5 transition-colors hover:bg-surface-3 hover:text-fg focus-visible:text-fg focus-visible:outline-2 focus-visible:outline-wait ${open ? 'bg-surface-3 text-fg' : ''}`}
+      >
+        <svg aria-hidden='true' width='16' height='16' viewBox='0 0 16 16' fill='currentColor'>
+          <circle cx='3.5' cy='8' r='1.25' />
+          <circle cx='8' cy='8' r='1.25' />
+          <circle cx='12.5' cy='8' r='1.25' />
+        </svg>
+      </button>
+      {open && (
+        <div
+          role='menu'
+          aria-label={domainsCopy.list.menu(name)}
+          className='absolute top-1/2 right-full z-30 -translate-y-1/2 rounded-lg border border-line-control bg-surface-2 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.55)]'
+        >
+          <button
+            ref={itemRef}
+            type='button'
+            role='menuitem'
+            onBlur={leave}
+            onKeyDown={closeOnEscape}
+            onClick={() => {
+              setOpen(false);
+              onRelease();
+            }}
+            className={MENU_ITEM}
+          >
+            {claimCopy.release.trigger}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const Row: React.FC<{
+  claim: ClaimDTO;
+  view: ClaimRowView;
+  isNew: boolean;
+  onRelease: () => void;
+}> = ({ claim, view, isNew, onRelease }) => {
   return (
     <li
-      className={`max-h-16 overflow-hidden border-line border-t first:border-t-0 max-[720px]:max-h-none ${isNew ? 'row-in' : ''}`}
+      className={`group/row flex max-h-16 overflow-hidden border-line border-t transition-colors first:border-t-0 hover:bg-surface-2 max-[720px]:max-h-none ${isNew ? 'row-in' : ''}`}
     >
       <Link href={claimPath(claim.id)} className={ROW}>
         <span className='max-[720px]:row-span-2 max-[720px]:self-center'>
@@ -66,6 +157,7 @@ const Row: React.FC<{ claim: ClaimDTO; view: ClaimRowView; isNew: boolean }> = (
           />
         </svg>
       </Link>
+      <RowMenu name={claim.name} onRelease={onRelease} />
     </li>
   );
 };
@@ -121,6 +213,25 @@ const ClaimsList: React.FC = () => {
   const { claims, rows, filter, sort, set, refresh } = useListRows();
   const { added } = useShell();
   const [refreshing, setRefreshing] = useState(false);
+  const [releasing, setReleasing] = useState<ClaimDTO | null>(null);
+  const { mutate } = useSWRConfig();
+
+  const release = async () => {
+    if (releasing === null) {
+      return;
+    }
+    const { id, name } = releasing;
+    try {
+      await releaseClaim(id);
+      shell.released(name);
+      await mutate<ClaimDTO[]>(CLAIMS_KEY, (list) => list?.filter((row) => row.id !== id), {
+        revalidate: false,
+      });
+      await mutate(claimKey(id), undefined, { revalidate: false });
+    } finally {
+      setReleasing(null);
+    }
+  };
   const copy = claimCopy.list;
 
   const onRefresh = async () => {
@@ -233,9 +344,24 @@ const ClaimsList: React.FC = () => {
           <li className='p-[18px] text-[13px] text-fg-3'>{copy.filter.none(filter ?? '')}</li>
         )}
         {shown?.map(({ claim, view }) => (
-          <Row key={claim.id} claim={claim} view={view} isNew={claim.id === added} />
+          <Row
+            key={claim.id}
+            claim={claim}
+            view={view}
+            isNew={claim.id === added}
+            onRelease={() => setReleasing(claim)}
+          />
         ))}
       </ul>
+      {releasing !== null && (
+        <ReleaseDialog
+          open
+          name={releasing.name}
+          fullName={recordFullName(releasing.name)}
+          onCancel={() => setReleasing(null)}
+          onConfirm={release}
+        />
+      )}
     </Operator>
   );
 };

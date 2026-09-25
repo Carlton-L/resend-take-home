@@ -66,17 +66,18 @@ reaches At risk, since a script is fixed per name; it is reachable only on a rea
 
 Built:
 
-- Magic link sign in
+- Sign in with GitHub in one click from the home page, or by email link
 - Domain input, normalized, with a typed error for every way a name can be wrong
 - Claim issue with a scoped token, and the record to add
 - The check, run on arrival and again on a cadence, against real DNS, reported as its five steps
 - Check now, at a rate limited endpoint
+- Favicons for claimed names, fetched server side behind SSRF guards
 - At risk when a held name loses its record, and recovery when it comes back
 - Action needed, on the list and the record screen, for a claim whose next move is the person's
 - Seven of nine failure reasons, each with one action and the remediation in the step that produced it
 - The list of an account's claims, including the ones not proved yet, with filter, sort, and a
   notice for names that need attention
-- Releasing a claim, from the record screen or the list
+- Releasing a claim, from its own screen or the list
 
 Not built yet:
 

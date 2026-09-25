@@ -123,7 +123,7 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
   reaches, five for a four label name, plus a second each for the two probes that only run after a
   failure. Below that, a slow zone returns a platform error instead of our message
 - Screens read JSON: `GET /api/me`, `GET /api/claims`, `GET /api/claims/[id]`. Create, release
-  and sign out answer JSON to a fetch and a 303 to a form post, until the old screens are gone
+  and sign out take and answer JSON only. The form posts went with the old screens
 - Server modules import `server-only`, so importing one from a client file fails the build
 - The proxy sends a signed out request for an app page to sign in, and a signed in request for `/`
   to the list. Every route still checks the session itself
@@ -382,8 +382,7 @@ second opinion.
   against a hover spending a trace and a write, and the only way to ask again was the browser's
   reload button.
   Cost: a browser with JavaScript off sees the record and no check. Accepted, because the record is
-  what the user came for and proving control is a round trip either way. The claim form still posts
-  a plain form and still works without it.
+  what the user came for and proving control is a round trip either way.
 - The endpoint answers with the five steps as the screen renders them rather than with the trace.
   Sending the trace would put the copy, the step rules and the provider table into the browser
   bundle to produce the same strings a second time, and every date in it would arrive as a string
@@ -426,10 +425,8 @@ second opinion.
   cross there reports the product working correctly as a fault.
 - Step labels are steps rather than statements. "Record found" can only be true, so it contradicts
   its own glyph.
-- The chain is always present, above the record card, at two densities. One line when there is
-  nothing to act on, open when there is. It never appears or disappears, because an absence cannot
-  tell a person "you fixed it" from "we stopped looking". Saying that out loud needs `last_failure`,
-  which is deferred.
+- The check card opens once a check finds something at the name, or on Check now, and stays open.
+  Before that there is nothing in it to act on, and the record card is the next move.
 - The four part message moves into the step that produced it and the separate failure box is
   deleted. A tooltip has no touch equivalent; a modal hides the record while telling you to use it.
 - Control proved against a name another account holds is a status rather than a failure. The person
@@ -485,7 +482,8 @@ second opinion.
 - The record screen is wider than the rest of the app. Four columns need the width. The check and
   the notices span the same width, so the cards line up, and each paragraph inside them is capped
   at the measure the other screens read at. Two card widths on one screen read as unfinished.
-- One measure for every screen, 1040px, shared by the top bar.
+- One measure for every screen, 1040px, shared by the top bar. It is centred on the window, with
+  the sidebar drawn over the gutter, so the home page and the list sit at the same width.
 - Claims sit in a sidebar of favicons that opens on hover, with Claim a domain at the top. It is
   fixed and drawn over the page, so opening it moves nothing. A badge on the favicon marks a claim
   that needs something. Phones, touch screens and builds with `SIDEBAR` off get a picker on the
@@ -538,7 +536,9 @@ second opinion.
   the claim arrives.
 - A claim is released from its own screen, with Release claim in the header. It is the only action
   there, so it is a button rather than a menu.
-- Refresh on the list reads the list again and runs no check. The list also reads again when the
+- A list row has a menu beside its link, with Release this claim. Releasing from the list saves
+  opening the claim first. The menu is its own button, so the row stays one link.
+- Refresh on the list reads the list again and runs no check. Rows show what the last check stored. The list also reads again when the
   window regains focus and after every claim or release. A note on Refresh says a claim is checked
   on its own screen.
 - The primary action is signal green, as in the design.

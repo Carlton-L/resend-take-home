@@ -9,7 +9,7 @@ type Props = {
 
 /** The pages an email link opens: the confirm page and the dead link page. */
 const Layout: React.FC<Props> = ({ children }) => (
-  <SignedOutFrame crumb={signInCopy.form.heading}>{children}</SignedOutFrame>
+  <SignedOutFrame crumb={signInCopy.form.brand}>{children}</SignedOutFrame>
 );
 
 export default Layout;

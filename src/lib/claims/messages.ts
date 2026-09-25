@@ -336,13 +336,6 @@ export const claimCopy = {
     summaryThrough: 'Zone and nameservers found. No record at this name yet',
   },
 
-  /** Read out by the fallback each route shows while its own page is still on the server. */
-  loading: {
-    list: 'Loading your domains',
-    claim: 'Loading the claim form',
-    record: 'Loading this claim',
-  },
-
   check: {
     running: 'Checking nameservers',
     /**

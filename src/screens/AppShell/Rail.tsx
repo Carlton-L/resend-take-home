@@ -62,11 +62,18 @@ const Rail: React.FC = () => {
       className={`group/rail fixed inset-y-0 left-0 z-40 hidden w-14 overflow-hidden border-line border-r bg-surface transition-[width,box-shadow] duration-[260ms] ease-out-soft rail:block ${open}`}
     >
       <div className='flex h-full w-[280px] flex-col'>
-        <div className='flex h-13 flex-none items-center gap-3 border-line border-b px-2.5'>
-          <BrandMark />
-          <span className={`font-semibold text-sm tracking-[-0.01em] ${fade}`}>
-            {domainsCopy.brand}
-          </span>
+        <div className='flex h-13 flex-none items-center border-line border-b px-2.5'>
+          <Link
+            href={DOMAINS_PATH}
+            onClick={blurActive}
+            aria-label={domainsCopy.brand}
+            className='flex items-center gap-3 rounded-[7px] focus-visible:outline-2 focus-visible:outline-wait focus-visible:outline-offset-2'
+          >
+            <BrandMark />
+            <span className={`font-semibold text-sm tracking-[-0.01em] ${fade}`}>
+              {domainsCopy.brand}
+            </span>
+          </Link>
         </div>
 
         <div className={`mt-1.5 flex h-[38px] items-center justify-between pr-4 pl-[18px] ${fade}`}>
