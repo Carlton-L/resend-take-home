@@ -77,7 +77,7 @@ Built:
 - Seven of nine failure reasons, each with one action and the remediation in the step that produced it
 - The list of an account's claims, including the ones not proved yet, with filter, sort, and a
   notice for names that need attention
-- Releasing a claim, from its own screen
+- Releasing a claim, from its own screen or the list
 
 Not built yet:
 

@@ -536,6 +536,8 @@ second opinion.
   the claim arrives.
 - A claim is released from its own screen, with Release claim in the header. It is the only action
   there, so it is a button rather than a menu.
+- A list row has a menu beside its link, with Release this claim. Releasing from the list saves
+  opening the claim first. The menu is its own button, so the row stays one link.
 - Refresh on the list reads the list again and runs no check. Rows show what the last check stored. The list also reads again when the
   window regains focus and after every claim or release. A note on Refresh says a claim is checked
   on its own screen.

@@ -30,6 +30,7 @@ export const domainsCopy = {
     dnsAt: (host: string) => `DNS at ${host}`,
     released: (name: string) => `Released ${name}. You can remove its TXT record from your DNS.`,
     dismiss: 'Dismiss',
+    menu: (name: string) => `Actions for ${name}`,
   },
 
   sidebar: {
