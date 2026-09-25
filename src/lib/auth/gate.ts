@@ -27,9 +27,5 @@ export const gateFor = (url: { pathname: string; search: string }, signedIn: boo
     return safeNextPath(new URLSearchParams(search).get('next')) ?? DEFAULT_SIGNED_IN_PATH;
   }
 
-  if (signedIn && pathname === '/') {
-    return DEFAULT_SIGNED_IN_PATH;
-  }
-
   return null;
 };

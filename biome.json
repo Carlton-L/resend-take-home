@@ -25,5 +25,8 @@
       "semicolons": "always",
       "jsxQuoteStyle": "single"
     }
+  },
+  "files": {
+    "includes": ["**", "!public/brand"]
   }
 }

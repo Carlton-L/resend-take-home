@@ -1,6 +1,6 @@
 // src/app/api/auth/oauth/[provider]/route.ts
 import { type NextRequest, NextResponse } from 'next/server';
-import { appOrigin, SIGN_IN_PATH } from '@/lib/auth/config';
+import { SIGN_IN_PATH } from '@/lib/auth/config';
 import { isOAuthProvider, oauthCallbackUrl } from '@/lib/auth/oauth';
 import { supabaseRouteClient } from '@/lib/auth/supabase/route';
 
@@ -18,7 +18,11 @@ export const GET = async (
   context: { params: Promise<{ provider: string }> },
 ) => {
   const { provider } = await context.params;
-  const origin = appOrigin();
+  // The origin the browser is on, so GitHub sends it back to the same host that holds the PKCE
+  // cookie. A preview has two hosts, its branch alias and its own deployment URL, and returning to
+  // the other one lost the cookie. Supabase only redirects to origins on its allow list, so a
+  // forged Host header can't send the code anywhere else.
+  const origin = request.nextUrl.origin;
   const back = (error: string) =>
     NextResponse.redirect(new URL(`${SIGN_IN_PATH}?error=${error}`, origin), { status: 303 });
 

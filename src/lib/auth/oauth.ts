@@ -17,9 +17,9 @@ export const OAUTH_START_PATH = (provider: OAuthProvider) => `/api/auth/oauth/${
 export const OAUTH_CALLBACK_PATH = '/api/auth/callback';
 
 /**
- * Where the provider sends the browser back to. Built from the configured origin rather than the
- * request, for the same reason as the emailed link. `next` is checked here too, so the value that
- * comes back on the callback has been through the same filter once already.
+ * Where the provider sends the browser back to, on the origin sign in started from. `next` is
+ * checked here too, so the value that comes back on the callback has been through the same filter
+ * once already.
  */
 export const oauthCallbackUrl = (origin: string, next: string | null): string => {
   const url = new URL(OAUTH_CALLBACK_PATH, origin);

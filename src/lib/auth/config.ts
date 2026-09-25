@@ -13,7 +13,8 @@ export const SIGN_IN_LINK_TTL_MINUTES = SIGN_IN_LINK_TTL_SECONDS / 60;
 /** How long the resend control stays disabled, so a person is told to wait rather than limited. */
 export const RESEND_COOLDOWN_SECONDS = 30;
 
-export const SIGN_IN_PATH = '/signin';
+/** Sign in is the front page. Signed out, the first screen is the one that signs you in. */
+export const SIGN_IN_PATH = '/';
 export const CONFIRM_PATH = '/auth/confirm';
 export const LINK_DEAD_PATH = '/auth/link-expired';
 

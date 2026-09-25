@@ -11,13 +11,13 @@ describe('gateFor', () => {
   it.each(['/domains', '/claim', '/claim/0b4f6c1e-2f39-4d53-9d0c-5b1c8f2a7e11'])(
     'sends a signed out request for %s to sign in, carrying where it was going',
     (path) => {
-      expect(gateFor(at(path), false)).toBe(`/signin?next=${encodeURIComponent(path)}`);
+      expect(gateFor(at(path), false)).toBe(`/?next=${encodeURIComponent(path)}`);
     },
   );
 
   it('keeps the query string in next', () => {
     expect(gateFor(at('/claim?error=limited'), false)).toBe(
-      `/signin?next=${encodeURIComponent('/claim?error=limited')}`,
+      `/?next=${encodeURIComponent('/claim?error=limited')}`,
     );
   });
 
@@ -26,24 +26,21 @@ describe('gateFor', () => {
     expect(gateFor(at('/claims'), false)).toBeNull();
   });
 
-  it.each(['/', '/signin', '/auth/link-expired'])(
-    'lets a signed out request for %s through',
-    (path) => {
-      expect(gateFor(at(path), false)).toBeNull();
-    },
-  );
+  it.each(['/', '/auth/link-expired'])('lets a signed out request for %s through', (path) => {
+    expect(gateFor(at(path), false)).toBeNull();
+  });
 
   it('sends a signed in request for the landing page to the domains', () => {
     expect(gateFor(at('/'), true)).toBe('/domains');
   });
 
   it('sends a signed in request for sign in to where it was going', () => {
-    expect(gateFor(at('/signin?next=%2Fclaim%2Fabc'), true)).toBe('/claim/abc');
+    expect(gateFor(at('/?next=%2Fclaim%2Fabc'), true)).toBe('/claim/abc');
   });
 
   it('ignores a next that leaves the site', () => {
-    expect(gateFor(at('/signin?next=https%3A%2F%2Fevil.example'), true)).toBe('/domains');
-    expect(gateFor(at('/signin?next=%2F%2Fevil.example'), true)).toBe('/domains');
+    expect(gateFor(at('/?next=https%3A%2F%2Fevil.example'), true)).toBe('/domains');
+    expect(gateFor(at('/?next=%2F%2Fevil.example'), true)).toBe('/domains');
   });
 
   it('lets a signed in request for an app page through', () => {
