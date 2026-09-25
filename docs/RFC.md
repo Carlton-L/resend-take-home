@@ -325,6 +325,12 @@ second opinion.
   accepts one, so the user never sees a supabase.co URL.
 - Sign in links render on GET and are redeemed on POST. Scanners fetch links before the person
   does and would spend a single use link. A scanner does not submit a form.
+- Sign in with GitHub, through Supabase OAuth, or an email link. No Google: the people claiming a
+  domain here have GitHub, and a second provider is a second app to keep registered.
+- The confirm page posts its own form with a script as it loads, so the link is one click. Most
+  scanners fetch without running scripts and stop at the page. A sandbox that runs scripts, like
+  Safe Links detonation, can still spend it; the person then asks for a new link. The token stays
+  single use. With scripts off, the button is still there.
 - A dead link in a browser already signed in as that address continues to the destination. The
   person asked to be signed in as someone and they are, so an error would be about the token.
 - The confirmation page names the account being signed in to, and that address is signed, so a
@@ -491,6 +497,9 @@ second opinion.
 - The check limit answers with when checks resume: the oldest counted check in the full window,
   plus the window. Check now reads Check limit reached and stays off until then. The time costs a
   second statement, run only after a refusal.
+- On a name another account holds, a wrong token found on open doesn't open the check card. That
+  account's record is at the name, so a wrong token is expected, and the record card is where the
+  screen says the name is held. Check now opens it and stays there, since the value to use is in it.
 - A proved claim on a name another account holds keeps checking. Its next step is asking that
   account to release the name; the check after that verifies this claim. Transfers stay a draft
   (TRANSFERS.md).
@@ -500,6 +509,8 @@ second opinion.
 - A wrong value and a doubled name mark where they go wrong: the part after what matches is
   highlighted, and values wrap rather than scroll so the two can be read against each other.
 - After a check someone watched, its result scrolls into view when it ends below the fold.
+- A background check's pulse finishes the run it is on before it goes, so a fast answer doesn't cut
+  it off part way to the node.
 - The header's second row is as tall as the Open DNS button before the button exists, so the first
   check naming the host doesn't move the page.
 - A claim is released from its own screen, with Release claim in the header. It is the only action
