@@ -123,7 +123,7 @@ export const claimScreenCopy = {
     TXT: 'A text record. DNS can hold short notes like this one. We read it to confirm you control the domain.',
     Name: 'Where the record lives. Most panels add your domain to the end for you, so paste only this part.',
     Value: 'The text we look for. Paste it exactly, with no quotes or extra spaces.',
-    TTL: 'How long other servers cache the record. A lower number means we see your change sooner.',
+    TTL: 'How long public resolvers cache the record. Checks ask your nameservers directly, so it never delays verification.',
     nameservers:
       'The servers that answer DNS questions for your domain. Your DNS panel is wherever they point.',
     zone: 'The set of DNS records for your domain, managed in one place by your DNS provider.',
