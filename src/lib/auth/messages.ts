@@ -57,9 +57,15 @@ export const signInCopy = {
 export const signInEmailCopy = {
   subject: 'Sign in to DomainClaim',
   heading: 'Sign in to DomainClaim',
-  body: (email: string) => `Use the link below to sign in as ${email}.`,
+  /** The card's header label and its badge. */
+  label: 'Sign in',
+  badge: 'Link',
+  /** The HTML part, which has a button. Also the inbox preview. */
+  body: (email: string) => `Use the button below to sign in as ${email}.`,
+  /** The text part, which has only the address. */
+  bodyText: (email: string) => `Use the link below to sign in as ${email}.`,
   button: 'Sign in',
-  expiry: `This link expires in ${SIGN_IN_LINK_TTL_MINUTES} minutes and can be used once.`,
+  expiry: `The link expires in ${SIGN_IN_LINK_TTL_MINUTES} minutes and works once.`,
   fallbackIntro: 'If the button does not work, paste this address into your browser:',
   ignore: 'If you did not ask to sign in, you can ignore this email.',
 } as const;
