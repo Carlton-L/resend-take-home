@@ -518,6 +518,14 @@ second opinion.
   it off part way to the node.
 - The header's second row is as tall as the Open DNS button before the button exists, so the first
   check naming the host doesn't move the page.
+- On a phone a row of steps scrolls sideways rather than stacking. Each column is as wide as its
+  longest label or answer, so text stays on one line, and the row scrolls to the step the check is
+  on. Fades at the edges say there is more.
+- A tip opens on tap as well as hover and focus. Safari doesn't focus a tapped button, so focus
+  alone never opened one on an iPhone. A tip moves sideways to stay on screen.
+- Sign out goes to the sign in screen without a reload, and clears the cache first.
+- The claim screen's loading header has the real header's heights, so the page doesn't move when
+  the claim arrives.
 - A claim is released from its own screen, with Release claim in the header. It is the only action
   there, so it is a button rather than a menu.
 - Refresh on the list reads the list again and runs no check. The list also reads again when the

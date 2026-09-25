@@ -105,7 +105,7 @@ const Rail: React.FC = () => {
                   onClick={blurActive}
                   aria-current={active ? 'page' : undefined}
                   aria-label={view === null ? claim.name : `${claim.name}, ${view.word}`}
-                  className={`group/row flex h-12 w-full items-center gap-3 px-2.5 transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none ${active ? 'bg-surface-2' : ''}`}
+                  className={`group/row flex h-12 w-full items-center gap-3 px-2.5 transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-2 focus-visible:outline-wait focus-visible:-outline-offset-2 ${active ? 'bg-surface-2' : ''}`}
                 >
                   <Favicon badge={view?.badge ?? null} ring={active ? 'surface-2' : 'row'} />
                   <span className={`flex min-w-0 flex-1 flex-col ${fade}`}>

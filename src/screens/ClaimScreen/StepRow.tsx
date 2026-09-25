@@ -2,7 +2,7 @@
 'use client';
 
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ShownStep } from '@/client/check/checkReducer';
 import Tip from '@/components/Tip/Tip';
 import { claimCopy } from '@/lib/claims/messages';
@@ -76,8 +76,85 @@ const useFinishedProbe = (probe: number | null) => {
   return { shown, finished };
 };
 
+const PHONE = '(max-width: 720px)';
+
+/**
+ * On a phone a row scrolls sideways instead of stacking, the way the design has it. Every column
+ * is as wide as its longest label or answer, so each stays on one line, and the row scrolls to
+ * the step the check is on. `more` says which ends have steps out of view, for the fade.
+ */
+const usePhoneRow = (steps: ShownStep[]) => {
+  const rowRef = useRef<HTMLOListElement>(null);
+  const [width, setWidth] = useState<number | null>(null);
+  const [more, setMore] = useState({ left: false, right: false });
+
+  const current = (() => {
+    const running = steps.findIndex((step) => step.state === 'run');
+    if (running >= 0) {
+      return running;
+    }
+    const open = steps.findIndex((step) => step.state !== 'done');
+    return open >= 0 ? open : steps.length - 1;
+  })();
+  const text = steps.map((step) => `${step.state}:${step.answer}`).join('|');
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `text` stands for what changes the widths
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (row === null) {
+      return;
+    }
+    const phone = window.matchMedia(PHONE);
+    const measure = () => {
+      if (!phone.matches) {
+        setWidth(null);
+        return;
+      }
+      let widest = 0;
+      for (const el of row.querySelectorAll<HTMLElement>('.step-label, .step-answer')) {
+        widest = Math.max(widest, el.scrollWidth);
+      }
+      setWidth(Math.max(150, Math.ceil(widest) + 32));
+    };
+    measure();
+    phone.addEventListener('change', measure);
+    return () => phone.removeEventListener('change', measure);
+  }, [text]);
+
+  useEffect(() => {
+    const row = rowRef.current;
+    if (row === null || width === null) {
+      return;
+    }
+    const hint = () =>
+      setMore({
+        left: row.scrollLeft > 4,
+        right: row.scrollLeft + row.clientWidth < row.scrollWidth - 4,
+      });
+    const node = row.children[current + 1];
+    if (node instanceof HTMLElement) {
+      const left = node.offsetLeft - (row.clientWidth - node.offsetWidth) / 2;
+      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      row.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
+    }
+    hint();
+    row.addEventListener('scroll', hint, { passive: true });
+    return () => row.removeEventListener('scroll', hint);
+  }, [current, width]);
+
+  return { rowRef, width, more };
+};
+
+const FADE = {
+  none: '',
+  left: '[mask-image:linear-gradient(90deg,transparent,#000_20%)]',
+  right: '[mask-image:linear-gradient(90deg,#000_80%,transparent)]',
+  both: '[mask-image:linear-gradient(90deg,transparent,#000_20%,#000_80%,transparent)]',
+};
+
 const StepRow: React.FC<StepRowProps> = ({ steps, from, probe }) => {
   const held = useFinishedProbe(probe);
+  const phone = usePhoneRow(steps);
   const count = steps.length;
   const centre = (k: number) => (k + 0.5) * (100 / count);
 
@@ -107,11 +184,18 @@ const StepRow: React.FC<StepRowProps> = ({ steps, from, probe }) => {
   return (
     <div className='pt-[26px] pb-1 max-[720px]:pt-5'>
       <ol
-        className={`relative grid list-none max-[720px]:grid-cols-1 max-[720px]:gap-3 max-[720px]:px-[18px] ${count === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
+        ref={phone.rowRef}
+        className={`relative grid list-none ${count === 2 ? 'grid-cols-2' : 'grid-cols-3'} max-[720px]:snap-x max-[720px]:snap-proximity max-[720px]:overflow-x-auto max-[720px]:overflow-y-hidden max-[720px]:overscroll-x-contain max-[720px]:[scrollbar-width:none] max-[720px]:[&::-webkit-scrollbar]:hidden max-[720px]:-my-4 max-[720px]:py-4 max-[720px]:[&_[role=tooltip]]:hidden ${FADE[phone.more.left ? (phone.more.right ? 'both' : 'left') : phone.more.right ? 'right' : 'none']}`}
+        style={
+          phone.width === null
+            ? undefined
+            : { gridTemplateColumns: `repeat(${count}, ${phone.width}px)` }
+        }
       >
         <li
           aria-hidden='true'
-          className='absolute top-[13px] right-0 left-0 h-0.5 bg-line-control max-[720px]:hidden'
+          className='absolute top-[13px] left-0 h-0.5 bg-line-control max-[720px]:top-[29px]'
+          style={phone.width === null ? { right: 0 } : { width: count * phone.width }}
         >
           <span className='cable-fill absolute top-0 left-0 h-full' style={{ width: `${fill}%` }} />
           {lead !== null && (
@@ -146,17 +230,17 @@ const StepRow: React.FC<StepRowProps> = ({ steps, from, probe }) => {
               // Keyed on the state, so a step that lands replays its pop.
               key={`${step.key}-${step.state}`}
               data-state={step.state}
-              className={`step flex min-w-0 flex-col items-center px-3 text-center max-[720px]:grid max-[720px]:grid-cols-[28px_1fr] max-[720px]:items-start max-[720px]:gap-x-3 max-[720px]:px-0 max-[720px]:text-left ${pop ? 'step-pop' : ''} ${probe === index ? 'step-probe' : ''}`}
+              className={`step flex min-w-0 flex-col items-center px-3 text-center max-[720px]:snap-center ${pop ? 'step-pop' : ''} ${probe === index ? 'step-probe' : ''}`}
             >
-              <span aria-hidden='true' className='step-node max-[720px]:row-span-3'>
+              <span aria-hidden='true' className='step-node'>
                 <Tick />
                 <span className='step-bang'>!</span>
                 <span className='step-wait' />
               </span>
-              <span className='step-number mt-3 font-medium font-mono text-[10.5px] text-fg-5 tracking-[0.1em] max-[720px]:mt-0'>
+              <span className='step-number mt-3 font-medium font-mono text-[10.5px] text-fg-5 tracking-[0.1em]'>
                 {String(index + 1).padStart(2, '0')}
               </span>
-              <span className='step-label mt-[3px] font-medium text-[13px] text-fg-3 transition-colors'>
+              <span className='step-label mt-[3px] font-medium text-[13px] text-fg-3 transition-colors max-[720px]:whitespace-nowrap'>
                 {tip === undefined ? (
                   label
                 ) : (
@@ -166,7 +250,7 @@ const StepRow: React.FC<StepRowProps> = ({ steps, from, probe }) => {
                 )}
                 <span className='sr-only'>, {stateWord(step.state)}</span>
               </span>
-              <span className='step-answer mt-1 min-h-[38px] text-[12.5px] text-fg-5 leading-normal transition-colors max-[720px]:min-h-5'>
+              <span className='step-answer mt-1 min-h-[38px] text-[12.5px] text-fg-5 leading-normal transition-colors max-[720px]:min-h-5 max-[720px]:whitespace-nowrap'>
                 {step.answer}
               </span>
             </li>
