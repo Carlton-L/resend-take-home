@@ -316,6 +316,11 @@ second opinion.
 - Auth email sent by us through the Resend SDK, not by Supabase SMTP. The product needs
   transactional mail for status changes anyway, so the SDK is in the repo either way. One path for
   all mail, and the email is ours to write.
+- Every email uses one layout (`lib/email/layout.ts`): the wordmark, one card with a label and a
+  badge, fine print under it. The status emails reuse it with the five check steps as nodes. Fluid
+  to 520px, with a fixed table for Outlook. The old template was fixed at 480px and didn't fit a
+  phone.
+- A hidden preheader goes first in the body, so the inbox preview shows the first line.
 - The magic link points at our own route. `generateLink` returns a hashed token and `verifyOtp`
   accepts one, so the user never sees a supabase.co URL.
 - Sign in links render on GET and are redeemed on POST. Scanners fetch links before the person

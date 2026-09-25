@@ -107,6 +107,22 @@ describe('buildSignInEmail', () => {
     expect(hostile.html).not.toContain('<script>');
   });
 
+  it('says button in the HTML part and link in the text part', () => {
+    expect(email.html).toContain('Use the button below to sign in as');
+    expect(email.text).toContain(signInEmailCopy.bodyText(SAMPLE_EMAIL));
+    expect(email.text).not.toContain('button');
+  });
+
+  it('previews the first line of the body in the inbox', () => {
+    const body = email.html.slice(email.html.indexOf('<body'));
+    expect(body.indexOf(signInEmailCopy.body(SAMPLE_EMAIL))).toBeLessThan(body.indexOf('<table'));
+  });
+
+  it('fits a phone, where the old template was fixed at 480px', () => {
+    expect(email.html).not.toContain('width="480"');
+    expect(email.html).toContain('max-width:520px');
+  });
+
   it('follows the copy rules in the rendered text part', () => {
     expect(findBannedPhrases([email.text])).toEqual([]);
   });
