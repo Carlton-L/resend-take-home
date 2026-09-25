@@ -68,3 +68,24 @@ export const nameserversPassed = (steps: Step[]): boolean =>
 /** A check found something at the name, so the check card has something to say. */
 export const checkFoundSomething = (steps: Step[]): boolean =>
   steps[2]?.state === 'done' || steps[2]?.state === 'wrong';
+
+/**
+ * Whether a check that ran on its own shows the check card. Check now always shows it.
+ *
+ * A name another account holds carries that account's record, so a check finds a record with
+ * another token. Showing that on open scrolled past the record card, which is where the screen
+ * says the name is held. So it waits for Check now, the same as a record that isn't there yet.
+ * Proving control of a held name still shows: that answer is new.
+ */
+export const checkCardEarned = (
+  claim: { status: ClaimStatus; heldByAnother: boolean },
+  steps: Step[],
+): boolean => {
+  if (holdsTheName(claim.status)) {
+    return true;
+  }
+  if (!checkFoundSomething(steps)) {
+    return false;
+  }
+  return !(claim.heldByAnother && steps[3]?.state === 'wrong');
+};

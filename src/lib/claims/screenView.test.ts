@@ -1,6 +1,7 @@
 // src/lib/claims/screenView.test.ts
 import { describe, expect, it } from 'vitest';
-import { type CardsInput, cardsFor, recordKnown } from '@/lib/claims/screenView';
+import { type CardsInput, cardsFor, checkCardEarned, recordKnown } from '@/lib/claims/screenView';
+import type { StepKey } from '@/lib/claims/steps';
 
 const steps = (...states: string[]) =>
   (['zone', 'nameservers', 'record', 'token', 'claim'] as const).map((key, index) => ({
@@ -81,5 +82,48 @@ describe('recordKnown', () => {
     expect(recordKnown({ status: 'pending', dnsHost: 'Cloudflare' })).toBe(true);
     expect(recordKnown({ status: 'verified', dnsHost: null })).toBe(true);
     expect(recordKnown({ status: 'pending', dnsHost: null })).toBe(false);
+  });
+});
+
+describe('checkCardEarned', () => {
+  const steps = (record: string, token: string) =>
+    [
+      { key: 'zone', state: 'done' },
+      { key: 'nameservers', state: 'done' },
+      { key: 'record', state: record },
+      { key: 'token', state: token },
+      { key: 'claim', state: 'idle' },
+    ] as { key: StepKey; state: string }[];
+
+  it('shows a wrong token on a name nobody else holds', () => {
+    expect(
+      checkCardEarned({ status: 'pending', heldByAnother: false }, steps('done', 'wrong')),
+    ).toBe(true);
+  });
+
+  // The other account's record is at the name, so a wrong token is expected and the record card
+  // is where the screen explains it.
+  it('waits for Check now on a name another account holds', () => {
+    expect(
+      checkCardEarned({ status: 'pending', heldByAnother: true }, steps('done', 'wrong')),
+    ).toBe(false);
+  });
+
+  it('shows control proved on a name another account holds', () => {
+    expect(checkCardEarned({ status: 'pending', heldByAnother: true }, steps('done', 'done'))).toBe(
+      true,
+    );
+  });
+
+  it('waits while the record is not there yet', () => {
+    expect(
+      checkCardEarned({ status: 'pending', heldByAnother: false }, steps('wait', 'idle')),
+    ).toBe(false);
+  });
+
+  it('always shows on a claim that holds its name', () => {
+    expect(
+      checkCardEarned({ status: 'verified', heldByAnother: false }, steps('wait', 'idle')),
+    ).toBe(true);
   });
 });
