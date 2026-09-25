@@ -326,6 +326,10 @@
   box-shadow: 0 0 12px 3px rgb(61 255 136 / 0.6);
   animation: travel 1.3s linear infinite;
 }
+/* A revealed step: one run that reaches the node just before the step lands (STEP_MS is 450). */
+.cable-pulse.cable-pulse-once {
+  animation: travel-once 0.42s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
 .cable-pulse::before {
   content: "";
   position: absolute;
@@ -401,6 +405,19 @@
     opacity: 0;
   }
 }
+@keyframes travel-once {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 1;
+  }
+}
 @keyframes ping {
   0% {
     transform: scale(1);
@@ -435,6 +452,7 @@
   .step.step-pop .step-node::before,
   .step.step-probe .step-node::before,
   .cable-pulse,
+  .cable-pulse.cable-pulse-once,
   .live-dot::after {
     animation: none;
   }

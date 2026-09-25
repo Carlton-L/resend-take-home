@@ -5,7 +5,7 @@ import { supabaseRouteClient } from '@/lib/auth/supabase/route';
 import { CLAIM_PATH, claimPath } from '@/lib/claims/config';
 import { type ClaimsResponse, type CreateResponse, toClaimDTO } from '@/lib/claims/dto';
 import { type CreateOutcome, claimsForOwner, createClaim, heldByAnother } from '@/lib/claims/store';
-import { testNamespaceEnabled } from '@/lib/dns/testNames';
+import { demoTokenLifetimeMs, testNamespaceEnabled } from '@/lib/dns/testNames';
 import { normalizeDomainInput } from '@/lib/domain/normalize';
 import { isSameOrigin } from '@/lib/http/sameOrigin';
 import { wantsJson } from '@/lib/http/wantsJson';
@@ -143,10 +143,12 @@ export const POST = async (request: NextRequest) => {
     return refuse('invalid', 400);
   }
 
+  const demoLifetime = testNamespaceEnabled() ? demoTokenLifetimeMs(normalized.value.name) : null;
   const created = await createClaim({
     ownerId: user.id,
     name: normalized.value.name,
     registrableDomain: normalized.value.registrableDomain,
+    ...(demoLifetime === null ? {} : { tokenLifetimeMs: demoLifetime }),
   });
 
   if (json) {

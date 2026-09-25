@@ -107,7 +107,7 @@ describe('checkView', () => {
   });
 
   it('names the provider in the line that goes at the foot of the page', () => {
-    expect(checkView(verified()).provider).toContain('Google');
+    expect(checkView(verified()).provider).toContain('Squarespace');
   });
 
   it('has nothing to say about the provider when there was no trace', () => {
@@ -133,10 +133,10 @@ describe('checkView', () => {
       expect(checkView(expired).settled).toBe(true);
     });
 
-    it('is settled when control was proved and another account holds the name', () => {
+    it('keeps checking when control was proved and another account holds the name', () => {
       expect(
         checkView(verified({ status: 'pending', verifiedAt: null, provedButHeld: true })).settled,
-      ).toBe(true);
+      ).toBe(false);
     });
 
     // The record may come back, and this is the case the product most wants to notice changing.

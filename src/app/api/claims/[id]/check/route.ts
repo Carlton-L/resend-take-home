@@ -79,13 +79,14 @@ export const POST = async (request: NextRequest, context: { params: Promise<{ id
   // After the claim is known and before any query is sent, so a refused check costs one statement
   // and no DNS.
   const decision = await recordCheckAttempt(user.id, claim.id);
-  if (decision.outcome !== 'allowed') {
-    // Both refusals are answers the screen has a message for, so the code and the body say the
-    // same thing rather than the client inferring one from the other.
-    return respond(
-      { ok: false, error: decision.outcome },
-      decision.outcome === 'limited' ? 429 : 503,
-    );
+  // Both refusals are answers the screen has a message for, so the code and the body say the
+  // same thing rather than the client inferring one from the other.
+  if (decision.outcome === 'limited') {
+    const resumeAt = decision.resumeAt === null ? null : decision.resumeAt.toISOString();
+    return respond({ ok: false, error: 'limited', resumeAt }, 429);
+  }
+  if (decision.outcome === 'unavailable') {
+    return respond({ ok: false, error: 'unavailable' }, 503);
   }
 
   const encoder = new TextEncoder();

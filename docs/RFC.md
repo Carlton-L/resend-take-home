@@ -27,8 +27,10 @@ every failure, its message and its demo name.
 
 - Verification proves control of the zone. Ownership is a registrar contract. Registrant and
   nameserver operator are often different people.
-- carlton.dev example: NS are googledomains, registrar is Squarespace. Resend reports "Google"
-  and is correct.
+- carlton.dev example: NS are googledomains, registrar is Squarespace. Resend reports "Google".
+  Squarespace took over Google Domains and kept those nameservers, so the zone is edited in
+  Squarespace's panel. DomainClaim names `googledomains.com` nameservers Squarespace and links its
+  panel. Google Cloud DNS uses the same names and gets the wrong label, accepted for now.
 - Token goes in a scoped underscore TXT label. Underscores cannot collide with hostnames.
 - Nothing propagates. Authoritative servers are current, caches lag.
 - A DNS panel is not the zone. Deleting a record at a registrar whose DNS is served elsewhere is a
@@ -111,10 +113,8 @@ Subdomains are verified separately. `example.com` does not cover `app.example.co
   the screen derives `checking` from the in-flight request
 - Public suffix and parse failures are validation errors, not states
 - Route Handlers, not Server Actions. Node runtime, never Edge
-- Checks run from the browser against `POST /api/claims/[id]/check`, which streams one JSON object
-  per line: steps 01 and 02 when DNS answers, 03 to 05 after the second look and the write, then
-  the whole answer. The screen shows each step as it lands, 450ms apart. Refusals answer plain
-  JSON before any stream starts
+- Checks run from the browser against `POST /api/claims/[id]/check`, which answers with the five
+  steps as the screen renders them. The page renders the record from the row and runs no query
 - Rate limits on claims created per account, on sign in email, and on checks, counted in Postgres.
   Each decision and its record are one SQL statement, which also prunes the window. Checks are
   counted per claim and per account, 20 and 60 per five minutes, both above the cadence so the
@@ -187,7 +187,11 @@ make the per claim count impossible.
 `DOMAINCLAIM_TEST_NAMESPACE=on` routes every `.test` name to the fake resolver, outcome keyed by the
 name: `verified.test`, `crowded-name.test`, `record-not-found.test`, `no-txt-at-name.test`,
 `appended-zone.test`, `value-mismatch.test`, `zone-not-found.test`, plus `one-dead-nameserver.test`,
-`slow-nameservers.test` and `nameservers-unreachable.test` for the timing cases. A script that succeeds returns the value the caller is
+`slow-nameservers.test` and `nameservers-unreachable.test` for the timing cases, and
+`other-txt.test` for TXT records that belong to another service. `flaky.test` flips its record on
+every check, so verified, at risk and recovered are each one Check now away. `expired.test` is
+created a minute past its expiry, the one fixture set at creation rather than in DNS. Held by
+another account needs a second account. A script that succeeds returns the value the caller is
 looking for, so a demo claim verifies rather than reporting a mismatch against a fixed token. Off by default, and `.test` stays refused as a
 special-use name. On for the preview and the submitted deployment. Documented in the README. Each
 name lands with the slice that can produce its reason, and the claim screen lists the ones that
@@ -355,7 +359,9 @@ second opinion.
   under three problems: it could not be rate limited, the list's rows carried `prefetch={false}`
   against a hover spending a trace and a write, and the only way to ask again was the browser's
   reload button.
-  Cost: the claim screen needs JavaScript, like claiming does.
+  Cost: a browser with JavaScript off sees the record and no check. Accepted, because the record is
+  what the user came for and proving control is a round trip either way. The claim form still posts
+  a plain form and still works without it.
 - The endpoint answers with the five steps as the screen renders them rather than with the trace.
   Sending the trace would put the copy, the step rules and the provider table into the browser
   bundle to produce the same strings a second time, and every date in it would arrive as a string
@@ -371,7 +377,8 @@ second opinion.
 - A check that fails to run is not a check that failed. Limited, unavailable, offline, signed out
   and released each get the four part message minus the DNS value, and four of the five are
   answered by the button that is already there.
-- A check stores when it finished and who serves the zone, and nothing else about itself.
+- The timeline stores nothing. `last_checked_at` would buy one string the client can produce
+  truthfully from its own last answer, and a stored check has no reader until history is rendered.
 - `check_attempts` is its own table rather than a kind column on `sign_in_attempts`. That table
   stores hashes so it cannot be read back as a list of who tried to sign in, which is the wrong
   shape for counting checks per claim, and sharing it would put two retention windows in one prune.
@@ -382,6 +389,11 @@ second opinion.
   asking. A zone that has not answered yet is a notification. No third step state: whose move is
   next already has an answer for it, and a second vocabulary for the same answer is how a person
   learns to stop reading either.
+- Only our own records count as finding the record. A zone can answer the record's name with TXT
+  records for other services, most often through a wildcard: `*.apple.com` answers every name with
+  its SPF record. Those say nothing about this claim, so the record step waits as if nothing were
+  there and the token step is never reached. The token step fails only on a DomainClaim record with
+  another token.
 - A check that finds the record verifies the claim. Finding it and leaving the claim pending would
   be a bug rather than a scope line.
 - The check renders as its five steps rather than a result box: find the zone, reach the
@@ -392,22 +404,18 @@ second opinion.
   cross there reports the product working correctly as a fault.
 - Step labels are steps rather than statements. "Record found" can only be true, so it contradicts
   its own glyph.
-- The claim screen is four cards joined by one straight line: nameservers, record, check, verified.
-  A card appears when it has something to say and stays for the rest of the visit. Cards before the
-  current one dim and ease back on hover. The screen scrolls so the current card sits under the
-  header.
-- Opening a claim shows its stored state at once, then checks. A claim that has never been checked
-  plays its first check step by step. After that a check runs in the background and only the steps
-  that changed move.
+- The chain is always present, above the record card, at two densities. One line when there is
+  nothing to act on, open when there is. It never appears or disappears, because an absence cannot
+  tell a person "you fixed it" from "we stopped looking". Saying that out loud needs `last_failure`,
+  which is deferred.
 - The four part message moves into the step that produced it and the separate failure box is
   deleted. A tooltip has no touch equivalent; a modal hides the record while telling you to use it.
 - Control proved against a name another account holds is a status rather than a failure. The person
   did everything right.
-- The DNS host sits in the header and above the record, with a link to its panel for the hosts we
-  have checked.
-- No per-server timings.
-- One check answer feeds the pill, the steps and the list. The browser holds it and the
-  three read it, so the trace and the write happen once and the three cannot disagree.
+- The provider line sits at the foot, beneath both cards, where it is acted on.
+- No per-server timings. One count of answered steps in the chain header.
+- One check answer feeds the status, the chain and the provider line. The browser holds it and the
+  three regions read it, so the trace and the write happen once and the three cannot disagree.
   Without this a claim that verified mid-render showed PENDING above its own verified result.
 - The row moving decides the status, not the check. A write that hits the unique index or fails
   leaves the claim where it was.
@@ -446,10 +454,15 @@ second opinion.
   `value_mismatch` reports.
 - Copy controls sit inside the field border. Four cells with separate buttons beside them do not
   say which value each button belongs to.
-- The claim's state is the top of the record screen, read from the row until a check answers. The
-  pill says Checking while Check now runs and changes only once step 05 has landed.
-- On a claim that holds its name the record card is a past card, dimmed and one hover away,
-  because comparing this value with the one in the panel is why someone opens a verified claim.
+- The claim's state is the top of the record screen, read from the row rather than from the check.
+  The row carries the status before any check runs, so the shell says it while the check is still
+  streaming. The eyebrow previously read CLAIMING on a name this account already held.
+- The record card collapses on a claim that already holds its name. "Add this record" is
+  instruction for work already done. It stays one click away, because comparing this value against
+  the one in the panel is why someone opens a verified claim.
+- The record screen is wider than the rest of the app. Four columns need the width. The check and
+  the notices span the same width, so the cards line up, and each paragraph inside them is capped
+  at the measure the other screens read at. Two card widths on one screen read as unfinished.
 - One measure for every screen, 1040px, shared by the top bar.
 - Claims sit in a sidebar of favicons that opens on hover, with Claim a domain at the top. It is
   fixed and drawn over the page, so opening it moves nothing. A badge on the favicon marks a claim
@@ -470,7 +483,22 @@ second opinion.
   and a copyable value sits between them so it reads as instruction, thing to paste, reason.
 - The keep-the-record line on a verified claim is a warning with a bold lead. It is the one thing on
   that screen the person could get wrong.
-- A claim is released from its own screen, from the header menu.
+- The check limit answers with when checks resume: the oldest counted check in the full window,
+  plus the window. Check now reads Check limit reached and stays off until then. The time costs a
+  second statement, run only after a refusal.
+- A proved claim on a name another account holds keeps checking. Its next step is asking that
+  account to release the name; the check after that verifies this claim. Transfers stay a draft
+  (TRANSFERS.md).
+- An expired claim gets a new record in place. Get a new record claims the name again, which
+  reissues the token on the same claim, then checks. Releasing and claiming again was two steps for
+  the same result.
+- A wrong value and a doubled name mark where they go wrong: the part after what matches is
+  highlighted, and values wrap rather than scroll so the two can be read against each other.
+- After a check someone watched, its result scrolls into view when it ends below the fold.
+- The header's second row is as tall as the Open DNS button before the button exists, so the first
+  check naming the host doesn't move the page.
+- A claim is released from its own screen, with Release claim in the header. It is the only action
+  there, so it is a button rather than a menu.
 - Refresh on the list reads the list again and runs no check. The list also reads again when the
   window regains focus and after every claim or release. A note on Refresh says a claim is checked
   on its own screen.
@@ -525,8 +553,10 @@ second opinion.
 - Each check that asks DNS stores when it finished and who serves the zone (`last_checked_at`,
   `dns_host`). The list still runs no check, but it can say how old a row's state is, and the claim
   header can name the DNS host before a visit's first check comes back.
-- When the last check ran and when the next one runs sit next to Check now, the one place either
-  can be acted on. A hidden tab doesn't check, and catches up when it is shown again.
+- The closed check line carries no time at all. When the check ran, and that another is coming,
+  are said next to the button that asks now, which is the one place either can be acted on. The
+  relative time is honest again because the client re-renders it, and it is coarse, since a second
+  by second count is motion on a page where nothing is happening.
 - The list's rows prefetch again and the comment goes with the prop. The reason recorded for that
   prop was wrong. Measured on the deployment, 2026-09-15: loading `/domains` with `prefetch={false}`
   removed produces no request to `/claim/<id>` of any kind, and Next does not prefetch in `next dev`
@@ -610,16 +640,21 @@ second opinion.
 
 | Reason | Title | Next action | Test |
 | --- | --- | --- | --- |
-| `record_not_found` | No record found yet | Add the record below. | `record-not-found.test` |
-| `record_not_found`, on a claim that holds the name | The record is missing | Add the record below back to your DNS panel. | Verified claim, record removed |
-| `no_txt_at_name` | The name exists but has no TXT record | Check the existing records at this exact name in your DNS panel and add the TXT record beside them. | `no-txt-at-name.test` |
+| `record_not_found` | No record found yet | Add the record below. | `record-not-found.test`, `other-txt.test` |
+| `record_not_found`, on a claim that holds the name | The record is missing | Add the record below back in {host}. | `flaky.test`, second check |
+| `no_txt_at_name` | The name exists but has no TXT record | Keep it, and add the TXT record beside it. | `no-txt-at-name.test` |
 | `cname_at_name` | | | |
-| `value_mismatch` | The TXT record has a different value | Replace the value in your DNS panel with the one below. | `value-mismatch.test` |
-| `appended_zone_suspected` | The record was saved with the domain appended twice | Delete that record and add it again with the short name below. | `appended-zone.test` |
-| `token_expired` | This claim has expired | Release this claim and create a new one to get a new token. | Claim row, no query |
+| `value_mismatch` | The TXT record has a different value | Replace the value in {host} with the one below. | `value-mismatch.test` |
+| `appended_zone_suspected` | The domain was added to the name twice | Change the record's name to the short one below. | `appended-zone.test` |
+| `token_expired` | This claim has expired | Get a new record to try again. | `expired.test` |
 | `dnssec_broken` | | | |
-| `nameservers_unreachable` | Nameservers did not respond | If this persists for more than a few minutes, check the nameservers set for the domain at your registrar. | `nameservers-unreachable.test` |
-| `zone_not_found` | No nameservers found for this domain | Check the nameservers set for the domain at your registrar, and allow a few minutes if they were set recently. | `zone-not-found.test` |
+| `nameservers_unreachable` | {host}'s nameservers aren't answering | If it lasts more than a few minutes, check the nameservers set at your registrar. | `nameservers-unreachable.test` |
+| `zone_not_found` | No nameservers found for this domain | Set nameservers at your registrar. | `zone-not-found.test` |
+| Proved, held by another account | Control verified. Another account holds this name. | Ask the account that holds this name to release it, and leave the record in place. | Two accounts |
+| Check limit | Check limit reached | Press Check now after {time}. | 21 checks in 5 minutes |
+
+{host} is the DNS host by name when we recognise it, and "your DNS panel" otherwise. An action is
+one sentence; anything else goes in the description.
 
 `cname_at_name` needs a CNAME query, which is a new method on the resolver interface, for one
 message. `dnssec_broken` needs the DoH leg, which is not built. Both stay empty.

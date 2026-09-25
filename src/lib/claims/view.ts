@@ -32,13 +32,11 @@ export type CheckView = {
  *
  * The cadence stops on this rather than on the claim being verified, because a verified claim
  * whose record has gone is exactly the case that should keep asking: the record may come back. A
- * claim that proved control of a name another account holds is finished until transfers exist, and
- * an expired token cannot be proved by anything in DNS.
+ * claim that proved control of a name another account holds keeps asking too: the next step is the
+ * other account releasing it, and the check after that verifies this claim. An expired token cannot
+ * be proved by anything in DNS.
  */
 const isSettled = (outcome: ClaimOutcome): boolean => {
-  if (outcome.provedButHeld) {
-    return true;
-  }
   if (outcome.result.status === 'verified') {
     return holdsTheName(outcome.status);
   }
@@ -72,4 +70,6 @@ export const checkView = (outcome: ClaimOutcome): CheckView => {
  */
 export type CheckResponse =
   | { ok: true; view: CheckView }
-  | { ok: false; error: 'limited' | 'unavailable' | 'signed_out' | 'not_found' };
+  /** `resumeAt` is an ISO time, on `limited` only, when the next check is allowed. */
+  | { ok: false; error: 'limited'; resumeAt: string | null }
+  | { ok: false; error: 'unavailable' | 'signed_out' | 'not_found' };

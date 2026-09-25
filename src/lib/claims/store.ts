@@ -117,8 +117,11 @@ export const createClaim = async (input: {
   name: string;
   registrableDomain: string;
   now?: Date;
+  /** Only for the demo namespace, where `expired.test` is created already expired. */
+  tokenLifetimeMs?: number;
 }): Promise<CreateOutcome> => {
   const now = input.now ?? new Date();
+  const lifetime = input.tokenLifetimeMs ?? TOKEN_TTL_MS;
 
   try {
     const existing = await ownClaimFor(input.ownerId, input.name);
@@ -133,7 +136,7 @@ export const createClaim = async (input: {
     const rows = await getDb().execute<{ id: string }>(sql`
       insert into claims (owner_id, name, registrable_domain, token, expires_at)
       select ${input.ownerId}::uuid, ${input.name}, ${input.registrableDomain},
-             ${generateToken()}, ${new Date(now.getTime() + TOKEN_TTL_MS).toISOString()}::timestamptz
+             ${generateToken()}, ${new Date(now.getTime() + lifetime).toISOString()}::timestamptz
       where (
         select count(*) from claims
         where owner_id = ${input.ownerId}::uuid

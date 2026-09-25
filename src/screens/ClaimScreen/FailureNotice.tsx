@@ -1,6 +1,7 @@
 // src/screens/ClaimScreen/FailureNotice.tsx
 import type React from 'react';
 import CopyValue from '@/components/CopyValue/CopyValue';
+import { splitAtDifference } from '@/lib/claims/difference';
 import type { FailureMessage } from '@/lib/claims/messages';
 import Notice from '@/screens/ClaimScreen/Notice';
 
@@ -10,6 +11,20 @@ type FailureNoticeProps = {
   /** Buttons after the action: Check now, Open DNS, Find your registrar. */
   actions?: React.ReactNode;
   className?: string;
+};
+
+/** A found value with the part that differs from what it should be marked in amber. */
+const Marked: React.FC<{ value: string; against: string | undefined }> = ({ value, against }) => {
+  if (against === undefined) {
+    return <>{value}</>;
+  }
+  const { same, rest } = splitAtDifference(value, against);
+  return (
+    <>
+      {same}
+      {rest.length > 0 && <mark className='rounded-[3px] bg-warn/15 px-px text-warn'>{rest}</mark>}
+    </>
+  );
 };
 
 /** One failure in its four parts: title, what was found, why, and the one thing to do next. */
@@ -22,7 +37,7 @@ const FailureNotice: React.FC<FailureNoticeProps> = ({ message, tone, actions, c
         </span>
         {message.record.values.map((value) => (
           <code key={value} className='break-all font-mono text-[12.5px] text-fg leading-relaxed'>
-            {value}
+            <Marked value={value} against={message.record?.against} />
           </code>
         ))}
       </div>
@@ -33,7 +48,7 @@ const FailureNotice: React.FC<FailureNoticeProps> = ({ message, tone, actions, c
         <span className='font-medium font-mono text-[9.5px] text-fg-3 uppercase tracking-[0.12em]'>
           {message.copyable.label}
         </span>
-        <CopyValue value={message.copyable.value} label={message.copyable.label} />
+        <CopyValue value={message.copyable.value} label={message.copyable.label} wrap />
       </div>
     )}
     <div className='flex flex-wrap items-center gap-2.5'>

@@ -71,7 +71,9 @@ export const checkClaim = async (
   const expected = formatRecordValue(claim.token, claim.expiresAt);
 
   const demo =
-    testNamespaceEnabled() && isTestName(claim.name) ? scriptFor(claim.name, expected) : null;
+    testNamespaceEnabled() && isTestName(claim.name)
+      ? scriptFor(claim.name, expected, claim.status)
+      : null;
 
   const resolver =
     demo === null ? createNodeResolver(DEFAULT_TIMEOUT_MS) : createFakeResolver(demo);

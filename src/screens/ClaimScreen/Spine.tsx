@@ -24,6 +24,26 @@ type SpineProps = {
 type Port = { y: number; place: 'past' | 'current' };
 
 /**
+ * Where an element sits inside `root`, from layout rather than the screen. Cards slide up as they
+ * enter, and measuring them on screen mid-slide put the line too low until the slide ended.
+ * Offsets ignore transforms, so the line is in its final place from the first frame.
+ */
+const layoutTop = (el: HTMLElement, root: HTMLElement): number => {
+  let y = 0;
+  let node: HTMLElement | null = el;
+  while (node !== null && node !== root) {
+    y += node.offsetTop;
+    const parent: Element | null = node.offsetParent;
+    node = parent instanceof HTMLElement ? parent : null;
+  }
+  if (node === root) {
+    return y;
+  }
+  // `root` isn't an offset parent of the card. Fall back to the screen, minus root's own offset.
+  return el.getBoundingClientRect().top - root.getBoundingClientRect().top;
+};
+
+/**
  * One straight grey line left of the cards, joining a port on each. The current card's port is
  * filled. Hidden on phones, where the cards run edge to edge.
  */
@@ -37,7 +57,6 @@ const Spine: React.FC<SpineProps> = ({ container, cards, visible, current, layou
       return;
     }
     const measure = () => {
-      const top = root.getBoundingClientRect().top;
       const next: Port[] = [];
       cards.forEach((ref, index) => {
         const el = ref.current;
@@ -45,7 +64,7 @@ const Spine: React.FC<SpineProps> = ({ container, cards, visible, current, layou
           return;
         }
         next.push({
-          y: el.getBoundingClientRect().top - top + PORT_Y,
+          y: layoutTop(el, root) + PORT_Y,
           place: index === current ? 'current' : 'past',
         });
       });
@@ -55,12 +74,7 @@ const Spine: React.FC<SpineProps> = ({ container, cards, visible, current, layou
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(root);
-    // A card that enters slides up into place, and nothing resizes when it lands.
-    root.addEventListener('animationend', measure);
-    return () => {
-      observer.disconnect();
-      root.removeEventListener('animationend', measure);
-    };
+    return () => observer.disconnect();
   }, [layoutKey]);
 
   return (

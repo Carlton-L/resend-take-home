@@ -24,6 +24,17 @@ export const STEP_MS = 450;
 const reducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/** The time in a refusal from the check limit, or null when it has none. */
+const readResumeAt = async (response: Response): Promise<number | null> => {
+  try {
+    const body = (await response.json()) as { resumeAt?: unknown };
+    const at = typeof body.resumeAt === 'string' ? Date.parse(body.resumeAt) : Number.NaN;
+    return Number.isNaN(at) ? null : at;
+  } catch {
+    return null;
+  }
+};
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export type ClaimCheck = ReturnType<typeof useClaimCheck>;
@@ -37,7 +48,8 @@ export type ClaimCheck = ReturnType<typeof useClaimCheck>;
  * once asking again can't change anything. Check now restarts it. A hidden tab doesn't check.
  *
  * Steps arrive from the stream within milliseconds of each other. They are shown one at a time,
- * 450ms apart, and a background check only animates the steps that changed. The claim in the
+ * 450ms apart, and a background check only animates the steps that changed. Steps after the one
+ * that stopped the check land without running. The claim in the
  * cache, and so the pill, the list and the sidebar, updates once the last step has landed.
  */
 export const useClaimCheck = (
@@ -51,6 +63,8 @@ export const useClaimCheck = (
   const [nextAt, setNextAt] = useState<number | null>(null);
   const [lastAt, setLastAt] = useState<number | null>(null);
   const [stopped, setStopped] = useState(false);
+  /** When the check limit lets the next check through, after a refusal. */
+  const [resumeAt, setResumeAt] = useState<number | null>(null);
 
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -118,6 +132,7 @@ export const useClaimCheck = (
     clearTimer();
     setNextAt(null);
     dispatch({ type: 'start', mode });
+    setResumeAt(null);
 
     const controller = new AbortController();
     abort.current = controller;
@@ -149,13 +164,12 @@ export const useClaimCheck = (
           window.location.assign(`${SIGN_IN_PATH}?next=${encodeURIComponent(next)}`);
           return;
         }
-        fail(
-          response.status === 429
-            ? 'limited'
-            : response.status === 404
-              ? 'not_found'
-              : 'unavailable',
-        );
+        if (response.status === 429) {
+          setResumeAt(await readResumeAt(response));
+          fail('limited');
+          return;
+        }
+        fail(response.status === 404 ? 'not_found' : 'unavailable');
         return;
       }
 
@@ -164,7 +178,10 @@ export const useClaimCheck = (
       const reveal = async (index: number, step: CheckStep) => {
         const shown = stateRef.current.steps[index];
         const same = mode === 'background' && shown?.state === step.state;
-        if (!same && pace > 0 && onScreenRef.current(index)) {
+        // A step the check never reached lands as it is. Running it would pulse past the step
+        // that stopped the check.
+        const reached = step.state !== 'idle';
+        if (reached && !same && pace > 0 && onScreenRef.current(index)) {
           dispatch({ type: 'run', index });
           await sleep(pace);
         }
@@ -268,5 +285,5 @@ export const useClaimCheck = (
     [clearTimer],
   );
 
-  return { state, nextAt, lastAt, stopped, checkNow };
+  return { state, nextAt, lastAt, stopped, resumeAt, checkNow };
 };

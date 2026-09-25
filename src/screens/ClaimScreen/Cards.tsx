@@ -250,7 +250,12 @@ export const CheckCard = forwardRef<HTMLDivElement, CheckCardProps>(
         : { text: copy.live, tone: found.tone };
     return (
       <div ref={ref} className={cardClass(place)}>
-        <Operator label={claimScreenCopy.cards.check} badge={badge.text} badgeTone={badge.tone}>
+        <Operator
+          label={claimScreenCopy.cards.check}
+          // Only on the current card. A past check card on a verified claim has nothing live to say.
+          badge={place === 'past' && !live ? undefined : badge.text}
+          badgeTone={badge.tone}
+        >
           <div className='pb-[18px]'>
             <StepRow steps={steps} from={2} probe={probe} />
             <div aria-live='polite'>

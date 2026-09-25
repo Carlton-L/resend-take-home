@@ -1,5 +1,6 @@
 // src/lib/dns/testNames.ts
 import 'server-only';
+import type { ClaimStatus } from '@/lib/claims/state';
 import type { DnsScript } from '@/lib/dns/fakeResolver';
 
 /**
@@ -26,16 +27,17 @@ const OTHER_RECORD =
   'domainclaim-token=AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH expiry=2099-01-01T00:00:00Z';
 
 /**
- * Only the outcomes reachable so far. `token_expired` is decided from the claim row rather than
- * from DNS, so no name can produce it. `cname_at_name` and `dnssec_broken` need the DoH leg and
- * arrive with it.
+ * Only the outcomes reachable so far. `token_expired` is decided from the claim row, so
+ * `expired.test` gets its expiry at creation instead (`demoTokenLifetimeMs`). `cname_at_name` and
+ * `dnssec_broken` need the DoH leg and arrive with it.
  *
- * There is deliberately no wildcard zone here. The wildcard probe's whole effect is that a wrong
- * message does not appear: a zone that answers for every name is reported as a record that is not
- * there yet, which is what `record-not-found.test` already shows. A demo name for it would render
- * identically to that one and teach nothing.
+ * `other-txt.test` renders the same as `record-not-found.test`, and that is its point: TXT records
+ * for other services at the name, which is what a wildcard zone like apple.com answers, once showed
+ * as a wrong token.
+ *
+ * `status` is the claim's status before this check. Only `flaky.test` reads it.
  */
-const scripts = (expected: string): Record<string, DnsScript> => ({
+const scripts = (expected: string, status: ClaimStatus): Record<string, DnsScript> => ({
   'verified.test': {
     zone: 'verified.test',
     nameservers: DEMO_NAMESERVERS,
@@ -150,6 +152,56 @@ const scripts = (expected: string): Record<string, DnsScript> => ({
     soaMinTtlSeconds: 300,
   },
 
+  /**
+   * Another service's TXT record at the name and none of ours, the way a wildcard answers every
+   * name in a zone (`*.apple.com` does this with its SPF record). Our record isn't there yet.
+   */
+  'other-txt.test': {
+    zone: 'other-txt.test',
+    nameservers: DEMO_NAMESERVERS,
+    servers: {
+      'ns1.example-dns.test': { kind: 'records', records: ['v=spf1 redirect=_spf.example.com'] },
+      'ns2.example-dns.test': { kind: 'records', records: ['v=spf1 redirect=_spf.example.com'] },
+      'ns3.example-dns.test': { kind: 'records', records: ['v=spf1 redirect=_spf.example.com'] },
+    },
+    soaMinTtlSeconds: 300,
+  },
+
+  /**
+   * The record comes and goes, one flip per check, so every held state is one press of Check now
+   * away: a pending claim finds it and verifies, a verified claim loses it and goes at risk, and an
+   * at-risk claim finds it again and recovers.
+   */
+  'flaky.test': {
+    zone: 'flaky.test',
+    nameservers: DEMO_NAMESERVERS,
+    servers:
+      status === 'verified'
+        ? {
+            'ns1.example-dns.test': { kind: 'name_not_found' },
+            'ns2.example-dns.test': { kind: 'name_not_found' },
+            'ns3.example-dns.test': { kind: 'name_not_found' },
+          }
+        : {
+            'ns1.example-dns.test': { kind: 'records', records: [expected] },
+            'ns2.example-dns.test': { kind: 'records', records: [expected] },
+            'ns3.example-dns.test': { kind: 'records', records: [expected] },
+          },
+    soaMinTtlSeconds: 300,
+  },
+
+  /** Answers like `verified.test`. Its token has already run out, so no answer can prove it. */
+  'expired.test': {
+    zone: 'expired.test',
+    nameservers: DEMO_NAMESERVERS,
+    servers: {
+      'ns1.example-dns.test': { kind: 'records', records: [expected] },
+      'ns2.example-dns.test': { kind: 'records', records: [expected] },
+      'ns3.example-dns.test': { kind: 'records', records: [expected] },
+    },
+    soaMinTtlSeconds: 300,
+  },
+
   /** Alive but past the deadline. The case that argues against the shorter timeout. */
   'slow-nameservers.test': {
     zone: 'slow-nameservers.test',
@@ -168,7 +220,14 @@ const scripts = (expected: string): Record<string, DnsScript> => ({
   },
 });
 
-export const testNames = (): string[] => Object.keys(scripts(PLACEHOLDER_RECORD));
+export const testNames = (): string[] => Object.keys(scripts(PLACEHOLDER_RECORD, 'pending'));
+
+/**
+ * How long a new demo claim's token lives, when it isn't the usual seven days. `expired.test` is
+ * created a minute past its expiry, so the expired state is one name away rather than a week.
+ */
+export const demoTokenLifetimeMs = (name: string): number | null =>
+  name === 'expired.test' ? -60_000 : null;
 
 /**
  * The script for a name, or null when the name is under `.test` but is not one we scripted.
@@ -177,5 +236,8 @@ export const testNames = (): string[] => Object.keys(scripts(PLACEHOLDER_RECORD)
  * succeed return. Without it a demo claim could never verify: the script would answer with a fixed
  * token and every check on `verified.test` would report `value_mismatch`.
  */
-export const scriptFor = (name: string, expectedRecord?: string): DnsScript | null =>
-  scripts(expectedRecord ?? PLACEHOLDER_RECORD)[name] ?? null;
+export const scriptFor = (
+  name: string,
+  expectedRecord?: string,
+  status: ClaimStatus = 'pending',
+): DnsScript | null => scripts(expectedRecord ?? PLACEHOLDER_RECORD, status)[name] ?? null;

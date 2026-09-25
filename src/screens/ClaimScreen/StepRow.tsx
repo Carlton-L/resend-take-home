@@ -47,7 +47,8 @@ const stateWord = (state: ShownStep['state']): string =>
 /**
  * A row of steps on one straight cable. The fill runs to the last step that passed, and off the
  * end only when every step in the row passed. The step the check is on gets a lead-in in its own
- * colour. A pulse runs along the segment being asked.
+ * colour. A pulse runs along the segment being asked: once, arriving as the step lands, while a
+ * check is revealed, and on a loop while a background check waits for its answer.
  */
 const StepRow: React.FC<StepRowProps> = ({ steps, from, probe }) => {
   const count = steps.length;
@@ -91,10 +92,12 @@ const StepRow: React.FC<StepRowProps> = ({ steps, from, probe }) => {
           )}
           {pulse !== null && (
             <span
+              // Keyed on the step, so the pulse starts again from the left for each one.
+              key={`${pulseAt}-${runAt >= 0 ? 'run' : 'probe'}`}
               className='absolute top-0 h-full'
               style={{ left: `${pulse.left}%`, width: `${pulse.width}%` }}
             >
-              <span className='cable-pulse' />
+              <span className={`cable-pulse ${runAt >= 0 ? 'cable-pulse-once' : ''}`} />
             </span>
           )}
         </li>

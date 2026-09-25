@@ -1,6 +1,6 @@
 // src/lib/claims/evaluate.ts
 
-import { formatRecordValue, parseRecordValue } from '@/lib/claims/record';
+import { claimRecords, formatRecordValue, parseRecordValue } from '@/lib/claims/record';
 import type { CheckResult, ClaimStatus, FailureReason } from '@/lib/claims/state';
 import { holdsTheName } from '@/lib/claims/state';
 import type { ClaimWrite } from '@/lib/claims/store';
@@ -91,9 +91,21 @@ export const evaluateClaim = (
       };
 
     case 'records_found': {
-      const match = outcome.records.find(
-        (record) => parseRecordValue(record)?.token === claim.token,
-      );
+      // Only our own records count. TXT records for other services at this name mean our record
+      // hasn't been added, the same as nothing at the name.
+      const ours = claimRecords(outcome.records);
+      if (ours.length === 0) {
+        return {
+          status: 'failed',
+          reason: {
+            code: 'record_not_found',
+            queriedName: trace.queriedName,
+            nameservers: [...trace.nameservers],
+            negativeTtlSeconds: trace.negativeTtlSeconds,
+          },
+        };
+      }
+      const match = ours.find((record) => parseRecordValue(record)?.token === claim.token);
       if (match !== undefined) {
         return { status: 'verified', record: match, answeredBy: outcome.answeredBy };
       }
@@ -102,7 +114,7 @@ export const evaluateClaim = (
         reason: {
           code: 'value_mismatch',
           expected: formatRecordValue(claim.token, claim.expiresAt),
-          found: outcome.records,
+          found: ours,
         },
       };
     }
