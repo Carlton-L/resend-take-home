@@ -6,11 +6,10 @@ Most verification is opaque: paste a record, wait 48 hours, check back. This ask
 authoritative nameservers directly and shows the check as five steps as they land. Every failure
 names a reason and one next action. Ownership keeps being checked after it is proved: a name whose
 record stops answering moves to At risk on the next check, and back when the record returns.
-Nothing re-checks on a schedule, for the reason in the RFC.
 
 Live at [domainclaim-pi.vercel.app](https://domainclaim-pi.vercel.app). Take-home for Resend.
 Decisions are in [docs/RFC.md](docs/RFC.md). A five minute walkthrough of the product and the
-process is on [Loom](https://www.loom.com/share/bf1c008566fd44dba68fd82532dc9c5d).
+process is on [Loom](https://www.loom.com/share/bf1c008566fd44dba68fd82532dc9c5d) (OLD UI).
 
 ![The home page: one-click GitHub sign in and an email link on the left, and on the right a small copy of the app playing a claim through to acme.dev is verified](docs/images/home.png)
 
