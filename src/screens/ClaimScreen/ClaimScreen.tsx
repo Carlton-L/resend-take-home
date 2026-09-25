@@ -16,12 +16,7 @@ import { DOMAINS_PATH } from '@/lib/claims/config';
 import type { ClaimDetailDTO, ClaimDTO } from '@/lib/claims/dto';
 import { claimCopy } from '@/lib/claims/messages';
 import { claimRowView, type Tone } from '@/lib/claims/row';
-import {
-  cardsFor,
-  checkFoundSomething,
-  nameserversPassed,
-  recordKnown,
-} from '@/lib/claims/screenView';
+import { cardsFor, checkCardEarned, nameserversPassed, recordKnown } from '@/lib/claims/screenView';
 import { holdsTheName } from '@/lib/claims/state';
 import { appCopy } from '@/lib/copy/app';
 import { claimScreenCopy } from '@/lib/copy/claim';
@@ -112,7 +107,7 @@ const ClaimScreen: React.FC = () => {
     if (claim !== undefined && (recordKnown(claim) || nameserversPassed(state.steps))) {
       setRecordShown(true);
     }
-    if (claim !== undefined && (holdsTheName(claim.status) || checkFoundSomething(state.steps))) {
+    if (claim !== undefined && checkCardEarned(claim, state.steps)) {
       setCheckShown(true);
     }
   }, [claim, state.steps]);

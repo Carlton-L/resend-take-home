@@ -7,6 +7,7 @@ import type { ClaimDetailDTO } from '@/lib/claims/dto';
 import { formatDay, type Tone } from '@/lib/claims/row';
 import { claimScreenCopy } from '@/lib/copy/claim';
 import { BUTTON } from '@/screens/ClaimScreen/buttons';
+import DotCover from '@/screens/ClaimScreen/DotCover';
 import OutArrow from '@/screens/ClaimScreen/OutArrow';
 
 type ClaimHeaderProps = {
@@ -47,9 +48,13 @@ const ClaimHeader = forwardRef<HTMLDivElement, ClaimHeaderProps>(
     return (
       <div
         ref={ref}
-        className='sticky top-13 z-10 -mx-6 bg-bg px-6 pt-[92px] pb-[22px] after:pointer-events-none after:absolute after:top-full after:right-0 after:left-0 after:h-[18px] after:bg-[linear-gradient(#0a0a0b,rgba(10,10,11,0))] max-[720px]:pt-7 max-[720px]:pb-4'
+        className='sticky top-13 z-10 -mx-6 px-6 pt-[92px] pb-[22px] max-[720px]:pt-7 max-[720px]:pb-4'
       >
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-y-2.5 [grid-template-areas:'name_action'_'meta_meta'] max-[720px]:gap-y-2 max-[720px]:[grid-template-areas:'name_action'_'pill_pill'_'meta_meta']">
+        {/* The page ground with its dots, so cards scrolling under the header are hidden and the
+            grid still runs through it. The strip under it fades the cards out as they go. */}
+        <DotCover className='inset-0' />
+        <DotCover className='top-full right-0 left-0 h-[18px] [mask-image:linear-gradient(#000,transparent)]' />
+        <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-y-2.5 [grid-template-areas:'name_action'_'meta_meta'] max-[720px]:gap-y-2 max-[720px]:[grid-template-areas:'name_action'_'pill_pill'_'meta_meta']">
           <div className='flex min-w-0 items-center gap-3.5 [grid-area:name] max-[720px]:contents'>
             <h1 className='truncate font-semibold text-[34px] leading-[1.2] tracking-[-0.02em] max-[720px]:text-[21px] max-[720px]:[grid-area:name]'>
               {claim.name}
